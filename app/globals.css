@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Default to dark theme */
+  :root {
+    /* Dark Theme Variables */
+    --background: 210 11% 8%; /* #141414 */
+    --foreground: 0 0% 100%; /* #ffffff */
+    --card: 210 11% 12%; /* #1f1f1f */
+    --card-foreground: 0 0% 100%; /* #ffffff */
+    --popover: 210 11% 12%; /* #1f1f1f */
+    --popover-foreground: 0 0% 100%; /* #ffffff */
+    --primary: 4 100% 45%; /* #E61B00 */
+    --primary-foreground: 0 0% 100%; /* #ffffff */
+    --secondary: 210 11% 16%; /* #2a2a2a */
+    --secondary-foreground: 0 0% 100%; /* #ffffff */
+    --muted: 210 11% 16%; /* #2a2a2a */
+    --muted-foreground: 0 0% 70%; /* #b3b3b3 */
+    --accent: 4 100% 45%; /* #E61B00 */
+    --accent-foreground: 0 0% 100%; /* #ffffff */
+    --destructive: 4 100% 45%; /* #E61B00 */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
+    --border: 210 11% 25%; /* #404040 */
+    --input: 210 11% 25%; /* #404040 */
+    --ring: 4 100% 45%; /* #E61B00 */
+    --chart-1: 4 100% 45%; /* #E61B00 */
+    --chart-2: 221 83% 53%; /* #2563EB */
+    --chart-3: 158 64% 52%; /* #059669 */
+    --chart-4: 32 95% 44%; /* #D97706 */
+    --chart-5: 340 75% 55%; /* #EC4899 */
+    --radius: 0.5rem;
+
+    /* Sidebar Colors for Dark Theme */
+    --sidebar-background: 210 11% 12%; /* #1f1f1f */
+    --sidebar-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-primary: 4 100% 45%; /* #E61B00 */
+    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-accent: 210 11% 16%; /* #2a2a2a */
+    --sidebar-accent-foreground: 0 0% 100%; /* #ffffff */
+    --sidebar-border: 210 11% 25%; /* #404040 */
+    --sidebar-ring: 4 100% 45%; /* #E61B00 */
+  }
+}
+
+
+
+html[data-theme='light'],
+html[data-theme='light'] *,
+[data-theme='light'],
+[data-theme='light'] * {
+  /* Light Theme Variables */
+  --background: 0 0% 97% !important; /* #f7f7f9 */
+  --foreground: 0 0% 13% !important; /* #222222 */
+  --card: 0 0% 95%; /* #f3f4f6 */
+  --card-foreground: 0 0% 13%; /* #222222 */
+  --popover: 0 0% 95%; /* #f3f4f6 */
+  --popover-foreground: 0 0% 13%; /* #222222 */
+  --primary: 4 100% 45%; /* #E61B00 */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 0 0% 93%; /* #ececf0 */
+  --secondary-foreground: 0 0% 13%; /* #222222 */
+  --muted: 0 0% 93%; /* #ececf0 */
+  --muted-foreground: 0 0% 60%; /* #999999 */
+  --accent: 4 100% 45%; /* #E61B00 */
+  --accent-foreground: 0 0% 100%; /* #ffffff */
+  --destructive: 4 100% 45%; /* #E61B00 */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 0 0% 90%; /* #e5e7eb */
+  --input: 0 0% 90%; /* #e5e7eb */
+  --ring: 4 100% 45%; /* #E61B00 */
+  --chart-1: 4 100% 45%; /* #E61B00 */
+  --chart-2: 221 83% 53%; /* #2563EB */
+  --chart-3: 158 64% 52%; /* #059669 */
+  --chart-4: 32 95% 44%; /* #D97706 */
+  --chart-5: 340 75% 55%; /* #EC4899 */
+  --radius: 0.5rem;
+
+  /* Sidebar Colors for Light Theme */
+  --sidebar-background: 0 0% 95%; /* #f3f4f6 */
+  --sidebar-foreground: 0 0% 13%; /* #222222 */
+  --sidebar-primary: 4 100% 45%; /* #E61B00 */
+  --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+  --sidebar-accent: 0 0% 93%; /* #ececf0 */
+  --sidebar-accent-foreground: 0 0% 13%; /* #222222 */
+  --sidebar-border: 0 0% 90%; /* #e5e7eb */
+  --sidebar-ring: 4 100% 45%; /* #E61B00 */
+
+  /* Bron Custom Variables */
+  --bron-bg-primary: #f7f7f9;
+  --bron-bg-secondary: #f3f4f6;
+  --bron-bg-tertiary: #ececf0;
+  --bron-border: #e5e7eb;
+  --bron-text-primary: #222222;
+  --bron-text-secondary: #666666;
+  --bron-text-muted: #999999;
+  --bron-accent-red: #ff4d4f;
+  --bron-accent-red-hover: #d9363e;
+  --bron-accent-blue: #1890ff;
+  --bron-accent-blue-hover: #1765ad;
+  --bron-accent-green: #52c41a;
+  --bron-accent-green-hover: #389e0d;
+  --bron-accent-yellow: #faad14;
+  --bron-accent-yellow-hover: #d48806;
+}
+
+[data-theme='dark'] {
+  /* Dark Theme Variables */
+  --background: 210 11% 8% !important; /* #141414 */
+  --foreground: 0 0% 100% !important; /* #ffffff */
+  --card: 210 11% 12%; /* #1f1f1f */
+  --card-foreground: 0 0% 100%; /* #ffffff */
+  --popover: 210 11% 12%; /* #1f1f1f */
+  --popover-foreground: 0 0% 100%; /* #ffffff */
+  --primary: 4 100% 45%; /* #E61B00 */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 210 11% 16%; /* #2a2a2a */
+  --secondary-foreground: 0 0% 100%; /* #ffffff */
+  --muted: 210 11% 16%; /* #2a2a2a */
+  --muted-foreground: 0 0% 70%; /* #b3b3b3 */
+  --accent: 4 100% 45%; /* #E61B00 */
+  --accent-foreground: 0 0% 100%; /* #ffffff */
+  --destructive: 4 100% 45%; /* #E61B00 */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 210 11% 25%; /* #404040 */
+  --input: 210 11% 25%; /* #404040 */
+  --ring: 4 100% 45%; /* #E61B00 */
+  --chart-1: 4 100% 45%; /* #E61B00 */
+  --chart-2: 221 83% 53%; /* #2563EB */
+  --chart-3: 158 64% 52%; /* #059669 */
+  --chart-4: 32 95% 44%; /* #D97706 */
+  --chart-5: 340 75% 55%; /* #EC4899 */
+  --radius: 0.5rem;
+
+  /* Sidebar Colors for Dark Theme */
+  --sidebar-background: 210 11% 12%; /* #1f1f1f */
+  --sidebar-foreground: 0 0% 100%; /* #ffffff */
+  --sidebar-primary: 4 100% 45%; /* #E61B00 */
+  --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+  --sidebar-accent: 210 11% 16%; /* #2a2a2a */
+  --sidebar-accent-foreground: 0 0% 100%; /* #ffffff */
+  --sidebar-border: 210 11% 25%; /* #404040 */
+  --sidebar-ring: 4 100% 45%; /* #E61B00 */
+
+  /* Bron Custom Variables */
+  --bron-bg-primary: #141414;
+  --bron-bg-secondary: #1f1f1f;
+  --bron-bg-tertiary: #2a2a2a;
+  --bron-border: #404040;
+  --bron-text-primary: #ffffff;
+  --bron-text-secondary: #b3b3b3;
+  --bron-text-muted: #808080;
+  --bron-accent-red: #E61B00;
+  --bron-accent-red-hover: #CC1700;
+  --bron-accent-blue: #2563EB;
+  --bron-accent-blue-hover: #1D4ED8;
+  --bron-accent-green: #059669;
+  --bron-accent-green-hover: #047857;
+  --bron-accent-yellow: #D97706;
+  --bron-accent-yellow-hover: #B45309;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1f1f1f;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555555;
+}
+
+/* Custom selection colors */
+::selection {
+  background: #e61b00;
+  color: white;
+}
+
+::-moz-selection {
+  background: #e61b00;
+  color: white;
+}
