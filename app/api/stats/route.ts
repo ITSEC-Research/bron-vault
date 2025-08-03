@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
+
   try {
     console.log("📊 Loading stats...")
 
@@ -19,7 +20,27 @@ export async function GET(request: NextRequest) {
 
     if (cacheResult.length > 0) {
       console.log("📊 Using cached stats")
-      return NextResponse.json(cacheResult[0].cache_data)
+      let cached = cacheResult[0].cache_data
+      let parsed: any = null
+
+      try {
+        if (typeof cached === "string") {
+          parsed = JSON.parse(cached)
+        } else if (typeof cached === "object" && cached !== null) {
+          parsed = cached
+        } else {
+          throw new Error("Unsupported cached format")
+        }
+      } catch (e) {
+        console.warn("📊 Cached stats parse failed, will recalc. Error:", e)
+        parsed = null
+      }
+
+      if (parsed) {
+        return NextResponse.json(parsed)
+      } else {
+        console.log("📊 Cache corrupted or invalid, continuing to recompute stats")
+      }
     }
 
     console.log("📊 Calculating fresh stats...")
@@ -49,7 +70,7 @@ export async function GET(request: NextRequest) {
     const totalFiles = (fileCount as any[])[0].count
     console.log(`📊 Total files: ${totalFiles}`)
 
-    // Get aggregated stats from devices table
+    // Aggregated stats
     const aggregatedStats = await executeQuery(`
       SELECT 
         SUM(total_credentials) as total_credentials,
@@ -60,7 +81,7 @@ export async function GET(request: NextRequest) {
     const aggStats = (aggregatedStats as any[])[0]
     console.log(`📊 Aggregated stats:`, aggStats)
 
-    // Get top 5 passwords based on unique device count that uses that password
+    // Top passwords
     const topPasswords = await executeQuery(`
       SELECT password, COUNT(DISTINCT device_id) as total_count
       FROM (
@@ -95,7 +116,7 @@ export async function GET(request: NextRequest) {
     const topPasswordsArray = topPasswords as any[]
     logInfo(`Top passwords: ${topPasswordsArray.length} found`, undefined, 'Stats API')
 
-    // Get recent devices
+    // Recent devices
     const recentDevices = await executeQuery(`
       SELECT device_id, device_name, upload_batch, upload_date, total_files, total_credentials, total_domains, total_urls
       FROM devices 
@@ -103,7 +124,7 @@ export async function GET(request: NextRequest) {
       LIMIT 10
     `)
 
-    // Get upload batch stats
+    // Batch stats
     const batchStats = await executeQuery(`
       SELECT 
         upload_batch,
@@ -128,7 +149,7 @@ export async function GET(request: NextRequest) {
         totalDomains: Number(aggStats.total_domains) || 0,
         totalUrls: Number(aggStats.total_urls) || 0,
       },
-      topPasswords,
+      topPasswords: topPasswordsArray,
       devices: recentDevices,
       batches: batchStats,
     }
