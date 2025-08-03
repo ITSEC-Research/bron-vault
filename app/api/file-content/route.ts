@@ -1,11 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { executeQuery } from "@/lib/mysql"
-import { createReadStream, existsSync } from "fs"
+import { existsSync, createReadStream } from "fs"
 import path from "path"
 import { validateRequest } from "@/lib/auth"
+import { Readable } from "stream"
+
+export const runtime = "nodejs" // pastikan ini kalau butuh fs
+
+function nodeStreamToWeb(stream: Readable): ReadableStream {
+  // Node 17+ punya toWeb
+  // @ts-ignore
+  return (stream as any).toWeb?.() ?? new ReadableStream({
+    start(controller) {
+      stream.on("data", (chunk) => controller.enqueue(chunk))
+      stream.on("end", () => controller.close())
+      stream.on("error", (err) => controller.error(err))
+    },
+    cancel() {
+      stream.destroy()
+    }
+  })
+}
 
 export async function POST(request: NextRequest) {
-  // Validate authentication
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
@@ -18,7 +35,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Device ID and file path are required" }, { status: 400 })
     }
 
-    // Try to get text content first
     let results = await executeQuery(
       "SELECT content FROM files WHERE device_id = ? AND file_path = ? AND content IS NOT NULL",
       [deviceId, filePath],
@@ -29,7 +45,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ content })
     }
 
-    // If not found, try to get local_file_path for binary/image
     results = await executeQuery(
       "SELECT local_file_path FROM files WHERE device_id = ? AND file_path = ? AND local_file_path IS NOT NULL",
       [deviceId, filePath],
@@ -48,7 +63,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File not found on disk" }, { status: 404 })
     }
 
-    // Guess content type from extension
     const ext = path.extname(absPath).toLowerCase()
     let contentType = "application/octet-stream"
     if ([".jpg", ".jpeg"].includes(ext)) contentType = "image/jpeg"
@@ -57,20 +71,14 @@ export async function POST(request: NextRequest) {
     else if (ext === ".bmp") contentType = "image/bmp"
     else if (ext === ".webp") contentType = "image/webp"
 
-    // Read file and return as stream
-    const fileBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = []
-      const stream = createReadStream(absPath)
-      stream.on("data", (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)))
-      stream.on("end", () => resolve(Buffer.concat(chunks)))
-      stream.on("error", (err) => reject(err))
-    })
+    const nodeStream = createReadStream(absPath)
+    const webStream = nodeStreamToWeb(nodeStream)
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(webStream, {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `inline; filename=\"${path.basename(absPath)}\"`,
+        "Content-Disposition": `inline; filename="${path.basename(absPath)}"`,
       },
     })
   } catch (error) {
