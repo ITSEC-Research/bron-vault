@@ -53,7 +53,7 @@ export default function UploadPage() {
   // Ref untuk auto scroll log (pada ScrollArea)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
 
-  // Auto scroll ke bawah setiap logs berubah
+  // Auto-scroll to the bottom whenever the logs update.
   useEffect(() => {
     if (scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') as HTMLDivElement | null;

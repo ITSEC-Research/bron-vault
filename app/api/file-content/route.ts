@@ -5,10 +5,10 @@ import path from "path"
 import { validateRequest } from "@/lib/auth"
 import { Readable } from "stream"
 
-export const runtime = "nodejs" // pastikan ini kalau butuh fs
+export const runtime = "nodejs"
 
 function nodeStreamToWeb(stream: Readable): ReadableStream {
-  // Node 17+ punya toWeb
+  // Node 17+ includes toWeb
   // @ts-ignore
   return (stream as any).toWeb?.() ?? new ReadableStream({
     start(controller) {
