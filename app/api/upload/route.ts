@@ -265,7 +265,9 @@ async function processZipWithBinaryStorage(
         const isPasswordFile =
           lowerFileName === "all passwords.txt" ||
           lowerFileName === "all_passwords.txt" ||
-          lowerFileName === "passwords.txt"
+          lowerFileName === "passwords.txt" ||
+          lowerFileName === "allpasswords_list.txt" ||
+          lowerFileName === "_allpasswords_list"
 
         if (isPasswordFile) {
           logWithBroadcast(`✅ Found password file: ${file.path}`, "success")
