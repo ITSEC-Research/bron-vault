@@ -9,6 +9,58 @@ import { broadcastLogToSession, closeLogSession } from "@/lib/upload-connections
 import { processSoftwareFiles } from "@/lib/software-parser"
 import { validateRequest } from "@/lib/auth"
 
+// Password escape/unescape functions for handling special characters
+function escapePassword(password: string): string {
+  if (!password) return password
+  
+  // Escape special characters that could cause parsing issues
+  return password
+    .replace(/\\/g, '\\\\')  // Escape backslash first
+    .replace(/'/g, "\\'")    // Escape single quotes
+    .replace(/"/g, '\\"')    // Escape double quotes
+    .replace(/\n/g, '\\n')   // Escape newlines
+    .replace(/\r/g, '\\r')   // Escape carriage returns
+    .replace(/\t/g, '\\t')   // Escape tabs
+    .replace(/\0/g, '\\0')   // Escape null bytes
+}
+
+function unescapePassword(escapedPassword: string): string {
+  if (!escapedPassword) return escapedPassword
+  
+  // Unescape special characters
+  return escapedPassword
+    .replace(/\\0/g, '\0')   // Unescape null bytes
+    .replace(/\\t/g, '\t')   // Unescape tabs
+    .replace(/\\r/g, '\r')   // Unescape carriage returns
+    .replace(/\\n/g, '\n')   // Unescape newlines
+    .replace(/\\"/g, '"')    // Unescape double quotes
+    .replace(/\\'/g, "'")    // Unescape single quotes
+    .replace(/\\\\/g, '\\')  // Unescape backslash last
+}
+
+// Helper function to detect passwords with special characters
+function hasSpecialCharacters(password: string): boolean {
+  if (!password) return false
+  
+  // Check for common special characters that might cause issues
+  const specialChars = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/
+  return specialChars.test(password)
+}
+
+// Helper function to safely log password information
+function logPasswordInfo(password: string, context: string): void {
+  if (!password) return
+  
+  const hasSpecial = hasSpecialCharacters(password)
+  const length = password.length
+  
+  if (hasSpecial) {
+    console.log(`🔐 ${context}: Password with special characters (length: ${length})`)
+  } else {
+    console.log(`🔐 ${context}: Standard password (length: ${length})`)
+  }
+}
+
 export async function POST(request: NextRequest) {
   // Validate authentication
   const user = await validateRequest(request)
@@ -55,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     // Save uploaded file temporarily
     const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    const buffer = new Uint8Array(bytes)
     uploadedFilePath = path.join(uploadsDir, file.name)
     await writeFile(uploadedFilePath, buffer)
 
@@ -169,12 +221,17 @@ async function processZipWithBinaryStorage(
       const deviceName = extractDeviceNameWithMacOSSupport(pathParts, structureInfo)
       if (!deviceName) {
         // Skip files that don't belong to any device (e.g., macOS metadata, root files)
+        if (pathParts[0] === ".DS_Store" || pathParts[0].startsWith(".")) {
+          logWithBroadcast(`🚫 Skipping system file: ${relativePath}`, "info")
+        }
         continue
       }
 
       if (!deviceMap.has(deviceName)) {
         deviceMap.set(deviceName, [])
         logWithBroadcast(`📱 New device detected: "${deviceName}" (device #${deviceMap.size})`, "info")
+      } else {
+        logWithBroadcast(`📁 Adding file to existing device: "${deviceName}"`, "info")
       }
 
       deviceMap.get(deviceName)?.push({
@@ -310,6 +367,11 @@ async function processZipWithBinaryStorage(
           // Merge password counts
           for (const [password, count] of stats.passwordCounts) {
             passwordCounts.set(password, (passwordCounts.get(password) || 0) + count)
+            
+            // Log password info for debugging
+            if (password) {
+              logPasswordInfo(password, `Password stat from ${passwordFile.path}`)
+            }
           }
 
           // Collect all credentials with file path
@@ -321,8 +383,20 @@ async function processZipWithBinaryStorage(
           }
 
           logWithBroadcast(`📝 Collected ${stats.credentials.length} credentials from ${passwordFile.path}`, "info")
+          
+          // Log any passwords with special characters for debugging
+          for (const credential of stats.credentials) {
+            if (credential.password) {
+              logPasswordInfo(credential.password, `Credential from ${passwordFile.path}`)
+              if (hasSpecialCharacters(credential.password)) {
+                logWithBroadcast(`🔐 Found password with special characters: ${credential.password.substring(0, 5)}...`, "info")
+              }
+            }
+          }
         } catch (parseError) {
           logWithBroadcast(`❌ Error processing password file ${passwordFile.path}: ${parseError}`, "error")
+          // Continue processing other files even if one fails
+          continue
         }
       }
 
@@ -330,6 +404,17 @@ async function processZipWithBinaryStorage(
         `📊 Device ${deviceName} totals: ${deviceCredentials} credentials, ${deviceDomains} domains, ${deviceUrls} URLs`,
         "info",
       )
+      
+      // Log summary of passwords with special characters
+      let specialCharPasswords = 0
+      for (const [password] of passwordCounts) {
+        if (hasSpecialCharacters(password)) {
+          specialCharPasswords++
+        }
+      }
+      if (specialCharPasswords > 0) {
+        logWithBroadcast(`🔐 Found ${specialCharPasswords} passwords with special characters in device ${deviceName}`, "info")
+      }
 
       // INSERT DEVICE RECORD FIRST
       try {
@@ -359,6 +444,18 @@ async function processZipWithBinaryStorage(
       let credentialsSaved = 0
       for (const credential of allCredentials) {
         try {
+          // Escape password for safe database storage
+          const escapedPassword = escapePassword(credential.password)
+          
+          // Additional validation before database insertion
+          if (!escapedPassword || escapedPassword.length === 0) {
+            logWithBroadcast(`⚠️ Skipping credential with empty password for URL: ${credential.url}`, "warning")
+            continue
+          }
+          
+          // Log password info for debugging
+          logPasswordInfo(credential.password, `Saving credential for ${credential.url}`)
+          
           await executeQuery(
             `INSERT INTO credentials (device_id, url, domain, tld, username, password, browser, file_path) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -368,7 +465,7 @@ async function processZipWithBinaryStorage(
               credential.domain,
               credential.tld,
               credential.username,
-              credential.password,
+              escapedPassword, // Use escaped password
               credential.browser || "Unknown",
               credential.filePath,
             ],
@@ -376,6 +473,8 @@ async function processZipWithBinaryStorage(
           credentialsSaved++
         } catch (credError) {
           logWithBroadcast(`❌ Error saving credential: ${credError}`, "error")
+          // Continue processing other credentials even if one fails
+          continue
         }
       }
 
@@ -384,13 +483,27 @@ async function processZipWithBinaryStorage(
       // Store password stats
       for (const [password, count] of passwordCounts) {
         try {
+          // Escape password for safe database storage
+          const escapedPassword = escapePassword(password)
+          
+          // Additional validation before database insertion
+          if (!escapedPassword || escapedPassword.length === 0) {
+            logWithBroadcast(`⚠️ Skipping password stat with empty password`, "warning")
+            continue
+          }
+          
+          // Log password info for debugging
+          logPasswordInfo(password, `Saving password stat (count: ${count})`)
+          
           await executeQuery(`INSERT INTO password_stats (device_id, password, count) VALUES (?, ?, ?)`, [
             deviceId,
-            password,
+            escapedPassword, // Use escaped password
             count,
           ])
         } catch (passwordError) {
           logWithBroadcast(`❌ Error saving password stat: ${passwordError}`, "error")
+          // Continue processing other password stats even if one fails
+          continue
         }
       }
 
@@ -555,6 +668,7 @@ async function processZipWithBinaryStorage(
     logWithBroadcast(`   - Total URLs: ${totalUrls}`, "info")
     logWithBroadcast(`   - Total files: ${totalFiles}`, "info")
     logWithBroadcast(`   - Total binary files saved: ${totalBinaryFiles}`, "info")
+    logWithBroadcast(`   - Password handling: Enhanced with special character support`, "info")
 
     // Clear analytics cache
     await executeQuery("DELETE FROM analytics_cache WHERE cache_key LIKE 'stats_%'")
@@ -612,7 +726,7 @@ function analyzeZipStructureWithMacOSSupport(zipData: JSZip): {
   console.log(`📊 Depth analysis:`, Object.fromEntries(depthCounts))
   console.log(`📁 First level directories (${firstLevelDirs.size}):`, Array.from(firstLevelDirs).slice(0, 10))
 
-  // FILTER OUT SYSTEM DIRECTORIES
+  // FILTER OUT SYSTEM DIRECTORIES AND FILES
   const systemDirectories = new Set([
     "__MACOSX", // macOS metadata
     ".DS_Store", // macOS metadata
@@ -624,17 +738,28 @@ function analyzeZipStructureWithMacOSSupport(zipData: JSZip): {
     "System Volume Information", // Windows system
   ])
 
-  // Filter out system directories and hidden directories
+  // Filter out system directories, files, and hidden items
   const filteredDirs = Array.from(firstLevelDirs).filter((dir) => {
-    // Skip system directories
+    // Skip system directories and files
     if (systemDirectories.has(dir)) {
-      console.log(`🚫 Filtering out system directory: ${dir}`)
+      console.log(`🚫 Filtering out system item: ${dir}`)
       return false
     }
 
-    // Skip hidden directories (starting with .)
+    // Skip hidden directories and files (starting with .)
     if (dir.startsWith(".")) {
-      console.log(`🚫 Filtering out hidden directory: ${dir}`)
+      console.log(`🚫 Filtering out hidden item: ${dir}`)
+      return false
+    }
+
+    // Skip if it's a file (not a directory)
+    const isFile = Object.keys(zipData.files).some(path => {
+      const parts = path.split("/").filter(p => p.length > 0)
+      return parts.length === 1 && parts[0] === dir && !zipData.files[path].dir
+    })
+
+    if (isFile) {
+      console.log(`🚫 Filtering out file: ${dir}`)
       return false
     }
 
@@ -704,18 +829,38 @@ function extractDeviceNameWithMacOSSupport(
 ): string | null {
   if (pathParts.length === 0) return null
 
-  // SKIP macOS SYSTEM FILES
+  // SKIP macOS SYSTEM FILES AND HIDDEN FILES
   if (pathParts[0] === "__MACOSX" || pathParts[0].startsWith(".")) {
-    return null // Skip macOS metadata files
+    return null // Skip macOS metadata files and hidden files
+  }
+
+  // Additional filtering for system files
+  const systemFiles = new Set([
+    ".DS_Store",
+    "Thumbs.db",
+    ".Trashes",
+    ".fseventsd",
+    ".Spotlight-V100",
+    ".TemporaryItems",
+    "System Volume Information"
+  ])
+
+  if (systemFiles.has(pathParts[0])) {
+    return null // Skip system files
   }
 
   if (structureInfo.hasPreDirectory && structureInfo.preDirectoryName) {
-    // Pre-directory structure: device name is the pre-directory itself
+    // Pre-directory structure: device name is at level 1 (sub-directory)
     if (pathParts.length <= 1) return null // No device level
     if (pathParts[0] !== structureInfo.preDirectoryName) return null // Wrong pre-directory
 
-    // Device name is the pre-directory name (level 0)
-    return pathParts[0]
+    // Additional check for system files at level 1
+    if (systemFiles.has(pathParts[1])) {
+      return null // Skip system files at device level
+    }
+
+    // Device name is at level 1 (sub-directory), not level 0 (pre-directory)
+    return pathParts[1]
   } else {
     // Direct structure: device name is at level 0
     return pathParts[0]
@@ -768,8 +913,18 @@ function analyzePasswordFile(content: string): {
     if (lowerLine.includes("password:") || lowerLine.includes("pass:")) {
       const password = extractValue(trimmedLine)
       if (password && password.length > 0) {
-        result.credentialCount++
-        result.passwordCounts.set(password, (result.passwordCounts.get(password) || 0) + 1)
+        // Validate password for special characters
+        try {
+          // Test if password can be safely processed
+          const testEscape = escapePassword(password)
+          if (testEscape !== null && testEscape !== undefined) {
+            result.credentialCount++
+            result.passwordCounts.set(password, (result.passwordCounts.get(password) || 0) + 1)
+          }
+        } catch (escapeError) {
+          // Skip invalid passwords that cause escape errors
+          console.warn(`Skipping password with invalid characters: ${password.substring(0, 10)}...`)
+        }
       }
     }
 
@@ -821,7 +976,17 @@ function analyzePasswordFile(content: string): {
     } else if (lowerLine.includes("username:") || lowerLine.includes("user:") || lowerLine.includes("login:")) {
       currentCredential.username = extractValue(trimmedLine)
     } else if (lowerLine.includes("password:") || lowerLine.includes("pass:")) {
-      currentCredential.password = extractValue(trimmedLine)
+      const password = extractValue(trimmedLine)
+      // Validate password for special characters
+      try {
+        const testEscape = escapePassword(password)
+        if (testEscape !== null && testEscape !== undefined) {
+          currentCredential.password = password
+        }
+      } catch (escapeError) {
+        // Skip invalid passwords
+        console.warn(`Skipping invalid password: ${password.substring(0, 10)}...`)
+      }
     } else if (lowerLine.includes("browser:") || lowerLine.includes("soft:") || lowerLine.includes("application:")) {
       currentCredential.browser = extractValue(trimmedLine)
     }
@@ -900,7 +1065,18 @@ function extractUrlInfo(url: string): { domain: string | null; tld: string | nul
 function extractValue(line: string): string {
   const colonIndex = line.indexOf(":")
   if (colonIndex !== -1) {
-    return line.substring(colonIndex + 1).trim()
+    const value = line.substring(colonIndex + 1).trim()
+    
+    // Handle special characters in password values
+    // Check if this looks like a password field
+    const lowerLine = line.toLowerCase()
+    if (lowerLine.includes("password:") || lowerLine.includes("pass:")) {
+      // For password fields, we need to be more careful with special characters
+      // but we don't escape here - we'll handle it during database insertion
+      return value
+    }
+    
+    return value
   }
   return line.trim()
 }
