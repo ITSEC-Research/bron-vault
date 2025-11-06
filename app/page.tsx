@@ -86,16 +86,22 @@ export default function SearchPage() {
   const [credentialsError, setCredentialsError] = useState<string>("")
   const [showPasswords, setShowPasswords] = useState(false)
   const [credentialsSearchQuery, setCredentialsSearchQuery] = useState("")
+  const [deviceSoftware, setDeviceSoftware] = useState<{ software_name: string; version: string; source_file: string }[]>([])
+  const [isLoadingSoftware, setIsLoadingSoftware] = useState(false)
+  const [softwareError, setSoftwareError] = useState<string>("")
+  const [softwareSearchQuery, setSoftwareSearchQuery] = useState("")
   const [selectedFileType, setSelectedFileType] = useState<'text' | 'image' | null>(null)
   const [searchActive, setSearchActive] = useState(false)
 
-  // Load credentials when device is selected and reset password visibility
+  // Load credentials and software when device is selected and reset password visibility
   useEffect(() => {
     if (selectedDevice) {
-      console.log("🔄 Device selected, loading credentials for:", selectedDevice.deviceId)
+      console.log("🔄 Device selected, loading credentials and software for:", selectedDevice.deviceId)
       setShowPasswords(false) // Reset password visibility for each device
       setCredentialsSearchQuery("") // Reset search query for each device
+      setSoftwareSearchQuery("") // Reset software search query for each device
       loadDeviceCredentials(selectedDevice.deviceId)
+      loadDeviceSoftware(selectedDevice.deviceId)
     }
   }, [selectedDevice])
 
@@ -165,6 +171,50 @@ export default function SearchPage() {
     } finally {
       setIsLoadingCredentials(false)
       console.log("🏁 Finished loading credentials")
+    }
+  }
+
+  // Load device software function
+  const loadDeviceSoftware = async (deviceId: string) => {
+    console.log("🚀 Starting to load software for device:", deviceId)
+    setIsLoadingSoftware(true)
+    setSoftwareError("")
+    setDeviceSoftware([]) // Clear previous data
+
+    try {
+      console.log("📡 Making API call to /api/device-software")
+      const response = await fetch("/api/device-software", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deviceId }),
+      })
+
+      console.log("📡 API Response status:", response.status)
+      console.log("📡 API Response ok:", response.ok)
+
+      if (response.ok) {
+        const software = await response.json()
+        console.log("✅ API returned software:", software)
+        console.log("📊 Number of software entries received:", software.length)
+
+        if (software.length > 0) {
+          console.log("📝 Sample software:", software[0])
+        }
+
+        setDeviceSoftware(software)
+      } else {
+        const errorData = await response.json()
+        console.error("❌ API Error:", errorData)
+        setSoftwareError(`API Error: ${errorData.error || "Unknown error"}`)
+      }
+    } catch (error) {
+      console.error("❌ Failed to load software:", error)
+      setSoftwareError(`Network Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+    } finally {
+      setIsLoadingSoftware(false)
+      console.log("🏁 Finished loading software")
     }
   }
 
@@ -583,6 +633,12 @@ export default function SearchPage() {
           credentialsSearchQuery={credentialsSearchQuery}
           setCredentialsSearchQuery={setCredentialsSearchQuery}
           onRetryCredentials={() => selectedDevice && loadDeviceCredentials(selectedDevice.deviceId)}
+          deviceSoftware={deviceSoftware}
+          isLoadingSoftware={isLoadingSoftware}
+          softwareError={softwareError}
+          softwareSearchQuery={softwareSearchQuery}
+          setSoftwareSearchQuery={setSoftwareSearchQuery}
+          onRetrySoftware={() => selectedDevice && loadDeviceSoftware(selectedDevice.deviceId)}
           onFileClick={handleFileClick}
           onDownloadAllData={handleDownloadAllDeviceData}
         />

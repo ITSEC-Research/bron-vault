@@ -1,13 +1,14 @@
 "use client"
 
 import React from "react"
-import { X, User, File } from "lucide-react"
+import { X, User, File, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { CredentialsTable } from "./CredentialsTable"
 import { FileTreeViewer } from "../file/FileTreeViewer"
+import { SoftwareTable } from "./SoftwareTable"
 
 interface SearchResult {
   deviceId: string
@@ -29,6 +30,12 @@ interface Credential {
   filePath?: string
 }
 
+interface Software {
+  software_name: string
+  version: string
+  source_file: string
+}
+
 interface DeviceDetailsPanelProps {
   selectedDevice: SearchResult | null
   onClose: () => void
@@ -40,6 +47,12 @@ interface DeviceDetailsPanelProps {
   credentialsSearchQuery: string
   setCredentialsSearchQuery: (query: string) => void
   onRetryCredentials: () => void
+  deviceSoftware: Software[]
+  isLoadingSoftware: boolean
+  softwareError: string
+  softwareSearchQuery: string
+  setSoftwareSearchQuery: (query: string) => void
+  onRetrySoftware: () => void
   onFileClick: (deviceId: string, filePath: string, fileName: string, hasContent: boolean) => void
   onDownloadAllData: (deviceId: string, deviceName: string) => void
 }
@@ -55,6 +68,12 @@ export function DeviceDetailsPanel({
   credentialsSearchQuery,
   setCredentialsSearchQuery,
   onRetryCredentials,
+  deviceSoftware,
+  isLoadingSoftware,
+  softwareError,
+  softwareSearchQuery,
+  setSoftwareSearchQuery,
+  onRetrySoftware,
   onFileClick,
   onDownloadAllData,
 }: DeviceDetailsPanelProps) {
@@ -79,13 +98,20 @@ export function DeviceDetailsPanel({
 
         <div className="mt-6">
           <Tabs defaultValue="credentials" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-bron-bg-tertiary border border-bron-border">
+            <TabsList className="grid w-full grid-cols-3 bg-bron-bg-tertiary border border-bron-border">
               <TabsTrigger
                 value="credentials"
                 className="flex items-center space-x-2 text-bron-text-secondary data-[state=active]:bg-bron-accent-red data-[state=active]:text-white"
               >
                 <User className="h-4 w-4" />
                 <span>User Credentials</span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="software"
+                className="flex items-center space-x-2 text-bron-text-secondary data-[state=active]:bg-bron-accent-red data-[state=active]:text-white"
+              >
+                <Package className="h-4 w-4" />
+                <span>Software Installed</span>
               </TabsTrigger>
               <TabsTrigger
                 value="files"
@@ -107,6 +133,20 @@ export function DeviceDetailsPanel({
                   credentialsSearchQuery={credentialsSearchQuery}
                   setCredentialsSearchQuery={setCredentialsSearchQuery}
                   onRetryCredentials={onRetryCredentials}
+                  deviceId={selectedDevice.deviceId}
+                />
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="software" className="mt-4">
+              <ScrollArea className="h-[calc(100vh-200px)]">
+                <SoftwareTable
+                  deviceSoftware={deviceSoftware}
+                  isLoadingSoftware={isLoadingSoftware}
+                  softwareError={softwareError}
+                  softwareSearchQuery={softwareSearchQuery}
+                  setSoftwareSearchQuery={setSoftwareSearchQuery}
+                  onRetrySoftware={onRetrySoftware}
                   deviceId={selectedDevice.deviceId}
                 />
               </ScrollArea>

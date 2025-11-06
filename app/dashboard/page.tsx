@@ -249,11 +249,11 @@ function DashboardContent() {
 
   return (
     <div className="flex flex-col min-h-screen bg-bron-bg-primary">
-      <main className="flex-1 p-6 bg-bron-bg-primary">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="flex-1 p-4 bg-bron-bg-primary">
+        <div className="max-w-7xl mx-auto space-y-4">
           {/* Statistic Boxes - Layer 1 */}
           <ErrorBoundary context="Dashboard Stats Layer 1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <AnimatedStatCard
                 icon={HardDrive}
                 value={stats.totalDevices}
@@ -272,7 +272,7 @@ function DashboardContent() {
           </ErrorBoundary>
 
           {/* Statistic Boxes - Layer 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
             <AnimatedStatCard
               icon={Database}
               value={stats.totalFiles}
@@ -307,23 +307,23 @@ function DashboardContent() {
           )}
           {/* Top Passwords */}
           <Card className="bg-bron-bg-tertiary border-bron-border">
-            <CardHeader>
-              <CardTitle className="flex items-center text-bron-text-primary">
-                <Key className="h-5 w-5 mr-2 text-bron-accent-red" />
+            <CardHeader className="!p-4">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <Key className="h-4 w-4 mr-2 text-bron-accent-red" />
                 Top 5 Most Used Passwords
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="!p-4 !pt-0">
               {topPasswords.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   {topPasswords.map((passwordData, index) => (
                     <div key={index} className="text-center">
-                      <div className="text-lg font-bold text-bron-accent-red font-mono bg-bron-bg-secondary p-3 rounded border border-bron-border">
+                      <div className="text-base font-bold text-bron-accent-red font-mono bg-bron-bg-secondary p-2 rounded border border-bron-border">
                         {passwordData.password.length > 15
                           ? passwordData.password.substring(0, 15) + "..."
                           : passwordData.password}
                       </div>
-                      <div className="text-sm text-bron-text-muted mt-2">
+                      <div className="text-xs text-bron-text-muted mt-1">
                         {Number(passwordData.total_count).toLocaleString()} times
                       </div>
                       <Badge
@@ -346,29 +346,29 @@ function DashboardContent() {
           </Card>
 
           {/* Top TLDs, Malware Traffic Analysis, and Ransomware Live - Responsive Flex Layout */}
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col lg:flex-row gap-4">
             {/* Top TLDs */}
             <Card className="flex-1 lg:basis-[2.5/12] bg-bron-bg-tertiary border-bron-border">
-              <CardHeader>
-                <CardTitle className="flex items-center text-bron-text-primary">
-                  <Globe className="h-5 w-5 mr-2 text-bron-accent-blue" />
-                  Top 10 TLDs
-                </CardTitle>
+              <CardHeader className="!p-4">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <Globe className="h-4 w-4 mr-2 text-bron-accent-blue" />
+                Top 10 TLDs
+              </CardTitle>
               </CardHeader>
-              <CardContent className="h-[530px] pr-2 flex flex-col"> {/* Updated height and added flex-col */}
+              <CardContent className="!p-4 !pt-0 h-[420px] pr-2 flex flex-col"> {/* Updated height and added flex-col */}
                 {topTLDs.length > 0 ? (
                   <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
-                    <div className="space-y-2"> {/* Changed to space-y for vertical layout */}
+                    <div className="space-y-1.5"> {/* Changed to space-y for vertical layout */}
                       {topTLDs.slice(0, 10).map((tldData, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 rounded bg-bron-bg-secondary border border-bron-border">
-                          <span className="font-bold text-bron-accent-blue">
+                        <div key={index} className="flex items-center justify-between p-1.5 rounded bg-bron-bg-secondary border border-bron-border">
+                          <span className="text-sm font-bold text-bron-accent-blue">
                             #{index + 1}
                           </span>
-                          <span className="font-mono text-bron-text-primary">
+                          <span className="text-sm font-mono text-bron-text-primary">
                             .{tldData.tld}
                           </span>
                           {/* Added pr-2 to balance spacing on the right */}
-                          <span className="text-sm text-bron-text-muted pr-2">
+                          <span className="text-xs text-bron-text-muted pr-2">
                             ({tldData.count.toLocaleString()} domains)
                           </span>
                         </div>
@@ -386,21 +386,21 @@ function DashboardContent() {
 
             {/* Malware Traffic Analysis */}
             <Card className="flex-1 lg:basis-[4.75/12] bg-bron-bg-tertiary border-bron-border">
-              <CardHeader>
-                <CardTitle className="flex items-center text-bron-text-primary">
-                  <TrendingUp className="h-5 w-5 mr-2 text-bron-accent-green" />
-                  Malware Traffic Analysis
-                </CardTitle>
+              <CardHeader className="!p-4">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <TrendingUp className="h-4 w-4 mr-2 text-bron-accent-green" />
+                Malware Traffic Analysis
+              </CardTitle>
               </CardHeader>
-              <CardContent className="h-[530px] flex flex-col"> {/* Updated height and added flex-col */}
+              <CardContent className="!p-4 !pt-0 h-[420px] flex flex-col"> {/* Updated height and added flex-col */}
                 {rssItems.length > 0 ? (
                   <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {rssItems.map((item, index) => (
-                        <div key={index} className="border-b border-bron-border pb-4 last:border-b-0">
+                        <div key={index} className="border-b border-bron-border pb-3 last:border-b-0">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-bron-text-primary hover:text-bron-accent-blue">
+                              <h3 className="text-sm font-medium text-bron-text-primary hover:text-bron-accent-blue">
                                 <a
                                   href={item.link}
                                   target="_blank"
@@ -411,8 +411,8 @@ function DashboardContent() {
                                   <ExternalLink className="h-3 w-3 ml-1" />
                                 </a>
                               </h3>
-                              <p className="text-sm text-bron-text-muted mt-1">{item.description}</p>
-                              <p className="text-xs text-bron-text-muted mt-2">{formatDate(item.pubDate)}</p>
+                              <p className="text-xs text-bron-text-muted mt-1">{item.description}</p>
+                              <p className="text-[10px] text-bron-text-muted mt-1">{formatDate(item.pubDate)}</p>
                             </div>
                           </div>
                         </div>
@@ -430,21 +430,21 @@ function DashboardContent() {
 
             {/* Recent Ransomware Cases */}
             <Card className="flex-1 lg:basis-[4.75/12] bg-bron-bg-tertiary border-bron-border">
-              <CardHeader>
-                <CardTitle className="flex items-center text-bron-text-primary">
-                  <TrendingUp className="h-5 w-5 mr-2 text-bron-accent-red" />
-                  Recent Ransomware Cases
-                </CardTitle>
+              <CardHeader className="!p-4">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <TrendingUp className="h-4 w-4 mr-2 text-bron-accent-red" />
+                Recent Ransomware Cases
+              </CardTitle>
               </CardHeader>
-              <CardContent className="h-[530px] flex flex-col"> {/* Updated height and added flex-col */}
+              <CardContent className="!p-4 !pt-0 h-[420px] flex flex-col"> {/* Updated height and added flex-col */}
                 {ransomwareItems.length > 0 ? (
                   <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
-                    <div className="space-y-4">
+                    <div className="space-y-2.5">
                       {ransomwareItems.map((item, index) => (
-                        <div key={index} className="border-b border-bron-border pb-4 last:border-b-0">
+                        <div key={index} className="border-b border-bron-border pb-2.5 last:border-b-0">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="font-semibold text-bron-text-primary hover:text-bron-accent-red">
+                              <h3 className="text-sm font-medium text-bron-text-primary hover:text-bron-accent-red">
                                 <a
                                   href={item.link}
                                   target="_blank"
@@ -455,8 +455,8 @@ function DashboardContent() {
                                   <ExternalLink className="h-3 w-3 ml-1" />
                                 </a>
                               </h3>
-                              <p className="text-sm text-bron-text-muted mt-1">{item.description}</p>
-                              <p className="text-xs text-bron-text-muted mt-2">{formatDate(item.pubDate)}</p>
+                              <p className="text-xs text-bron-text-muted mt-1">{item.description}</p>
+                              <p className="text-[10px] text-bron-text-muted mt-1">{formatDate(item.pubDate)}</p>
                             </div>
                           </div>
                         </div>
@@ -474,16 +474,16 @@ function DashboardContent() {
           </div>
 
           {/* Browser Analysis and Software Analysis - Side by Side */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Browser Analysis */}
             <Card className="col-span-1 lg:col-span-2 bg-bron-bg-tertiary border-bron-border">
-              <CardHeader>
-                <CardTitle className="flex items-center text-bron-text-primary">
-                  <Monitor className="h-5 w-5 mr-2 text-bron-accent-purple" />
-                  Top Browsers Used by Infected Devices
-                </CardTitle>
+              <CardHeader className="!p-4">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <Monitor className="h-4 w-4 mr-2 text-bron-accent-purple" />
+                Top Browsers Used by Infected Devices
+              </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="!p-4 !pt-0">
                 <div className="w-full h-[500px] flex items-end justify-center mt-10">
                   <ErrorBoundary
                     context="Browser Chart"
@@ -504,13 +504,13 @@ function DashboardContent() {
 
             {/* Software Analysis */}
             <Card className="col-span-1 lg:col-span-2 bg-bron-bg-tertiary border-bron-border">
-              <CardHeader>
-                <CardTitle className="flex items-center text-bron-text-primary">
-                  <Package className="h-5 w-5 mr-2 text-bron-accent-green" />
-                  Most Common Software Found in Logs
-                </CardTitle>
+              <CardHeader className="!p-4">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <Package className="h-4 w-4 mr-2 text-bron-accent-green" />
+                Most Common Software Found in Logs
+              </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="!p-4 !pt-0">
                 <ErrorBoundary fallback={<div className="text-red-500 text-sm">Software list error</div>}>
                   <AnimatedSoftwareList softwareData={softwareData} />
                 </ErrorBoundary>

@@ -32,14 +32,14 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
   const maxCount = Math.max(...safeSoftwareData.map(s => s?.count || 0))
 
   return (
-    <div ref={ref} className="space-y-3">
+    <div ref={ref} className="space-y-2.5">
       {safeSoftwareData.map((item, index) => {
         const percentage = maxCount > 0 ? ((item?.count || 0) / maxCount) * 100 : 0
 
         return (
           <div
             key={`${item?.software_name || 'unknown'}-${item?.version || 'no-version'}-${index}`}
-            className="space-y-2"
+            className="space-y-1.5"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 min-w-0 flex-1">
@@ -48,18 +48,18 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium text-bron-text-primary truncate">
+                    <span className="text-sm font-medium text-bron-text-primary truncate">
                       {item?.software_name || 'Unknown Software'}
                     </span>
                     {item?.version && (
-                      <span className="text-xs text-bron-text-muted bg-bron-bg-secondary px-2 py-1 rounded border border-bron-border flex-shrink-0">
+                      <span className="text-[10px] text-bron-text-muted bg-bron-bg-secondary px-1.5 py-0.5 rounded border border-bron-border flex-shrink-0">
                         {item.version}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
-              <span className="text-bron-text-muted font-mono ml-2 flex-shrink-0">
+              <span className="text-sm text-bron-text-muted font-mono ml-2 flex-shrink-0">
                 {item?.count || 0}
               </span>
             </div>
