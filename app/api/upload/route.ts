@@ -445,11 +445,13 @@ async function processZipWithBinaryStorage(
       for (const credential of allCredentials) {
         try {
           // Escape password for safe database storage
+          // Allow empty password ("") as it's already validated in isValidCredentialFlexible
           const escapedPassword = escapePassword(credential.password)
           
-          // Additional validation before database insertion
-          if (!escapedPassword || escapedPassword.length === 0) {
-            logWithBroadcast(`⚠️ Skipping credential with empty password for URL: ${credential.url}`, "warning")
+          // Validation: only reject if password is null/undefined (not empty string)
+          // Empty password ("") is valid and should be saved
+          if (credential.password === undefined || credential.password === null) {
+            logWithBroadcast(`⚠️ Skipping credential with null/undefined password for URL: ${credential.url}`, "warning")
             continue
           }
           
@@ -465,7 +467,7 @@ async function processZipWithBinaryStorage(
               credential.domain,
               credential.tld,
               credential.username,
-              escapedPassword, // Use escaped password
+              escapedPassword, // Use escaped password (can be empty string "")
               credential.browser || "Unknown",
               credential.filePath,
             ],
@@ -953,7 +955,8 @@ function analyzePasswordFile(content: string): {
   for (const line of lines) {
     const trimmedLine = line.trim()
 
-    if (!trimmedLine) {
+    // Detect separator (blank line, pure separator, or branded separator)
+    if (isSeparatorLine(trimmedLine)) {
       if (isValidCredentialFlexible(currentCredential)) {
         const urlInfo = extractUrlInfo(currentCredential.url!)
         result.credentials.push({
@@ -972,19 +975,36 @@ function analyzePasswordFile(content: string): {
     const lowerLine = trimmedLine.toLowerCase()
 
     if (lowerLine.includes("url:") || lowerLine.includes("host:") || lowerLine.includes("hostname:")) {
+      // If URL already exists, save previous credential first
+      if (currentCredential.url) {
+        if (isValidCredentialFlexible(currentCredential)) {
+          const urlInfo = extractUrlInfo(currentCredential.url!)
+          result.credentials.push({
+            url: currentCredential.url!,
+            domain: urlInfo.domain,
+            tld: urlInfo.tld,
+            username: currentCredential.username!,
+            password: currentCredential.password!,
+            browser: currentCredential.browser || null,
+          })
+        }
+        currentCredential = {}
+      }
+      // Set the new URL
       currentCredential.url = extractValue(trimmedLine)
     } else if (lowerLine.includes("username:") || lowerLine.includes("user:") || lowerLine.includes("login:")) {
       currentCredential.username = extractValue(trimmedLine)
     } else if (lowerLine.includes("password:") || lowerLine.includes("pass:")) {
       const password = extractValue(trimmedLine)
       // Validate password for special characters
+      // Allow empty password ("") as long as Password: field exists
       try {
         const testEscape = escapePassword(password)
-        if (testEscape !== null && testEscape !== undefined) {
-          currentCredential.password = password
-        }
+        // Set password even if empty (""), because "" !== undefined
+        // escapePassword("") returns "" (valid), so set it directly
+        currentCredential.password = password
       } catch (escapeError) {
-        // Skip invalid passwords
+        // Skip invalid passwords that cause errors
         console.warn(`Skipping invalid password: ${password.substring(0, 10)}...`)
       }
     } else if (lowerLine.includes("browser:") || lowerLine.includes("soft:") || lowerLine.includes("application:")) {
@@ -1016,7 +1036,7 @@ function isValidCredentialFlexible(
     browser: string
   }>,
 ): credential is { url: string; username: string; password: string; browser?: string } {
-  return !!(credential.url && credential.username && credential.password)
+  return !!(credential.url && credential.username && credential.password !== undefined)
 }
 
 function isIpAddress(url: string): boolean {
@@ -1060,6 +1080,52 @@ function extractUrlInfo(url: string): { domain: string | null; tld: string | nul
   } catch (error) {
     return { domain: null, tld: null }
   }
+}
+
+function isSeparatorLine(line: string): boolean {
+  const trimmed = line.trim()
+  
+  // 1. Blank line is still considered a separator
+  if (!trimmed) return true
+  
+  // 2. Detect separator with repeated characters (= or -)
+  // Pattern: minimum 8 characters = or - repeated, MUST BE PURE
+  // Example: "========" or "--------"
+  const pureSeparatorPattern = /^[=]{8,}$|^[-]{8,}$/
+  if (pureSeparatorPattern.test(trimmed)) {
+    return true
+  }
+  
+  // 3. Detect "Branded" separator (e.g., ====Daisy====)
+  // Pattern:
+  // - Starts with 8+ characters (= or -)
+  // - Followed by 1+ characters *anything* (text in the middle)
+  // - Ends with 8+ characters (= or -)
+  const brandedSeparatorPattern = /^[=]{8,}.+[=]{8,}$|^[-]{8,}.+[-]{8,}$/
+  if (brandedSeparatorPattern.test(trimmed)) {
+    // Ensure line does NOT contain credential field pattern
+    // If it contains field pattern, then it's NOT a separator
+    const lowerLine = trimmed.toLowerCase()
+    const hasFieldPattern = 
+      lowerLine.includes("url:") || 
+      lowerLine.includes("host:") || 
+      lowerLine.includes("hostname:") ||
+      lowerLine.includes("username:") || 
+      lowerLine.includes("user:") || 
+      lowerLine.includes("login:") ||
+      lowerLine.includes("password:") || 
+      lowerLine.includes("pass:") ||
+      lowerLine.includes("browser:") || 
+      lowerLine.includes("soft:") || 
+      lowerLine.includes("application:")
+    
+    // If it does NOT contain field pattern, then this is a branded separator
+    if (!hasFieldPattern) {
+      return true
+    }
+  }
+  
+  return false
 }
 
 function extractValue(line: string): string {
