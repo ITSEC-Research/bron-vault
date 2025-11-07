@@ -46,8 +46,23 @@ export async function POST(request: NextRequest) {
       [deviceId],
     )
 
+    // Get all software for this device
+    const software = await executeQuery(
+      "SELECT software_name, version, source_file FROM software WHERE device_id = ?",
+      [deviceId],
+    )
+
+    // Calculate software statistics (total and unique)
+    const totalSoftware = (software as any[]).length
+    const uniqueSoftwareSet = new Set<string>()
+    for (const sw of software as any[]) {
+      const key = `${sw.software_name}|${sw.version || 'N/A'}`
+      uniqueSoftwareSet.add(key)
+    }
+    const uniqueSoftware = uniqueSoftwareSet.size
+
     console.log(
-      `📊 Creating comprehensive ZIP with ${(allFiles as any[]).length} files and ${(credentials as any[]).length} credentials`,
+      `📊 Creating comprehensive ZIP with ${(allFiles as any[]).length} files, ${(credentials as any[]).length} credentials, and ${totalSoftware} software entries`,
     )
 
     // Create ZIP
@@ -67,7 +82,9 @@ export async function POST(request: NextRequest) {
     summaryContent += `Total Files: ${(allFiles as any[]).length}\n`
     summaryContent += `Text Files: ${textFiles.length}\n`
     summaryContent += `Binary Files: ${binaryFiles.length}\n`
-    summaryContent += `Credentials Found: ${(credentials as any[]).length}\n\n`
+    summaryContent += `Credentials Found: ${(credentials as any[]).length}\n`
+    summaryContent += `Software Installed (Total): ${totalSoftware}\n`
+    summaryContent += `Software Installed (Unique): ${uniqueSoftware}\n\n`
 
     // Add file structure
     summaryContent += `=== FILE STRUCTURE ===\n`
