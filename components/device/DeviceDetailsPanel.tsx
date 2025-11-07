@@ -1,14 +1,14 @@
 "use client"
 
-import React from "react"
+import React, { useState, useMemo } from "react"
 import { X, User, File, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { CredentialsTable } from "./CredentialsTable"
+import { CredentialsTable, CredentialsSearchBar } from "./CredentialsTable"
 import { FileTreeViewer } from "../file/FileTreeViewer"
-import { SoftwareTable } from "./SoftwareTable"
+import { SoftwareTable, SoftwareSearchBar } from "./SoftwareTable"
 
 interface SearchResult {
   deviceId: string
@@ -77,6 +77,48 @@ export function DeviceDetailsPanel({
   onFileClick,
   onDownloadAllData,
 }: DeviceDetailsPanelProps) {
+  const [softwareDeduplicate, setSoftwareDeduplicate] = useState(false)
+
+  // Calculate filtered credentials count for search bar
+  const filteredCredentialsCount = useMemo(() => {
+    if (!credentialsSearchQuery.trim()) return deviceCredentials.length
+    const searchLower = credentialsSearchQuery.toLowerCase()
+    return deviceCredentials.filter((credential) => {
+      return (
+        credential.username.toLowerCase().includes(searchLower) ||
+        credential.url.toLowerCase().includes(searchLower) ||
+        (credential.browser && credential.browser.toLowerCase().includes(searchLower))
+      )
+    }).length
+  }, [deviceCredentials, credentialsSearchQuery])
+
+  // Calculate filtered software count for search bar
+  const filteredSoftwareCount = useMemo(() => {
+    let filtered = deviceSoftware
+
+    if (softwareSearchQuery.trim()) {
+      const searchLower = softwareSearchQuery.toLowerCase()
+      filtered = filtered.filter((sw) => 
+        sw.software_name.toLowerCase().includes(searchLower) ||
+        sw.version.toLowerCase().includes(searchLower)
+      )
+    }
+
+    if (softwareDeduplicate) {
+      const seen = new Set<string>()
+      filtered = filtered.filter((sw) => {
+        const key = `${sw.software_name}|${sw.version || 'N/A'}`
+        if (seen.has(key)) {
+          return false
+        }
+        seen.add(key)
+        return true
+      })
+    }
+
+    return filtered.length
+  }, [deviceSoftware, softwareSearchQuery, softwareDeduplicate])
+
   if (!selectedDevice) return null
 
   return (
@@ -123,7 +165,17 @@ export function DeviceDetailsPanel({
             </TabsList>
 
             <TabsContent value="credentials" className="mt-4">
-              <ScrollArea className="h-[calc(100vh-200px)]">
+              {!isLoadingCredentials && !credentialsError && deviceCredentials.length > 0 && (
+                <CredentialsSearchBar
+                  deviceCredentials={deviceCredentials}
+                  credentialsSearchQuery={credentialsSearchQuery}
+                  setCredentialsSearchQuery={setCredentialsSearchQuery}
+                  showPasswords={showPasswords}
+                  setShowPasswords={setShowPasswords}
+                  filteredCount={filteredCredentialsCount}
+                />
+              )}
+              <ScrollArea className="h-[calc(100vh-350px)]">
                 <CredentialsTable
                   deviceCredentials={deviceCredentials}
                   isLoadingCredentials={isLoadingCredentials}
@@ -134,12 +186,23 @@ export function DeviceDetailsPanel({
                   setCredentialsSearchQuery={setCredentialsSearchQuery}
                   onRetryCredentials={onRetryCredentials}
                   deviceId={selectedDevice.deviceId}
+                  hideSearchBar={true}
                 />
               </ScrollArea>
             </TabsContent>
 
             <TabsContent value="software" className="mt-4">
-              <ScrollArea className="h-[calc(100vh-200px)]">
+              {!isLoadingSoftware && !softwareError && deviceSoftware.length > 0 && (
+                <SoftwareSearchBar
+                  deviceSoftware={deviceSoftware}
+                  softwareSearchQuery={softwareSearchQuery}
+                  setSoftwareSearchQuery={setSoftwareSearchQuery}
+                  deduplicate={softwareDeduplicate}
+                  setDeduplicate={setSoftwareDeduplicate}
+                  filteredCount={filteredSoftwareCount}
+                />
+              )}
+              <ScrollArea className="h-[calc(100vh-350px)]">
                 <SoftwareTable
                   deviceSoftware={deviceSoftware}
                   isLoadingSoftware={isLoadingSoftware}
@@ -148,6 +211,8 @@ export function DeviceDetailsPanel({
                   setSoftwareSearchQuery={setSoftwareSearchQuery}
                   onRetrySoftware={onRetrySoftware}
                   deviceId={selectedDevice.deviceId}
+                  hideSearchBar={true}
+                  deduplicate={softwareDeduplicate}
                 />
               </ScrollArea>
             </TabsContent>

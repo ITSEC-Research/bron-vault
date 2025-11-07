@@ -26,6 +26,7 @@ interface CredentialsTableProps {
   setCredentialsSearchQuery: (query: string) => void
   onRetryCredentials: () => void
   deviceId: string
+  hideSearchBar?: boolean
 }
 
 // Fixed MaskedPassword component
@@ -91,6 +92,7 @@ export function CredentialsTable({
   setCredentialsSearchQuery,
   onRetryCredentials,
   deviceId,
+  hideSearchBar = false,
 }: CredentialsTableProps) {
   const filteredCredentials = useMemo(() => {
     return deviceCredentials.filter((credential) => {
@@ -142,58 +144,62 @@ export function CredentialsTable({
     )
   }
 
+  const searchBarSection = (
+    <div className="space-y-3">
+      <div className="text-sm text-bron-text-muted">
+        Found {deviceCredentials.length} credentials for this device
+        {credentialsSearchQuery && ` (${filteredCredentials.length} filtered)`}
+      </div>
+      <div className="flex items-center space-x-3">
+        <div className="w-80">
+          <Input
+            type="text"
+            placeholder="Search email or URL..."
+            value={credentialsSearchQuery}
+            onChange={(e) => setCredentialsSearchQuery(e.target.value)}
+            className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPasswords(!showPasswords)}
+          className="h-9 px-3 flex items-center space-x-2 shrink-0 bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+          title={showPasswords ? "Hide passwords" : "Show passwords"}
+        >
+          {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <span className="text-xs">{showPasswords ? "Hide" : "Show"}</span>
+        </Button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="text-sm text-bron-text-muted">
-          Found {deviceCredentials.length} credentials for this device
-          {credentialsSearchQuery && ` (${filteredCredentials.length} filtered)`}
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="w-80">
-            <Input
-              type="text"
-              placeholder="Search email or URL..."
-              value={credentialsSearchQuery}
-              onChange={(e) => setCredentialsSearchQuery(e.target.value)}
-              className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowPasswords(!showPasswords)}
-            className="h-9 px-3 flex items-center space-x-2 shrink-0 bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
-            title={showPasswords ? "Hide passwords" : "Show passwords"}
-          >
-            {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            <span className="text-xs">{showPasswords ? "Hide" : "Show"}</span>
-          </Button>
-        </div>
-      </div>
-      <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg overflow-hidden">
+      {!hideSearchBar && searchBarSection}
+      <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg">
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-bron-border hover:bg-bron-bg-primary">
-              <TableHead className="w-[150px] text-bron-text-secondary">
+            <TableRow className="hover:bg-bron-bg-primary">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary w-[150px] text-bron-text-secondary border-b border-bron-border">
                 <div className="flex items-center space-x-1">
                   <Monitor className="h-4 w-4" />
                   <span>Browser</span>
                 </div>
               </TableHead>
-              <TableHead className="text-bron-text-secondary">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border">
                 <div className="flex items-center space-x-1">
                   <Globe className="h-4 w-4" />
                   <span>URL</span>
                 </div>
               </TableHead>
-              <TableHead className="text-bron-text-secondary">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border">
                 <div className="flex items-center space-x-1">
                   <User className="h-4 w-4" />
                   <span>Username</span>
                 </div>
               </TableHead>
-              <TableHead className="text-bron-text-secondary">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border">
                 <div className="flex items-center space-x-1">
                   <Lock className="h-4 w-4" />
                   <span>Password</span>
@@ -243,6 +249,53 @@ export function CredentialsTable({
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+// Export search bar section for use outside ScrollArea
+export function CredentialsSearchBar({
+  deviceCredentials,
+  credentialsSearchQuery,
+  setCredentialsSearchQuery,
+  showPasswords,
+  setShowPasswords,
+  filteredCount,
+}: {
+  deviceCredentials: Credential[]
+  credentialsSearchQuery: string
+  setCredentialsSearchQuery: (query: string) => void
+  showPasswords: boolean
+  setShowPasswords: (show: boolean) => void
+  filteredCount: number
+}) {
+  return (
+    <div className="space-y-3 mb-4">
+      <div className="text-sm text-bron-text-muted">
+        Found {deviceCredentials.length} credentials for this device
+        {credentialsSearchQuery && ` (${filteredCount} filtered)`}
+      </div>
+      <div className="flex items-center space-x-3">
+        <div className="w-80">
+          <Input
+            type="text"
+            placeholder="Search email or URL..."
+            value={credentialsSearchQuery}
+            onChange={(e) => setCredentialsSearchQuery(e.target.value)}
+            className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowPasswords(!showPasswords)}
+          className="h-9 px-3 flex items-center space-x-2 shrink-0 bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+          title={showPasswords ? "Hide passwords" : "Show passwords"}
+        >
+          {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <span className="text-xs">{showPasswords ? "Hide" : "Show"}</span>
+        </Button>
+      </div>
     </div>
   )
 }
