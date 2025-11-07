@@ -22,6 +22,8 @@ interface SoftwareTableProps {
   setSoftwareSearchQuery: (query: string) => void
   onRetrySoftware: () => void
   deviceId: string
+  hideSearchBar?: boolean
+  deduplicate?: boolean
 }
 
 // Simple hover tooltip for manual copy
@@ -64,8 +66,11 @@ export function SoftwareTable({
   setSoftwareSearchQuery,
   onRetrySoftware,
   deviceId,
+  hideSearchBar = false,
+  deduplicate: externalDeduplicate,
 }: SoftwareTableProps) {
-  const [deduplicate, setDeduplicate] = useState(false)
+  const [internalDeduplicate, setInternalDeduplicate] = useState(false)
+  const deduplicate = externalDeduplicate !== undefined ? externalDeduplicate : internalDeduplicate
 
   const filteredSoftware = useMemo(() => {
     let filtered = deviceSoftware
@@ -132,52 +137,60 @@ export function SoftwareTable({
     )
   }
 
+  const searchBarSection = (
+    <div className="space-y-3">
+      <div className="text-sm text-bron-text-muted">
+        Found {deviceSoftware.length} software installed on this device
+        {deduplicate && ` (${filteredSoftware.length} unique)`}
+        {softwareSearchQuery && !deduplicate && ` (${filteredSoftware.length} filtered)`}
+        {softwareSearchQuery && deduplicate && ` (${filteredSoftware.length} unique filtered)`}
+      </div>
+      <div className="flex items-center space-x-3">
+        <div className="w-80">
+          <Input
+            type="text"
+            placeholder="Search software name or version..."
+            value={softwareSearchQuery}
+            onChange={(e) => setSoftwareSearchQuery(e.target.value)}
+            className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            if (externalDeduplicate === undefined) {
+              setInternalDeduplicate(!deduplicate)
+            }
+          }}
+          className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-bron-border text-bron-text-primary hover:bg-bron-bg-primary ${
+            deduplicate 
+              ? "bg-bron-accent-red/20 border-bron-accent-red text-bron-accent-red" 
+              : "bg-bron-bg-tertiary"
+          }`}
+          title={deduplicate ? "Show duplicates" : "Hide duplicates"}
+        >
+          <Filter className="h-4 w-4" />
+          <span className="text-xs">{deduplicate ? "Show All" : "Deduplicate"}</span>
+        </Button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="text-sm text-bron-text-muted">
-          Found {deviceSoftware.length} software installed on this device
-          {deduplicate && ` (${filteredSoftware.length} unique)`}
-          {softwareSearchQuery && !deduplicate && ` (${filteredSoftware.length} filtered)`}
-          {softwareSearchQuery && deduplicate && ` (${filteredSoftware.length} unique filtered)`}
-        </div>
-        <div className="flex items-center space-x-3">
-          <div className="w-80">
-            <Input
-              type="text"
-              placeholder="Search software name or version..."
-              value={softwareSearchQuery}
-              onChange={(e) => setSoftwareSearchQuery(e.target.value)}
-              className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
-            />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setDeduplicate(!deduplicate)}
-            className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-bron-border text-bron-text-primary hover:bg-bron-bg-primary ${
-              deduplicate 
-                ? "bg-bron-accent-red/20 border-bron-accent-red text-bron-accent-red" 
-                : "bg-bron-bg-tertiary"
-            }`}
-            title={deduplicate ? "Show duplicates" : "Hide duplicates"}
-          >
-            <Filter className="h-4 w-4" />
-            <span className="text-xs">{deduplicate ? "Show All" : "Deduplicate"}</span>
-          </Button>
-        </div>
-      </div>
-      <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg overflow-hidden">
+      {!hideSearchBar && searchBarSection}
+      <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg">
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-bron-border hover:bg-bron-bg-primary">
-              <TableHead className="text-bron-text-secondary">
+            <TableRow className="hover:bg-bron-bg-primary">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border">
                 <div className="flex items-center space-x-1">
                   <Package className="h-4 w-4" />
                   <span>Software Name</span>
                 </div>
               </TableHead>
-              <TableHead className="text-bron-text-secondary">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border">
                 <span>Version</span>
               </TableHead>
             </TableRow>
@@ -212,6 +225,59 @@ export function SoftwareTable({
           </Button>
         </div>
       )}
+    </div>
+  )
+}
+
+// Export search bar section for use outside ScrollArea
+export function SoftwareSearchBar({
+  deviceSoftware,
+  softwareSearchQuery,
+  setSoftwareSearchQuery,
+  deduplicate,
+  setDeduplicate,
+  filteredCount,
+}: {
+  deviceSoftware: Software[]
+  softwareSearchQuery: string
+  setSoftwareSearchQuery: (query: string) => void
+  deduplicate: boolean
+  setDeduplicate: (value: boolean) => void
+  filteredCount: number
+}) {
+  return (
+    <div className="space-y-3 mb-4">
+      <div className="text-sm text-bron-text-muted">
+        Found {deviceSoftware.length} software installed on this device
+        {deduplicate && ` (${filteredCount} unique)`}
+        {softwareSearchQuery && !deduplicate && ` (${filteredCount} filtered)`}
+        {softwareSearchQuery && deduplicate && ` (${filteredCount} unique filtered)`}
+      </div>
+      <div className="flex items-center space-x-3">
+        <div className="w-80">
+          <Input
+            type="text"
+            placeholder="Search software name or version..."
+            value={softwareSearchQuery}
+            onChange={(e) => setSoftwareSearchQuery(e.target.value)}
+            className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setDeduplicate(!deduplicate)}
+          className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-bron-border text-bron-text-primary hover:bg-bron-bg-primary ${
+            deduplicate 
+              ? "bg-bron-accent-red/20 border-bron-accent-red text-bron-accent-red" 
+              : "bg-bron-bg-tertiary"
+          }`}
+          title={deduplicate ? "Show duplicates" : "Hide duplicates"}
+        >
+          <Filter className="h-4 w-4" />
+          <span className="text-xs">{deduplicate ? "Show All" : "Deduplicate"}</span>
+        </Button>
+      </div>
     </div>
   )
 }
