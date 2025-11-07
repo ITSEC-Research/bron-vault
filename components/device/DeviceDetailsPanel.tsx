@@ -175,7 +175,7 @@ export function DeviceDetailsPanel({
                   filteredCount={filteredCredentialsCount}
                 />
               )}
-              <ScrollArea className="h-[calc(100vh-350px)]">
+              <div className="h-[calc(100vh-250px)] overflow-auto">
                 <CredentialsTable
                   deviceCredentials={deviceCredentials}
                   isLoadingCredentials={isLoadingCredentials}
@@ -188,7 +188,7 @@ export function DeviceDetailsPanel({
                   deviceId={selectedDevice.deviceId}
                   hideSearchBar={true}
                 />
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             <TabsContent value="software" className="mt-4">
@@ -202,7 +202,7 @@ export function DeviceDetailsPanel({
                   filteredCount={filteredSoftwareCount}
                 />
               )}
-              <ScrollArea className="h-[calc(100vh-350px)]">
+              <div className="h-[calc(100vh-250px)] overflow-auto">
                 <SoftwareTable
                   deviceSoftware={deviceSoftware}
                   isLoadingSoftware={isLoadingSoftware}
@@ -214,17 +214,17 @@ export function DeviceDetailsPanel({
                   hideSearchBar={true}
                   deduplicate={softwareDeduplicate}
                 />
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             <TabsContent value="files" className="mt-4">
-              <ScrollArea className="h-[calc(100vh-200px)]">
+              <div className="h-[calc(100vh-170px)] overflow-auto">
                 <FileTreeViewer
                   selectedDevice={selectedDevice}
                   onFileClick={onFileClick}
                   onDownloadAllData={onDownloadAllData}
                 />
-              </ScrollArea>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
