@@ -180,17 +180,17 @@ export function SoftwareTable({
   return (
     <div className="space-y-4">
       {!hideSearchBar && searchBarSection}
-      <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg">
+      <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-350px)] pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-bron-bg-primary">
-              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3">
                 <div className="flex items-center space-x-1">
                   <Package className="h-4 w-4" />
                   <span>Software Name</span>
                 </div>
               </TableHead>
-              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border">
+              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3">
                 <span>Version</span>
               </TableHead>
             </TableRow>
@@ -201,10 +201,10 @@ export function SoftwareTable({
                 key={index}
                 className="border-b border-bron-border hover:bg-bron-bg-primary"
               >
-                <TableCell className="font-medium text-sm">
+                <TableCell className="font-medium text-xs py-2 px-3">
                   <HoverableCell content={sw.software_name} maxLength={70} />
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="text-xs py-2 px-3">
                   <HoverableCell content={sw.version || "N/A"} maxLength={30} />
                 </TableCell>
               </TableRow>

@@ -223,4 +223,38 @@ async function createTables() {
     // Column might not exist yet or already be the right size, ignore error
     console.log("Version column update skipped (might already be correct size)")
   }
+
+  // Create systeminformation table
+  await executeQuery(`
+    CREATE TABLE IF NOT EXISTS systeminformation (
+      id BIGINT AUTO_INCREMENT PRIMARY KEY,
+      device_id VARCHAR(255) NOT NULL UNIQUE,
+      stealer_type VARCHAR(100) NOT NULL DEFAULT 'Generic',
+      os VARCHAR(500) NULL,
+      ip_address VARCHAR(100) NULL,
+      username VARCHAR(500) NULL,
+      cpu VARCHAR(500) NULL,
+      ram VARCHAR(100) NULL,
+      computer_name VARCHAR(500) NULL,
+      gpu VARCHAR(500) NULL,
+      country VARCHAR(100) NULL,
+      log_date VARCHAR(100) NULL,
+      hwid VARCHAR(255) NULL,
+      file_path TEXT NULL,
+      antivirus VARCHAR(500) NULL,
+      source_file VARCHAR(255) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      FOREIGN KEY (device_id) REFERENCES devices(device_id) ON DELETE CASCADE,
+      INDEX idx_device_id (device_id),
+      INDEX idx_stealer_type (stealer_type),
+      INDEX idx_os (os(255)),
+      INDEX idx_ip_address (ip_address),
+      INDEX idx_username (username(255)),
+      INDEX idx_country (country),
+      INDEX idx_hwid (hwid),
+      INDEX idx_source_file (source_file),
+      INDEX idx_created_at (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `)
 }
