@@ -8,7 +8,7 @@ Forget complex ad-hoc scripts. With Broń Vault, you can simply drag and drop `.
 
 Our goal is to support the day-to-day needs of security teams on the front lines by providing a practical alternative to manual scripting or overly complex platforms typically required for stealer log analysis. This project reflects our mission to democratize security, making foundational analysis capabilities accessible to everyone and allowing analysts to focus on critical decision-making instead of manual log parsing.
 
-> ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#-important-notice) section below.
+> ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#%EF%B8%8F-important-notice) section below.
 
 ![alt text](images/Bron-Vault-Dashboard.jpeg "Bron Vault Dashboard")
 
@@ -22,6 +22,18 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     - Search by specific email addresses or entire domains across all logs.
     - A successful match reveals a "Supporting Files" tab with all data from the same device.
     - Seamlessly explore correlated cookies, browser history, and system files in a single click.
+
+  * **Device Detail View**: Explore individual device information with comprehensive details.
+    - **Overview Tab**: Get an at-a-glance summary with engaging visualizations including:
+      - Summary cards showing total credentials, software, and files
+      - Device overview with key system information (OS, CPU, GPU, RAM, etc.)
+      - Top passwords visualization (polar area chart)
+      - Top domains distribution (horizontal bar chart)
+      - File size distribution analysis
+    - **Host Information Tab**: View detailed system information extracted from logs of multiple stealer families
+    - **User Credentials Tab**: Browse all credentials associated with the device
+    - **Software Installed Tab**: See all installed software detected on the device
+    - **Files Tab**: Explore the complete file structure with tree viewer
 
   * **Statistical Dashboard**: Get a strategic overview of the data through clear visualizations, including:
       - Total domains and URLs (including IPs)

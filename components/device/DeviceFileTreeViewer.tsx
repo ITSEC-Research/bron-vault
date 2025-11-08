@@ -1,8 +1,9 @@
 "use client"
 
-import React from "react"
-import { Download, Eye, Image, Book, Package, Folder, FileText } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Download, Eye, Image, Book, Package, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface StoredFile {
@@ -14,7 +15,7 @@ interface StoredFile {
   has_content: boolean
 }
 
-interface SearchResult {
+interface DeviceFileData {
   deviceId: string
   deviceName: string
   uploadBatch: string
@@ -22,8 +23,12 @@ interface SearchResult {
   matchedContent: string[]
   files: StoredFile[]
   totalFiles: number
-  upload_date?: string
-  uploadDate?: string
+}
+
+interface DeviceFileTreeViewerProps {
+  deviceId: string
+  onFileClick?: (deviceId: string, filePath: string, fileName: string, hasContent: boolean) => void
+  onDownloadAllData?: (deviceId: string, deviceName: string) => void
 }
 
 // ASCII Tree Node Interface - IntelX Style
@@ -38,13 +43,48 @@ interface TreeNode {
   level: number
 }
 
-interface FileTreeViewerProps {
-  selectedDevice: SearchResult
-  onFileClick: (deviceId: string, filePath: string, fileName: string, hasContent: boolean) => void
-  onDownloadAllData: (deviceId: string, deviceName: string) => void
-}
+export function DeviceFileTreeViewer({
+  deviceId,
+  onFileClick,
+  onDownloadAllData,
+}: DeviceFileTreeViewerProps) {
+  const [deviceFileData, setDeviceFileData] = useState<DeviceFileData | null>(null)
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true)
+  const [filesError, setFilesError] = useState<string>("")
 
-export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData }: FileTreeViewerProps) {
+  // Load files
+  useEffect(() => {
+    const loadFiles = async () => {
+      setIsLoadingFiles(true)
+      setFilesError("")
+
+      try {
+        const response = await fetch("/api/device-files", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ deviceId }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setDeviceFileData(data)
+        } else {
+          const errorData = await response.json()
+          setFilesError(errorData.error || "Failed to load files")
+        }
+      } catch (error) {
+        console.error("Failed to load files:", error)
+        setFilesError(`Network Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      } finally {
+        setIsLoadingFiles(false)
+      }
+    }
+
+    loadFiles()
+  }, [deviceId])
+
   const formatFileSize = (size?: number) => {
     if (!size) return ""
     if (size < 1024) return `${size} B`
@@ -168,7 +208,7 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
         !node.name.includes(".")
 
       // Icon based on file type
-      let icon: React.ReactNode = <Folder className="inline h-4 w-4 text-bron-accent-blue" />
+      let icon: React.ReactNode = <FileText className="inline h-4 w-4 text-bron-accent-blue" />
       let actionIcon: React.ReactNode = ""
       let actionText = ""
       let isClickable = false
@@ -202,6 +242,18 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
       const matchBadge = node.hasMatch ? " [Match]" : ""
       const sizeBadge = node.size ? ` ${formatFileSize(node.size)}` : ""
 
+      const handleFileClick = () => {
+        if (isClickable && onFileClick && deviceFileData) {
+          onFileClick(deviceFileData.deviceId, node.path, node.name, node.hasContent)
+        }
+      }
+
+      const handleDownloadAllData = () => {
+        if (onDownloadAllData && deviceFileData) {
+          onDownloadAllData(deviceFileData.deviceId, deviceFileData.deviceName)
+        }
+      }
+
       return (
         <div key={`${node.path}-${index}`}>
           <TooltipProvider>
@@ -213,11 +265,7 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
                       ? "bg-bron-accent-yellow/20 text-bron-accent-yellow font-medium"
                       : "text-bron-text-secondary"
                   } ${isClickable ? "hover:bg-bron-accent-blue/20 cursor-pointer" : "cursor-default"}`}
-                  onClick={() => {
-                    if (isClickable) {
-                      onFileClick(selectedDevice.deviceId, node.path, node.name, node.hasContent)
-                    }
-                  }}
+                  onClick={handleFileClick}
                 >
                   <span className="text-bron-text-muted">{prefix}</span>
                   <span className="mr-1">{icon}</span>
@@ -242,16 +290,86 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
     })
   }
 
+  if (isLoadingFiles) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <p className="text-bron-text-primary text-sm">Loading files...</p>
+      </div>
+    )
+  }
+
+  if (filesError) {
+    return (
+      <div className="text-center py-8">
+        <Alert variant="destructive" className="bg-bron-accent-red/20 border-bron-accent-red">
+          <AlertDescription className="text-bron-text-primary text-sm">{filesError}</AlertDescription>
+        </Alert>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setIsLoadingFiles(true)
+            setFilesError("")
+            const loadFiles = async () => {
+              try {
+                const response = await fetch("/api/device-files", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ deviceId }),
+                })
+
+                if (response.ok) {
+                  const data = await response.json()
+                  setDeviceFileData(data)
+                } else {
+                  const errorData = await response.json()
+                  setFilesError(errorData.error || "Failed to load files")
+                }
+              } catch (error) {
+                setFilesError(`Network Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+              } finally {
+                setIsLoadingFiles(false)
+              }
+            }
+            loadFiles()
+          }}
+          className="mt-4 bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+        >
+          Retry Loading
+        </Button>
+      </div>
+    )
+  }
+
+  if (!deviceFileData || deviceFileData.files.length === 0) {
+    return (
+      <div className="text-center py-8 text-bron-text-muted">
+        <div className="space-y-2">
+          <p className="text-xs">No files found for this device</p>
+          <p className="text-xs">Device ID: {deviceId}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const handleDownloadAllData = () => {
+    if (onDownloadAllData && deviceFileData) {
+      onDownloadAllData(deviceFileData.deviceId, deviceFileData.deviceName)
+    }
+  }
+
   return (
     <div className="bg-bron-bg-tertiary p-4 rounded-lg border border-bron-border">
       <div className="flex items-center justify-between mb-3">
         <div className="text-sm text-bron-text-muted">
-          Stolen File Structure ({selectedDevice.totalFiles} files total)
+          Stolen File Structure ({deviceFileData.totalFiles} files total)
         </div>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onDownloadAllData(selectedDevice.deviceId, selectedDevice.deviceName)}
+          onClick={handleDownloadAllData}
           className="flex items-center space-x-2 bg-bron-bg-secondary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
         >
           <Download className="h-4 w-4" />
@@ -260,17 +378,29 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
       </div>
       <div className="bg-bron-bg-secondary p-3 rounded border border-bron-border overflow-x-auto">
         <div className="min-w-max">
-          {renderASCIITree(buildASCIITree(selectedDevice.files, selectedDevice.matchingFiles))}
+          {renderASCIITree(buildASCIITree(deviceFileData.files, deviceFileData.matchingFiles))}
         </div>
       </div>
       <div className="mt-3 mb-2 text-xs text-bron-text-muted">
         <div className="flex items-center space-x-4">
-          <span className="flex items-center"><Eye className="inline h-4 w-4 text-bron-accent-blue mr-1" /> = Viewable text file</span>
-          <span className="flex items-center"><Image className="inline h-4 w-4 text-bron-accent-purple mr-1" /> = Image</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-red mr-1" /> = PDF</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-blue mr-1" /> = Document</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-green mr-1" /> = Spreadsheet</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-yellow mr-1" /> = Presentation</span>
+          <span className="flex items-center">
+            <Eye className="inline h-4 w-4 text-bron-accent-blue mr-1" /> = Viewable text file
+          </span>
+          <span className="flex items-center">
+            <Image className="inline h-4 w-4 text-bron-accent-purple mr-1" /> = Image
+          </span>
+          <span className="flex items-center">
+            <Book className="inline h-4 w-4 text-bron-accent-red mr-1" /> = PDF
+          </span>
+          <span className="flex items-center">
+            <Book className="inline h-4 w-4 text-bron-accent-blue mr-1" /> = Document
+          </span>
+          <span className="flex items-center">
+            <Book className="inline h-4 w-4 text-bron-accent-green mr-1" /> = Spreadsheet
+          </span>
+          <span className="flex items-center">
+            <Book className="inline h-4 w-4 text-bron-accent-yellow mr-1" /> = Presentation
+          </span>
         </div>
         <div className="mt-1 text-xs text-bron-accent-yellow">
           Note: Binary files are available via "Download All Data" button above
@@ -279,3 +409,4 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
     </div>
   )
 }
+

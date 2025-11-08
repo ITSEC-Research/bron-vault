@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
-import { X, User, File, Package } from "lucide-react"
+import { X, User, File, Package, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { CredentialsTable, CredentialsSearchBar } from "./CredentialsTable"
 import { FileTreeViewer } from "../file/FileTreeViewer"
 import { SoftwareTable, SoftwareSearchBar } from "./SoftwareTable"
+import { DeviceSystemInfo } from "./DeviceSystemInfo"
 
 interface SearchResult {
   deviceId: string
@@ -20,6 +21,14 @@ interface SearchResult {
   totalFiles: number
   upload_date?: string
   uploadDate?: string
+  // System Information (optional - akan diambil dari database nanti)
+  fileName?: string
+  operatingSystem?: string
+  ipAddress?: string
+  username?: string
+  hostname?: string
+  country?: string
+  filePath?: string
 }
 
 interface Credential {
@@ -55,6 +64,7 @@ interface DeviceDetailsPanelProps {
   onRetrySoftware: () => void
   onFileClick: (deviceId: string, filePath: string, fileName: string, hasContent: boolean) => void
   onDownloadAllData: (deviceId: string, deviceName: string) => void
+  onViewFullDetails?: (deviceId: string) => void
 }
 
 export function DeviceDetailsPanel({
@@ -76,6 +86,7 @@ export function DeviceDetailsPanel({
   onRetrySoftware,
   onFileClick,
   onDownloadAllData,
+  onViewFullDetails,
 }: DeviceDetailsPanelProps) {
   const [softwareDeduplicate, setSoftwareDeduplicate] = useState(false)
 
@@ -138,6 +149,34 @@ export function DeviceDetailsPanel({
           </SheetTitle>
         </SheetHeader>
 
+        {/* System Information Section - Opsi 1: Di atas button "View Full Details" (Compact for 13" screens) */}
+        <div className="mt-3 mb-3">
+          <DeviceSystemInfo
+            operatingSystem={selectedDevice.operatingSystem}
+            ipAddress={selectedDevice.ipAddress}
+            username={selectedDevice.username}
+            hostname={selectedDevice.hostname}
+            country={selectedDevice.country}
+            filePath={selectedDevice.filePath}
+          />
+        </div>
+
+        <div className="mt-4 mb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              // Open device details page in new tab
+              const deviceDetailsUrl = `/device/${selectedDevice.deviceId}`
+              window.open(deviceDetailsUrl, "_blank")
+            }}
+            className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-bron-accent-red/10 via-bron-accent-red/5 to-bron-bg-tertiary border-2 border-bron-accent-red/60 text-bron-accent-red hover:from-bron-accent-red/20 hover:via-bron-accent-red/10 hover:to-bron-bg-primary hover:border-bron-accent-red hover:text-white transition-all font-semibold shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] [&_svg]:hover:text-white"
+          >
+            <span>View Full Details</span>
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </div>
+
         <div className="mt-6">
           <Tabs defaultValue="credentials" className="w-full">
             <TabsList className="grid w-full grid-cols-3 bg-bron-bg-tertiary border border-bron-border">
@@ -164,7 +203,7 @@ export function DeviceDetailsPanel({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="credentials" className="mt-4">
+            <TabsContent value="credentials" className="mt-4 mb-4">
               {!isLoadingCredentials && !credentialsError && deviceCredentials.length > 0 && (
                 <CredentialsSearchBar
                   deviceCredentials={deviceCredentials}
@@ -175,23 +214,21 @@ export function DeviceDetailsPanel({
                   filteredCount={filteredCredentialsCount}
                 />
               )}
-              <div className="h-[calc(100vh-250px)] overflow-auto">
-                <CredentialsTable
-                  deviceCredentials={deviceCredentials}
-                  isLoadingCredentials={isLoadingCredentials}
-                  credentialsError={credentialsError}
-                  showPasswords={showPasswords}
-                  setShowPasswords={setShowPasswords}
-                  credentialsSearchQuery={credentialsSearchQuery}
-                  setCredentialsSearchQuery={setCredentialsSearchQuery}
-                  onRetryCredentials={onRetryCredentials}
-                  deviceId={selectedDevice.deviceId}
-                  hideSearchBar={true}
-                />
-              </div>
+              <CredentialsTable
+                deviceCredentials={deviceCredentials}
+                isLoadingCredentials={isLoadingCredentials}
+                credentialsError={credentialsError}
+                showPasswords={showPasswords}
+                setShowPasswords={setShowPasswords}
+                credentialsSearchQuery={credentialsSearchQuery}
+                setCredentialsSearchQuery={setCredentialsSearchQuery}
+                onRetryCredentials={onRetryCredentials}
+                deviceId={selectedDevice.deviceId}
+                hideSearchBar={true}
+              />
             </TabsContent>
 
-            <TabsContent value="software" className="mt-4">
+            <TabsContent value="software" className="mt-4 mb-4">
               {!isLoadingSoftware && !softwareError && deviceSoftware.length > 0 && (
                 <SoftwareSearchBar
                   deviceSoftware={deviceSoftware}
@@ -202,23 +239,21 @@ export function DeviceDetailsPanel({
                   filteredCount={filteredSoftwareCount}
                 />
               )}
-              <div className="h-[calc(100vh-250px)] overflow-auto">
-                <SoftwareTable
-                  deviceSoftware={deviceSoftware}
-                  isLoadingSoftware={isLoadingSoftware}
-                  softwareError={softwareError}
-                  softwareSearchQuery={softwareSearchQuery}
-                  setSoftwareSearchQuery={setSoftwareSearchQuery}
-                  onRetrySoftware={onRetrySoftware}
-                  deviceId={selectedDevice.deviceId}
-                  hideSearchBar={true}
-                  deduplicate={softwareDeduplicate}
-                />
-              </div>
+              <SoftwareTable
+                deviceSoftware={deviceSoftware}
+                isLoadingSoftware={isLoadingSoftware}
+                softwareError={softwareError}
+                softwareSearchQuery={softwareSearchQuery}
+                setSoftwareSearchQuery={setSoftwareSearchQuery}
+                onRetrySoftware={onRetrySoftware}
+                deviceId={selectedDevice.deviceId}
+                hideSearchBar={true}
+                deduplicate={softwareDeduplicate}
+              />
             </TabsContent>
 
             <TabsContent value="files" className="mt-4">
-              <div className="h-[calc(100vh-170px)] overflow-auto">
+              <div className="h-[calc(100vh-170px)] overflow-y-auto overflow-x-hidden pb-32">
                 <FileTreeViewer
                   selectedDevice={selectedDevice}
                   onFileClick={onFileClick}

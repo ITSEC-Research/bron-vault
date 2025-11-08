@@ -111,8 +111,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Grouped by devices: ${deviceMap.size} devices found`)
 
-    // Get complete file list for each matching device
+    // Get complete file list and system information for each matching device
     for (const [deviceId, device] of deviceMap) {
+      // Get file list
       const allFiles = await executeQuery(
         `
         SELECT file_path, file_name, parent_path, is_directory, file_size, 
@@ -126,6 +127,27 @@ export async function POST(request: NextRequest) {
 
       device.files = allFiles
       device.totalFiles = (allFiles as any[]).length
+
+      // Get system information from systeminformation table
+      const systemInfo = await executeQuery(
+        `
+        SELECT os, computer_name, ip_address, country, file_path, username
+        FROM systeminformation
+        WHERE device_id = ?
+        LIMIT 1
+      `,
+        [deviceId],
+      ) as any[]
+
+      if (systemInfo.length > 0) {
+        const sysInfo = systemInfo[0]
+        device.operatingSystem = sysInfo.os || undefined
+        device.hostname = sysInfo.computer_name || undefined
+        device.ipAddress = sysInfo.ip_address || undefined
+        device.country = sysInfo.country || undefined
+        device.filePath = sysInfo.file_path || undefined
+        device.username = sysInfo.username || undefined
+      }
     }
 
     const results = Array.from(deviceMap.values())

@@ -52,6 +52,16 @@ export async function POST(request: NextRequest) {
       [deviceId],
     )
 
+    // Get system information for this device
+    const systemInfo = await executeQuery(
+      `SELECT stealer_type, os, ip_address, username, cpu, ram, computer_name, 
+              gpu, country, log_date, hwid, file_path, antivirus
+       FROM systeminformation 
+       WHERE device_id = ? 
+       LIMIT 1`,
+      [deviceId],
+    )
+
     // Calculate software statistics (total and unique)
     const totalSoftware = (software as any[]).length
     const uniqueSoftwareSet = new Set<string>()
@@ -85,6 +95,25 @@ export async function POST(request: NextRequest) {
     summaryContent += `Credentials Found: ${(credentials as any[]).length}\n`
     summaryContent += `Software Installed (Total): ${totalSoftware}\n`
     summaryContent += `Software Installed (Unique): ${uniqueSoftware}\n\n`
+
+    // Add System Information section
+    if ((systemInfo as any[]).length > 0) {
+      const sysInfo = (systemInfo as any[])[0]
+      summaryContent += `=== SYSTEM INFORMATION ===\n`
+      summaryContent += `Stealer Type: ${sysInfo.stealer_type || 'N/A'}\n`
+      summaryContent += `OS: ${sysInfo.os || 'N/A'}\n`
+      summaryContent += `IP Address: ${sysInfo.ip_address || 'N/A'}\n`
+      summaryContent += `Username: ${sysInfo.username || 'N/A'}\n`
+      summaryContent += `CPU: ${sysInfo.cpu || 'N/A'}\n`
+      summaryContent += `RAM: ${sysInfo.ram || 'N/A'}\n`
+      summaryContent += `Computer Name: ${sysInfo.computer_name || 'N/A'}\n`
+      summaryContent += `GPU: ${sysInfo.gpu || 'N/A'}\n`
+      summaryContent += `Country: ${sysInfo.country || 'N/A'}\n`
+      summaryContent += `Log Date: ${sysInfo.log_date || 'N/A'}\n`
+      summaryContent += `HWID: ${sysInfo.hwid || 'N/A'}\n`
+      summaryContent += `File Path: ${sysInfo.file_path || 'N/A'}\n`
+      summaryContent += `Antivirus: ${sysInfo.antivirus || 'N/A'}\n\n`
+    }
 
     // Add file structure
     summaryContent += `=== FILE STRUCTURE ===\n`
