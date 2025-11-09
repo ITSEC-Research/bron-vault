@@ -10,7 +10,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 > ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#%EF%B8%8F-important-notice) section below.
 
-![alt text](images/Bron-Vault-Dashboard.jpeg "Bron Vault Dashboard")
+![alt text](images/Bron-Vault-Dashboard.png "Bron Vault Dashboard")
 
 -----
 
@@ -54,6 +54,12 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 ![alt text](images/Bron-Vault---Search-III.png "Bron Vault Search III")
 
+![alt text](images/Bron-Vault---Search-IV.png "Bron Vault Search IV")
+
+![alt text](images/Bron-Vault-Host-Information.png "Bron Vault Host Information")
+
+![alt text](images/Bron-Vault-Device-Overview.png "Bron Vault Device Overview")
+
 -----
 
 ## ⚠️ Important Notice
@@ -77,7 +83,7 @@ Follow these steps to get Broń Vault up and running locally.
 This application has been successfully tested on the following operating systems:
 
   * Ubuntu 24.04 LTS
-  * macOS Sequoia 15.2
+  * macOS Sequoia
   * Windows 11 Pro
 
 ### Installation & Running
@@ -116,6 +122,7 @@ Once the server is running, perform this one-time setup:
 4.  Log in with your newly created credentials.
 
 You are now ready to start using Broń Vault\!
+Just upload the stealer logs, and it will automatically parse them.
 
 -----
 

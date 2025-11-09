@@ -416,6 +416,7 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                   >
                     <RadialBar
                       dataKey="value"
+                      nameKey="name"
                       cornerRadius={6}
                       minPointSize={15}
                       background={{ fill: "var(--bron-bg-secondary)", opacity: 0.3 }}
@@ -439,13 +440,72 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                         }
                         const data = payload[0]
                         const value = data.value as number
-                        // RadialBarChart passes data differently - try multiple ways to access it
-                        const payloadData = (data as any).payload || data
-                        // Find entry by value (most reliable for RadialBarChart)
-                        const entry = chartPasswords.find((item) => item.value === value)
-                        if (!entry) {
-                          console.log("Tooltip - Entry not found for value:", value, "Available entries:", chartPasswords.map(e => ({ value: e.value, rank: e.rank })))
+                        
+                        // RadialBarChart passes the full data object in payload.payload
+                        // This should contain the complete entry from chartPasswords array
+                        const payloadData = (data as any).payload
+                        
+                        // First, try to use data directly from payload (most reliable)
+                        // The payload should contain the full entry from chartPasswords array
+                        let entry = payloadData && payloadData.rank ? payloadData : null
+                        
+                        // If payload doesn't have rank, try to find by matching value + name
+                        if (!entry || !entry.rank) {
+                          if (payloadData?.name) {
+                            entry = chartPasswords.find((item) => 
+                              item.value === value && 
+                              (item.name === payloadData.name || item.fullPassword === payloadData.name)
+                            )
+                          }
                         }
+                        
+                        // If still not found, try to find by index
+                        // RadialBarChart might pass index in the payload
+                        if (!entry || !entry.rank) {
+                          // Check if payload has index property
+                          const payloadIndex = payloadData?.index ?? (data as any).index
+                          if (payloadIndex !== undefined && payloadIndex !== null && 
+                              payloadIndex >= 0 && payloadIndex < chartPasswords.length) {
+                            entry = chartPasswords[payloadIndex]
+                          }
+                        }
+                        
+                        // If still not found, try to find by matching name only
+                        if (!entry || !entry.rank) {
+                          if (payloadData?.name) {
+                            entry = chartPasswords.find((item) => 
+                              item.name === payloadData.name || item.fullPassword === payloadData.name
+                            )
+                          }
+                        }
+                        
+                        // Last resort: find all entries with same value
+                        // If multiple entries have same value, try to match by name first
+                        if (!entry || !entry.rank) {
+                          const matchingEntries = chartPasswords.filter((item) => item.value === value)
+                          if (matchingEntries.length > 0) {
+                            if (payloadData?.name) {
+                              // Try to match by name if available
+                              entry = matchingEntries.find((item) => 
+                                item.name === payloadData.name || item.fullPassword === payloadData.name
+                              ) || matchingEntries[0]
+                            } else {
+                              // If no name match, use first entry (this might be wrong if multiple have same value)
+                              entry = matchingEntries[0]
+                            }
+                          }
+                        }
+                        
+                        // Final fallback: construct entry from available data
+                        if (!entry || !entry.rank) {
+                          entry = {
+                            rank: payloadData?.rank || "?",
+                            fullPassword: payloadData?.fullPassword || payloadData?.name || "Unknown",
+                            name: payloadData?.name || "Unknown",
+                            value: value,
+                          } as any
+                        }
+                        
                         const password = entry?.fullPassword || entry?.name || payloadData?.name || "Unknown"
                         const rank = entry?.rank || "?"
                         
