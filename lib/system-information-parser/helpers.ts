@@ -1,8 +1,10 @@
-// Helper functions untuk System Information Parser
+// Helper functions for System Information Parser
+
+import { normalizeCountryToCode } from './country-mapping';
 
 /**
- * Normalize line dengan menghapus dash prefix dan indent/tab
- * Handle berbagai format prefix yang umum di stealer logs:
+ * Normalize line by removing dash prefix and indent/tab
+ * Handle various prefix formats commonly found in stealer logs:
  * - "- OS Version: ..." (dash prefix)
  * - "  OS Version: ..." (space indent)
  * - "\tOS Version: ..." (tab indent)
@@ -14,48 +16,48 @@ export function normalizeLine(line: string): string {
   
   let normalized = line.trim();
   
-  // Remove dash prefix jika ada (format: "- OS Version: ..." atau "  - OS Version: ...")
+  // Remove dash prefix if exists (format: "- OS Version: ..." or "  - OS Version: ...")
   normalized = normalized.replace(/^-\s*/, '');
   
-  // Remove leading spaces dan tabs (indent)
+  // Remove leading spaces and tabs (indent)
   normalized = normalized.replace(/^[\s\t]+/, '');
   
   return normalized.trim();
 }
 
 /**
- * Deteksi apakah line adalah separator line
- * Handle berbagai format separator:
+ * Detect if line is a separator line
+ * Handle various separator formats:
  * - "-------------" (dash separator)
  * - "==================================================" (equals separator)
- * - "----- Geolocation Data -----" (dash dengan text)
- * - "----- Hardware Info -----" (dash dengan text)
+ * - "----- Geolocation Data -----" (dash with text)
+ * - "----- Hardware Info -----" (dash with text)
  */
 export function isSeparatorLine(line: string): boolean {
   const trimmed = line.trim();
   
-  // 1. Blank line adalah separator
+  // 1. Blank line is a separator
   if (!trimmed) return true;
   
-  // 2. Pure separator dengan repeated characters (= atau -)
-  // Pattern: minimum 8 characters = atau - repeated, MUST BE PURE
-  // Example: "========" atau "--------" atau "-------------"
+  // 2. Pure separator with repeated characters (= or -)
+  // Pattern: minimum 8 characters = or - repeated, MUST BE PURE
+  // Example: "========" or "--------" or "-------------"
   const pureSeparatorPattern = /^[=]{8,}$|^[-]{8,}$/;
   if (pureSeparatorPattern.test(trimmed)) {
     return true;
   }
   
-  // 3. Separator dengan text di tengah (dash dengan text)
-  // Pattern: "----- Text -----" atau "----- Geolocation Data -----"
+  // 3. Separator with text in the middle (dash with text)
+  // Pattern: "----- Text -----" or "----- Geolocation Data -----"
   // - Starts with 3+ dashes
-  // - Followed by text (bisa ada spaces)
+  // - Followed by text (may have spaces)
   // - Ends with 3+ dashes
   const dashWithTextPattern = /^[-]{3,}\s+.+\s+[-]{3,}$/i;
   if (dashWithTextPattern.test(trimmed)) {
     return true;
   }
   
-  // 4. Separator dengan text di tengah (equals dengan text)
+  // 4. Separator with text in the middle (equals with text)
   // Pattern: "==== Text ===="
   const equalsWithTextPattern = /^[=]{3,}\s+.+\s+[=]{3,}$/i;
   if (equalsWithTextPattern.test(trimmed)) {
@@ -90,15 +92,15 @@ export function isSeparatorLine(line: string): boolean {
 }
 
 /**
- * Extract section name dari separator line (jika ada)
- * Contoh: "----- Geolocation Data -----" -> "Geolocation Data"
+ * Extract section name from separator line (if exists)
+ * Example: "----- Geolocation Data -----" -> "Geolocation Data"
  *         "----- Hardware Info -----" -> "Hardware Info"
  */
 export function extractSectionFromSeparator(line: string): string | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
   
-  // Pattern: "----- Text -----" atau "==== Text ===="
+  // Pattern: "----- Text -----" or "==== Text ===="
   const match = trimmed.match(/^[-=]{3,}\s+(.+?)\s+[-=]{3,}$/i);
   if (match) {
     return match[1].trim();
@@ -108,8 +110,8 @@ export function extractSectionFromSeparator(line: string): string | null {
 }
 
 /**
- * Gabungkan OS Name dan OS Version menjadi satu string
- * Handle berbagai format dan cleaning
+ * Combine OS Name and OS Version into a single string
+ * Handle various formats and cleaning
  */
 export function combineOS(osName: string | null, osVersion: string | null): string | null {
   if (!osName && !osVersion) return null;
@@ -127,24 +129,24 @@ export function combineOS(osName: string | null, osVersion: string | null): stri
   // Combine
   const combined = `${osName as string} ${cleanVersion}`.trim();
   
-  // Validate hasil kombinasi (minimal 5 karakter untuk OS yang valid)
+  // Validate combination result (minimum 5 characters for valid OS)
   if (combined.length < 5) {
-    return osName || osVersion; // Fallback ke yang ada
+    return osName || osVersion; // Fallback to existing value
   }
   
   return combined;
 }
 
 /**
- * Extract value dari line dengan format "Label: Value"
- * Handle berbagai format separator dan spacing yang banyak
- * Contoh: "IP:                      127.0.0.1"
+ * Extract value from line with format "Label: Value"
+ * Handle various separator formats and excessive spacing
+ * Example: "IP:                      127.0.0.1"
  *         "CPU : Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz"
  *         "IP Geolocation : 127.0.0.1 [India]"
  */
 export function extractValue(line: string): string {
-  // Cari separator (colon, dash, atau equals)
-  // Prioritaskan colon karena paling umum
+  // Find separator (colon, dash, or equals)
+  // Prioritize colon as it's most common
   const colonIndex = line.indexOf(':');
   const dashIndex = line.indexOf('-');
   const equalsIndex = line.indexOf('=');
@@ -159,11 +161,11 @@ export function extractValue(line: string): string {
   }
   
   if (separatorIndex !== -1) {
-    // Extract value setelah separator
-    // Handle spacing yang banyak (multiple spaces/tabs)
+    // Extract value after separator
+    // Handle excessive spacing (multiple spaces/tabs)
     let value = line.substring(separatorIndex + 1);
     
-    // Remove leading spaces dan tabs (bisa banyak)
+    // Remove leading spaces and tabs (may be multiple)
     value = value.replace(/^[\s\t]+/, '');
     
     return value.trim();
@@ -174,49 +176,43 @@ export function extractValue(line: string): string {
 
 /**
  * Normalize RAM format (optional)
- * Bisa juga simpan as-is jika tidak perlu normalisasi
+ * Can also save as-is if normalization is not needed
  */
 export function normalizeRAM(ram: string): string {
   if (!ram) return ram;
   
-  // Extract angka dari string
+  // Extract number from string
   const match = ram.match(/(\d+(?:\.\d+)?)\s*(MB|GB|mb|gb)/i);
   if (match) {
     const value = parseFloat(match[1]);
     const unit = match[2].toUpperCase();
     
-    // Normalize ke GB jika perlu
+    // Normalize to GB if needed
     if (unit === 'MB') {
       const gb = (value / 1024).toFixed(2);
       return `${gb} GB`;
     }
   }
   
-  return ram; // Return as-is jika tidak bisa dinormalisasi
+  return ram; // Return as-is if cannot be normalized
 }
 
 /**
- * Extract country code dari berbagai format
+ * Extract country code from various formats
+ * Now uses robust normalization via normalizeCountryToCode
  */
 export function extractCountryCode(country: string): string {
   if (!country) return country;
   
-  // Extract dari format "United States (US)" -> "US"
-  const match = country.match(/\(([A-Z]{2})\)/);
-  if (match) {
-    return match[1];
-  }
+  // Use robust normalization function
+  const normalized = normalizeCountryToCode(country);
   
-  // Jika sudah 2 karakter uppercase, kemungkinan sudah country code
-  if (country.length === 2 && country === country.toUpperCase()) {
-    return country;
-  }
-  
-  return country; // Return as-is
+  // Return normalized code, or original if not found (backward compatibility)
+  return normalized || country;
 }
 
 /**
- * Validasi IP address format
+ * Validate IP address format
  */
 export function isValidIP(ip: string): boolean {
   if (!ip) return false;
@@ -241,8 +237,8 @@ export function isValidIP(ip: string): boolean {
 }
 
 /**
- * Clean dan validasi nilai
- * Skip "Unknown", "[redacted]", dll
+ * Clean and validate value
+ * Skip "Unknown", "[redacted]", etc.
  */
 export function cleanValue(value: string | null): string | null {
   if (!value) return null;
@@ -259,33 +255,33 @@ export function cleanValue(value: string | null): string | null {
 }
 
 /**
- * Deteksi encoding dan normalize ke UTF-8
+ * Detect encoding and normalize to UTF-8
  */
 export function normalizeEncoding(content: string): string {
   try {
-    // Coba decode sebagai UTF-8
+    // Try to decode as UTF-8
     const decoded = decodeURIComponent(escape(content));
     return decoded;
   } catch (error) {
-    // Jika gagal, return as-is (browser biasanya handle encoding)
+    // If failed, return as-is (browser usually handles encoding)
     return content;
   }
 }
 
 /**
- * Extract username dari format dengan domain
- * Contoh: "EC2AMAZ-75HN4R3/Administrator" -> "Administrator"
+ * Extract username from format with domain
+ * Example: "EC2AMAZ-75HN4R3/Administrator" -> "Administrator"
  */
 export function extractUsername(username: string | null): string | null {
   if (!username) return null;
   
-  // Jika ada "/", ambil bagian setelah "/"
+  // If there is "/", take the part after "/"
   const slashIndex = username.indexOf('/');
   if (slashIndex !== -1) {
     return username.substring(slashIndex + 1).trim();
   }
   
-  // Jika ada "\\", ambil bagian setelah "\\"
+  // If there is "\\", take the part after "\\"
   const backslashIndex = username.indexOf('\\');
   if (backslashIndex !== -1) {
     return username.substring(backslashIndex + 1).trim();
@@ -295,13 +291,13 @@ export function extractUsername(username: string | null): string | null {
 }
 
 /**
- * Extract IP address dari format dengan prefix/suffix
- * Contoh: "47.160.126.208/284629518" -> "47.160.126.208"
+ * Extract IP address from format with prefix/suffix
+ * Example: "47.160.126.208/284629518" -> "47.160.126.208"
  */
 export function extractIP(ip: string | null): string | null {
   if (!ip) return null;
   
-  // Jika ada "/", ambil bagian sebelum "/"
+  // If there is "/", take the part before "/"
   const slashIndex = ip.indexOf('/');
   if (slashIndex !== -1) {
     return ip.substring(0, slashIndex).trim();

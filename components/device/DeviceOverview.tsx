@@ -309,83 +309,73 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
           <CardContent className="px-4 pb-4">
             {hostInfo ? (
               <div className="space-y-3">
-                {hostInfo.os && (
-                  <div className="flex items-center gap-2">
-                    <Monitor className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">Operating System</p>
-                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.os}</p>
-                    </div>
+                <div className="flex items-center gap-2">
+                  <Monitor className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-bron-text-muted">Operating System</p>
+                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.os || "N/A"}</p>
                   </div>
-                )}
-                {hostInfo.computerName && (
-                  <div className="flex items-center gap-2">
-                    <Server className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">Computer Name</p>
-                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.computerName}</p>
-                    </div>
-                  </div>
-                )}
-                {hostInfo.username && (
-                  <div className="flex items-center gap-2">
-                    <User className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">Username</p>
-                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.username}</p>
-                    </div>
-                  </div>
-                )}
-                {hostInfo.ipAddress && (
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">IP Address</p>
-                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.ipAddress}</p>
-                    </div>
-                  </div>
-                )}
-                {hostInfo.country && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">Country</p>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-base leading-none">{getCountryFlag(hostInfo.country)}</span>
-                        <p className="text-xs text-bron-text-primary truncate">{hostInfo.country}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-bron-border">
-                  {hostInfo.cpu && (
-                    <div className="flex items-center gap-2">
-                      <Cpu className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-bron-text-muted">CPU</p>
-                        <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.cpu}</p>
-                      </div>
-                    </div>
-                  )}
-                  {hostInfo.ram && (
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-bron-text-muted">RAM</p>
-                        <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.ram}</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
-                {hostInfo.gpu && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-bron-border">
-                    <Monitor className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">GPU</p>
-                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.gpu}</p>
+                <div className="flex items-center gap-2">
+                  <Server className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-bron-text-muted">Computer Name</p>
+                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.computerName || "N/A"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <User className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-bron-text-muted">Username</p>
+                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.username || "N/A"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-bron-text-muted">IP Address</p>
+                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.ipAddress || "N/A"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-bron-text-muted">Country</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {hostInfo.country ? (
+                        <>
+                          <span className="text-base leading-none">{getCountryFlag(hostInfo.country)}</span>
+                          <p className="text-xs text-bron-text-primary truncate">{hostInfo.country}</p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-bron-text-primary">N/A</p>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-bron-border">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-bron-text-muted">CPU</p>
+                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.cpu || "N/A"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-bron-text-muted">RAM</p>
+                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.ram || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-2 border-t border-bron-border">
+                  <Monitor className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-bron-text-muted">GPU</p>
+                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.gpu || "N/A"}</p>
+                  </div>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-bron-text-muted">No host information available</p>
@@ -416,7 +406,6 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                   >
                     <RadialBar
                       dataKey="value"
-                      nameKey="name"
                       cornerRadius={6}
                       minPointSize={15}
                       background={{ fill: "var(--bron-bg-secondary)", opacity: 0.3 }}
