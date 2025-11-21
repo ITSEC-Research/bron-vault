@@ -20,9 +20,11 @@ export function AnimatedStatCard({
   delay = 0
 }: AnimatedStatCardProps) {
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border hover:shadow-lg transition-shadow duration-300">
-      <CardContent className="flex items-center p-4">
-        <Icon className={`h-8 w-8 ${iconColor} mr-3`} />
+    <Card className="bg-bron-bg-tertiary border-bron-border hover:border-bron-text-muted/50 transition-colors group">
+      <CardContent className="flex items-center p-4 gap-4">
+        <div className="p-2 rounded-md bg-bron-bg-secondary group-hover:bg-opacity-80 transition-colors">
+          <Icon className={`w-6 h-6 ${iconColor}`} />
+        </div>
         <div>
           <AnimatedCounter
             value={value}
@@ -30,7 +32,7 @@ export function AnimatedStatCard({
             delay={delay}
             className="text-2xl font-bold text-bron-text-primary"
           />
-          <p className="text-sm text-bron-text-muted">
+          <p className="text-xs text-bron-text-muted capitalize tracking-wider">
             {label}
           </p>
         </div>

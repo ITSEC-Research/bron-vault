@@ -40,11 +40,47 @@ export function parseRhadamanthys(content: string, fileName: string): ParsedLogD
     const normalizedLine = normalizeLine(trimmedLine);
     const lowerLine = normalizedLine.toLowerCase();
 
-    // Install Date: 09 Dec 23 00:33 UTC
+    // Install Date: 09 Dec 23 00:33 UTC atau 19/07/2025 17:14:05 (alternatif format)
+    // Format bisa dengan atau tanpa signature: "09 Dec 23 00:33 UTC" atau "19/07/2025 17:14:05 (sig:...)"
     if (lowerLine.includes('install date:') && !result.logDate) {
       const value = extractValue(normalizedLine);
       if (value && value.trim()) {
-        result.logDate = cleanValue(value);
+        // Extract date dari format:
+        // - Text format: "09 Dec 23 00:33 UTC" atau "29 Jun 25 21:02 CEST"
+        // - Numeric format: "28.06.2025 12:28:40" atau "19/07/2025 17:14:05"
+        // - With signature: "19/07/2025 17:14:05 (sig:...)" atau "28.06.2025 12:28:40 (sig:...)"
+        // Cek apakah format mengandung huruf (nama bulan atau timezone)
+        const hasLetters = /[a-zA-Z]/.test(value);
+        if (hasLetters) {
+          // Format dengan nama bulan atau timezone, extract sampai karakter invalid atau akhir string
+          // Match berbagai format:
+          // - Day first: "29 Jun 25 21:02 CEST" atau "09 Dec 23 00:33 UTC"
+          // - Month first: "Jun 29, 25 21:02 CEST" atau "Jun 29, 2025 21:02 CEST"
+          // Pattern: (day + month + year) atau (month + day + year) + time + optional timezone
+          // Coba match format dengan hari di depan dulu, lalu format dengan bulan di depan
+          const dayFirstMatch = value.match(/^([\d]+\s+\w+\s+[\d\s:]+(?:\s+[A-Z]{2,})?)/i);
+          const monthFirstMatch = value.match(/^(\w+\s+[\d]+,?\s+[\d\s:]+(?:\s+[A-Z]{2,})?)/i);
+          const textDateMatch = dayFirstMatch || monthFirstMatch;
+          if (textDateMatch && textDateMatch[1].trim().length > 5) {
+            result.logDate = cleanValue(textDateMatch[1].trim());
+          } else {
+            // Fallback: extract sampai karakter invalid atau ambil seluruh value
+            const untilInvalid = value.match(/^([^(\[]+)/);
+            if (untilInvalid && untilInvalid[1].trim().length > 5) {
+              result.logDate = cleanValue(untilInvalid[1].trim());
+            } else {
+              result.logDate = cleanValue(value);
+            }
+          }
+        } else {
+          // Format numeric, gunakan regex numeric
+          const dateMatch = value.match(/^([\d\.\/\-\s:]+(?:\s+[AP]M)?)/i);
+          if (dateMatch && dateMatch[1].trim().length > 5) {
+            result.logDate = cleanValue(dateMatch[1].trim());
+          } else {
+            result.logDate = cleanValue(value);
+          }
+        }
       }
     }
 

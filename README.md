@@ -8,13 +8,13 @@ Forget complex ad-hoc scripts. With Broń Vault, you can simply drag and drop `.
 
 Our goal is to support the day-to-day needs of security teams on the front lines by providing a practical alternative to manual scripting or overly complex platforms typically required for stealer log analysis. This project reflects our mission to democratize security, making foundational analysis capabilities accessible to everyone and allowing analysts to focus on critical decision-making instead of manual log parsing.
 
-> ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#%EF%B8%8F-important-notice) section below.
+> ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#-important-notice) section below.
 
 ![alt text](images/Bron-Vault-Dashboard.png "Bron Vault Dashboard")
 
 -----
 
-## ✨ Key Features
+## Key Features
 
   * **File Upload & Processing**: Upload `.zip` files containing common stealer log formats with real-time upload progress tracking and detailed logging.
     
@@ -22,6 +22,16 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     - Search by specific email addresses or entire domains across all logs.
     - A successful match reveals a "Supporting Files" tab with all data from the same device.
     - Seamlessly explore correlated cookies, browser history, and system files in a single click.
+
+  * **Domain Reconnaissance**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
+    - Enter a domain to discover all related subdomains, paths, and exposed credentials.
+    - **Overview Tab**: 
+      - Timeline visualization showing when credentials were logged by stealers (log-date tracking).
+      - Top 10 subdomains by credential volume with horizontal bar charts.
+      - Top 10 paths by credential volume with horizontal bar charts.
+      - Summary statistics showing total subdomains, paths, credentials, reused credentials, and affected devices.
+    - **Subdomains Tab**: Browse all discovered subdomains with associated paths and credential counts. Includes deduplication feature that aggregates subdomains for clearer insights, automatically summing credential counts when multiple paths exist for the same subdomain.
+    - **Credentials Tab**: View all credentials associated with the domain, including URLs, usernames, passwords, log dates, and direct links to correlated devices.
 
   * **Device Detail View**: Explore individual device information with comprehensive details.
     - **Overview Tab**: Get an at-a-glance summary with engaging visualizations including:
@@ -60,16 +70,18 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 ![alt text](images/Bron-Vault-Device-Overview.png "Bron Vault Device Overview")
 
+![alt text](images/Bron-Vault-Domain-Search.png "Bron Vault Device Overview")
+
 -----
 
-## ⚠️ Important Notice
+## Important Notice
 
 - This tool was built with a focus on functionality, not hardened security. Do **NOT** deploy this in production environment or expose it to public networks. Use it exclusively in a secure, **isolated** environment.
 - Broń Vault was developed by [Tomi Ashari](https://github.com/mastomii) and [YoKo Kho](https://github.com/yokokho) as a side project under the [ITSEC Asia](https://itsec.asia/) RnD Division, with support from AI-assisted tooling. It does not represent our commercial [IntelliBroń Threat Intelligence](https://intellibron.io/) platform, though it reflects some similar capabilities.
 
 -----
 
-## 🚀 Getting Started
+## Getting Started
 
 Follow these steps to get Broń Vault up and running locally.
 
@@ -126,6 +138,6 @@ Just upload the stealer logs, and it will automatically parse them.
 
 -----
 
-## 🤝 Contributing
+## Contributing
 
 If you'd like to improve the project, whether by contributing code or reporting issues and security findings, **your feedback is always welcome**.
