@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -13,6 +13,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -21,30 +22,51 @@ import {
 
 
 
-const menuItems = [
+const menuGroups = [
   {
-    title: "Dashboard",
-    description: "Overview and statistics",
-    url: "/dashboard",
-    icon: BarChart3,
+    title: "Home",
+    items: [
+      {
+        title: "Dashboard",
+        description: "Overview & Statistics",
+        url: "/dashboard",
+        icon: BarChart3,
+      },
+    ],
   },
   {
-    title: "Search",
-    description: "Search and analyze data",
-    url: "/",
-    icon: Search,
+    title: "Discovery",
+    items: [
+      {
+        title: "Search",
+        description: "Search & Analyze Data",
+        url: "/",
+        icon: Search,
+      },
+      {
+        title: "Domain Search",
+        description: "Explore Footprint",
+        url: "/domain-search",
+        icon: Globe,
+      },
+    ],
   },
   {
-    title: "Upload",
-    description: "Upload and process files",
-    url: "/upload",
-    icon: Upload,
-  },
-  {
-    title: "Debug ZIP",
-    description: "Debug ZIP files",
-    url: "/debug-zip",
-    icon: Bug,
+    title: "Import",
+    items: [
+      {
+        title: "Upload",
+        description: "Upload & Process Files",
+        url: "/upload",
+        icon: Upload,
+      },
+      {
+        title: "Debug ZIP",
+        description: "Validate ZIP Files",
+        url: "/debug-zip",
+        icon: Bug,
+      },
+    ],
   },
 ]
 
@@ -53,6 +75,19 @@ export function AppSidebar() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [logoSrc, setLogoSrc] = React.useState("/images/logo.png");
+
+  // Helper function to check if menu item is active
+  // For /domain-search, also match sub-routes like /domain-search/[domain]
+  const isMenuItemActive = (url: string) => {
+    if (pathname === url) return true;
+    
+    // For /domain-search, also match sub-routes
+    if (url === "/domain-search") {
+      return pathname.startsWith("/domain-search/");
+    }
+    
+    return false;
+  };
 
   React.useEffect(() => {
     setMounted(true);
@@ -81,36 +116,42 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent className="bg-bron-bg-secondary flex flex-col h-full">
-        <SidebarGroup className="!p-4">
-          <SidebarGroupContent>
-            <SidebarMenu className="gap-0 space-y-[8px]">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.url}
-                    className={`
-                      h-auto flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors
-                      ${pathname === item.url 
-                        ? "!bg-red-500/10 dark:!bg-red-500/20 !text-bron-text-primary" 
-                        : "text-bron-text-muted hover:text-bron-text-primary hover:bg-bron-bg-tertiary"
-                      }
-                    `}
-                  >
-                    <Link href={item.url} className="flex items-center space-x-2 w-full">
-                      <item.icon className="w-5 h-5 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium">{item.title}</div>
-                        <div className="text-[11px] text-bron-text-muted">{item.description}</div>
-                      </div>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <div className="flex-1" />
+        <div className="flex-1 overflow-auto space-y-0.5 p-4">
+          {menuGroups.map((group) => (
+            <SidebarGroup key={group.title}>
+              <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-bron-text-muted">
+                {group.title}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0 space-y-[4px]">
+                  {group.items.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isMenuItemActive(item.url)}
+                        className={`
+                          h-auto flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors
+                          ${isMenuItemActive(item.url)
+                            ? "!bg-red-500/10 dark:!bg-red-500/20 !text-bron-text-primary" 
+                            : "text-bron-text-secondary hover:text-bron-text-primary hover:bg-bron-bg-tertiary"
+                          }
+                        `}
+                      >
+                        <Link href={item.url} className="flex items-center space-x-2 w-full">
+                          <item.icon className="w-5 h-5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-bron-text-secondary">{item.title}</div>
+                            <div className="text-[10px] text-bron-text-muted">{item.description}</div>
+                          </div>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
+        </div>
         <div className="p-4 border-t border-bron-border flex items-center justify-between">
           <span className="text-xs flex items-center gap-2" style={{ color: 'var(--bron-text-muted)' }}>
             <Sun className="h-4 w-4" style={{ color: 'var(--bron-accent-yellow)' }} />

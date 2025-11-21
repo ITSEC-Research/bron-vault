@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useMemo } from "react"
-import { Monitor, Globe, User, Lock, Eye, EyeOff } from "lucide-react"
+import { Monitor, Globe, User, Lock, Eye, EyeOff, Copy } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -83,6 +83,102 @@ const HoverableCell = ({
         >
           <div className="font-mono text-xs select-text text-bron-text-primary">{content}</div>
           <div className="text-xs text-bron-text-muted mt-1">Highlight text to copy manually</div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// URL Cell with copy functionality
+const UrlCell = ({ url }: { url: string }) => {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="truncate max-w-[350px] cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors font-mono">
+            {url}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-bron-text-secondary">Full URL</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigator.clipboard.writeText(url)
+                }}
+                className="p-1 hover:bg-bron-bg-primary rounded transition-colors"
+                title="Copy URL"
+              >
+                <Copy className="h-3 w-3 text-bron-text-muted hover:text-bron-accent-blue" />
+              </button>
+            </div>
+            <div className="text-xs font-mono text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border">
+              {url}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+// Copyable Cell Component with hover effect and copy functionality
+const CopyableCell = ({ 
+  content, 
+  label, 
+  isPassword = false,
+  maxLength,
+  children
+}: { 
+  content: string
+  label: string
+  isPassword?: boolean
+  maxLength?: number
+  children?: React.ReactNode
+}) => {
+  const displayContent = maxLength && content.length > maxLength ? `${content.substring(0, maxLength)}...` : content
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors w-full block truncate">
+            {children || (
+              isPassword ? (
+                <span className="font-mono text-bron-text-primary">{displayContent}</span>
+              ) : (
+                <span className="text-bron-text-primary">{displayContent}</span>
+              )
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-bron-text-secondary">{label}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigator.clipboard.writeText(content)
+                }}
+                className="p-1 hover:bg-bron-bg-primary rounded transition-colors"
+                title={`Copy ${label}`}
+              >
+                <Copy className="h-3 w-3 text-bron-text-muted hover:text-bron-accent-blue" />
+              </button>
+            </div>
+            <div className={`text-xs ${isPassword ? 'font-mono' : ''} text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border`}>
+              {content}
+            </div>
+          </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -223,19 +319,33 @@ export function CredentialsTable({
                 <TableCell className="font-medium text-xs py-2 px-3">
                   <HoverableCell content={credential.browser || "Unknown"} maxLines={2} />
                 </TableCell>
-                <TableCell className="text-xs py-2 px-3">
-                  <HoverableCell content={credential.url} maxLength={50} />
+                <TableCell className="text-xs py-2 px-3 font-mono">
+                  <UrlCell url={credential.url} />
                 </TableCell>
                 <TableCell className="text-xs py-2 px-3">
-                  <HoverableCell content={credential.username} maxLength={35} />
+                  <CopyableCell 
+                    content={credential.username} 
+                    label="Username"
+                    maxLength={35}
+                  />
                 </TableCell>
                 <TableCell className="text-xs py-2 px-3">
                   {showPasswords ? (
-                    <HoverableCell content={credential.password} maxLength={20} type="password" />
+                    <CopyableCell 
+                      content={credential.password} 
+                      label="Password"
+                      isPassword={true}
+                      maxLength={20}
+                    />
                   ) : (
-                    <HoverableCell content={credential.password} maxLength={20} type="password">
+                    <CopyableCell 
+                      content={credential.password} 
+                      label="Password"
+                      isPassword={true}
+                      maxLength={20}
+                    >
                       <MaskedPassword password={credential.password} />
-                    </HoverableCell>
+                    </CopyableCell>
                   )}
                 </TableCell>
               </TableRow>
