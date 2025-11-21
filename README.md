@@ -8,7 +8,7 @@ Forget complex ad-hoc scripts. With Broń Vault, you can simply drag and drop `.
 
 Our goal is to support the day-to-day needs of security teams on the front lines by providing a practical alternative to manual scripting or overly complex platforms typically required for stealer log analysis. This project reflects our mission to democratize security, making foundational analysis capabilities accessible to everyone and allowing analysts to focus on critical decision-making instead of manual log parsing.
 
-> ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#-important-notice) section below.
+> ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#important-notice) section below.
 
 ![alt text](images/Bron-Vault-Dashboard.png "Bron Vault Dashboard")
 
@@ -23,7 +23,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     - A successful match reveals a "Supporting Files" tab with all data from the same device.
     - Seamlessly explore correlated cookies, browser history, and system files in a single click.
 
-  * **Domain Reconnaissance**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
+  * **Domain Discovery**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
     - Enter a domain to discover all related subdomains, paths, and exposed credentials.
     - **Overview Tab**: 
       - Timeline visualization showing when credentials were logged by stealers (log-date tracking).
