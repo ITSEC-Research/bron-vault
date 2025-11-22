@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -22,26 +22,19 @@ interface TimelineChartProps {
 
 export function TimelineChart({ data: initialData, targetDomain, onGranularityChange }: TimelineChartProps) {
   const [granularity, setGranularity] = useState<"auto" | "weekly" | "monthly">("auto")
-  const [data, setData] = useState(initialData)
+  
+  // Use initialData directly, no need for internal state that causes delay
+  const data = Array.isArray(initialData) ? initialData : []
 
   useEffect(() => {
     console.log("📊 TimelineChart received data:", {
-      dataLength: initialData?.length || 0,
+      dataLength: data?.length || 0,
       isArray: Array.isArray(initialData),
-      sample: initialData?.slice(0, 3),
+      sample: data?.slice(0, 3),
       fullData: initialData,
       type: typeof initialData,
     })
-    
-    // Ensure data is an array
-    if (Array.isArray(initialData) && initialData.length > 0) {
-      console.log("✅ Setting timeline data:", initialData.length, "items")
-      setData(initialData)
-    } else {
-      console.warn("⚠️ Invalid timeline data format:", initialData)
-      setData([])
-    }
-  }, [initialData])
+  }, [initialData, data])
 
   useEffect(() => {
     if (onGranularityChange) {
@@ -64,40 +57,52 @@ export function TimelineChart({ data: initialData, targetDomain, onGranularityCh
   return (
     <div className="h-[300px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--bron-border)" vertical={false} />
+        <AreaChart 
+          data={data}
+          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+        >
+          <defs>
+            <linearGradient id="colorRed" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#dc2626" stopOpacity={0.2}/>
+              <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#52525b" strokeWidth={1} />
           <XAxis
             dataKey="date"
-            stroke="var(--bron-text-muted)"
-            tick={{ fill: "var(--bron-text-muted)", fontSize: 12 }}
+            stroke="#52525b"
+            tick={{ fill: "#71717a", fontSize: 11 }}
             tickLine={false}
             axisLine={false}
             dy={10}
           />
           <YAxis
-            stroke="var(--bron-text-muted)"
-            tick={{ fill: "var(--bron-text-muted)", fontSize: 12 }}
+            stroke="#52525b"
+            tick={{ fill: "#71717a", fontSize: 11 }}
             tickLine={false}
             axisLine={false}
             dx={-10}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "var(--bron-bg-secondary)",
-              border: "1px solid var(--bron-border)",
-              color: "var(--bron-text-primary)",
+              backgroundColor: "#18181b", 
+              borderColor: "#27272a", 
+              color: "#fff",
+              border: "1px solid #27272a"
             }}
-            itemStyle={{ color: "var(--bron-accent-red)" }}
+            itemStyle={{ color: "#fca5a5" }}
+            labelStyle={{ color: "#a1a1aa", marginBottom: "0.25rem" }}
+            cursor={{ stroke: "#dc2626", strokeWidth: 1, strokeDasharray: "4 4" }}
           />
-          <Line
+          <Area
             type="monotone"
             dataKey="credentialCount"
-            stroke="var(--bron-accent-red)"
+            stroke="#dc2626"
             strokeWidth={2}
-            dot={{ fill: "var(--bron-accent-red)", r: 4, strokeWidth: 0 }}
-            activeDot={{ r: 6 }}
+            fillOpacity={1}
+            fill="url(#colorRed)"
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   )

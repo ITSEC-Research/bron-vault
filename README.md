@@ -24,12 +24,13 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     - Seamlessly explore correlated cookies, browser history, and system files in a single click.
 
   * **Domain Discovery**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
-    - Enter a domain to discover all related subdomains, paths, and exposed credentials.
+    - Enter a `domain` or `keyword` to discover all related subdomains, paths, and exposed credentials.
     - **Overview Tab**: 
       - Timeline visualization showing when credentials were logged by stealers (log-date tracking).
+      - Top 10 most-used passwords observed for the queried domain or keyword.
       - Top 10 subdomains by credential volume with horizontal bar charts.
       - Top 10 paths by credential volume with horizontal bar charts.
-      - Summary statistics showing total subdomains, paths, credentials, reused credentials, and affected devices.
+      - Summary statistics showing total subdomains, paths, credentials, and affected devices.
     - **Subdomains Tab**: Browse all discovered subdomains with associated paths and credential counts. Includes deduplication feature that aggregates subdomains for clearer insights, automatically summing credential counts when multiple paths exist for the same subdomain.
     - **Credentials Tab**: View all credentials associated with the domain, including URLs, usernames, passwords, log dates, and direct links to correlated devices.
 

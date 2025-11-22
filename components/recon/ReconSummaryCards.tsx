@@ -1,6 +1,6 @@
 "use client"
 
-import { Globe, Link, Key, Copy, HardDrive } from "lucide-react"
+import { Globe, Link, Key, HardDrive } from "lucide-react"
 import { AnimatedStatCard } from "@/components/animated-stat-card"
 
 interface SummaryStats {
@@ -17,7 +17,7 @@ interface ReconSummaryCardsProps {
 
 export function ReconSummaryCards({ stats }: ReconSummaryCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
       <AnimatedStatCard
         icon={Globe}
         value={stats.totalSubdomains}
@@ -40,18 +40,11 @@ export function ReconSummaryCards({ stats }: ReconSummaryCardsProps) {
         delay={0.4}
       />
       <AnimatedStatCard
-        icon={Copy}
-        value={stats.totalReusedCredentials}
-        label="Reused Credentials"
-        iconColor="text-bron-accent-red"
-        delay={0.6}
-      />
-      <AnimatedStatCard
         icon={HardDrive}
         value={stats.totalDevices}
         label="Devices"
         iconColor="text-bron-accent-blue"
-        delay={0.8}
+        delay={0.6}
       />
     </div>
   )
