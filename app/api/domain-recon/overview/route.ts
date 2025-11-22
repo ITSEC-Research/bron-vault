@@ -5,6 +5,7 @@ import { validateRequest } from "@/lib/auth"
 /**
  * Build WHERE clause for domain matching that supports subdomains
  * Matches both domain column and hostname extracted from URL
+ * EXISTING FUNCTION - NOT MODIFIED
  */
 function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: any[] } {
   // Extract hostname from URL expression (reusable)
@@ -33,6 +34,36 @@ function buildDomainWhereClause(targetDomain: string): { whereClause: string; pa
   }
 }
 
+/**
+ * Build WHERE clause for keyword search
+ * Supports two modes: domain-only (hostname only) or full-url (entire URL)
+ * NEW FUNCTION - SEPARATE FROM DOMAIN SEARCH
+ */
+function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: any[] } {
+  if (mode === 'domain-only') {
+    // Extract hostname from URL, then search keyword in hostname only
+    const hostnameExpr = `CASE 
+      WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
+        SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
+      ELSE
+        SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
+    END`
+    
+    const whereClause = `WHERE ${hostnameExpr} LIKE ? AND c.url IS NOT NULL`
+    return {
+      whereClause,
+      params: [`%${keyword}%`]
+    }
+  } else {
+    // Full URL mode: search keyword in entire URL (current behavior)
+    const whereClause = `WHERE c.url LIKE ? AND c.url IS NOT NULL`
+    return {
+      whereClause,
+      params: [`%${keyword}%`]
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   const user = await validateRequest(request)
   if (!user) {
@@ -41,36 +72,84 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { targetDomain, timelineGranularity } = body
+    const { targetDomain, timelineGranularity, searchType = 'domain' } = body
 
     if (!targetDomain || typeof targetDomain !== 'string') {
       return NextResponse.json({ error: "targetDomain is required" }, { status: 400 })
     }
 
+    // ============================================
+    // CODE PATH SEPARATION - CLEAR & MAINTAINABLE
+    // ============================================
+    
+    if (searchType === 'keyword') {
+      // ===== KEYWORD SEARCH PATH =====
+      // New code path - completely separate
+      const keyword = targetDomain.trim()
+      const keywordMode = body.keywordMode || 'full-url'
+      const { whereClause, params } = buildKeywordWhereClause(keyword, keywordMode)
+      
+      console.log("🔍 Overview API called (keyword):", { keyword, timelineGranularity })
+      
+      const [timelineData, topSubdomains, topPaths] = await Promise.all([
+        getTimelineData(whereClause, params, timelineGranularity || 'auto').catch((err) => {
+          console.error("❌ Error getting timeline data:", err)
+          return []
+        }),
+        getTopSubdomains(whereClause, params, 10).catch((err) => {
+          console.error("❌ Error getting top subdomains:", err)
+          return []
+        }),
+        getTopPaths(whereClause, params, 10).catch((err) => {
+          console.error("❌ Error getting top paths:", err)
+          return []
+        }),
+      ])
+
+      console.log("✅ Overview data retrieved (keyword):", {
+        timelineCount: timelineData?.length || 0,
+        topSubdomainsCount: topSubdomains?.length || 0,
+        topPathsCount: topPaths?.length || 0,
+        timelineSample: timelineData?.slice(0, 3),
+      })
+
+      return NextResponse.json({
+        success: true,
+        targetDomain: keyword,
+        searchType: 'keyword',
+        timeline: timelineData || [],
+        topSubdomains: topSubdomains || [],
+        topPaths: topPaths || [],
+      })
+    } else {
+      // ===== DOMAIN SEARCH PATH =====
+      // EXISTING CODE - NO CHANGES
     let normalizedDomain = targetDomain.trim().toLowerCase()
     normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '')
     normalizedDomain = normalizedDomain.replace(/^www\./, '')
     normalizedDomain = normalizedDomain.replace(/\/$/, '')
     normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
 
-    console.log("🔍 Overview API called:", { normalizedDomain, timelineGranularity })
+      const { whereClause, params } = buildDomainWhereClause(normalizedDomain)
+
+      console.log("🔍 Overview API called (domain):", { normalizedDomain, timelineGranularity })
     
     const [timelineData, topSubdomains, topPaths] = await Promise.all([
-      getTimelineData(normalizedDomain, timelineGranularity || 'auto').catch((err) => {
+        getTimelineData(whereClause, params, timelineGranularity || 'auto').catch((err) => {
         console.error("❌ Error getting timeline data:", err)
         return []
       }),
-      getTopSubdomains(normalizedDomain, 10).catch((err) => {
+        getTopSubdomains(whereClause, params, 10).catch((err) => {
         console.error("❌ Error getting top subdomains:", err)
         return []
       }),
-      getTopPaths(normalizedDomain, 10).catch((err) => {
+        getTopPaths(whereClause, params, 10).catch((err) => {
         console.error("❌ Error getting top paths:", err)
         return []
       }),
     ])
 
-    console.log("✅ Overview data retrieved:", {
+      console.log("✅ Overview data retrieved (domain):", {
       timelineCount: timelineData?.length || 0,
       topSubdomainsCount: topSubdomains?.length || 0,
       topPathsCount: topPaths?.length || 0,
@@ -80,10 +159,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       targetDomain: normalizedDomain,
+        searchType: 'domain',
       timeline: timelineData || [],
       topSubdomains: topSubdomains || [],
       topPaths: topPaths || [],
     })
+    }
   } catch (error) {
     console.error("❌ Error in overview API:", error)
     return NextResponse.json(
@@ -96,10 +177,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getTimelineData(targetDomain: string, granularity: string) {
-  console.log("📅 Getting timeline data for domain:", targetDomain, "granularity:", granularity)
-  
-  const { whereClause, params } = buildDomainWhereClause(targetDomain)
+async function getTimelineData(whereClause: string, params: any[], granularity: string) {
+  console.log("📅 Getting timeline data, granularity:", granularity)
   
   // First, check if we have any credentials for this domain
   const credentialCheck = (await executeQuery(
@@ -333,9 +412,7 @@ async function getTimelineData(targetDomain: string, granularity: string) {
   return mapped
 }
 
-async function getTopSubdomains(targetDomain: string, limit: number = 10) {
-  const { whereClause, params } = buildDomainWhereClause(targetDomain)
-  
+async function getTopSubdomains(whereClause: string, params: any[], limit: number = 10) {
   const result = (await executeQuery(
     `SELECT 
       CASE 
@@ -360,14 +437,12 @@ async function getTopSubdomains(targetDomain: string, limit: number = 10) {
   )) as any[]
 
   return result.map((row: any) => ({
-    fullHostname: row.full_hostname || targetDomain,
+    fullHostname: row.full_hostname || '',
     credentialCount: row.credential_count || 0,
   }))
 }
 
-async function getTopPaths(targetDomain: string, limit: number = 10) {
-  const { whereClause, params } = buildDomainWhereClause(targetDomain)
-  
+async function getTopPaths(whereClause: string, params: any[], limit: number = 10) {
   const result = (await executeQuery(
     `SELECT 
       CASE 

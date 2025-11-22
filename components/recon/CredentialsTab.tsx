@@ -45,9 +45,11 @@ interface CredentialItem {
 
 interface CredentialsTabProps {
   targetDomain: string
+  searchType?: 'domain' | 'keyword'
+  keywordMode?: 'domain-only' | 'full-url'
 }
 
-export function CredentialsTab({ targetDomain }: CredentialsTabProps) {
+export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMode }: CredentialsTabProps) {
   const router = useRouter()
   const [data, setData] = useState<CredentialItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -79,7 +81,7 @@ export function CredentialsTab({ targetDomain }: CredentialsTabProps) {
 
   useEffect(() => {
     loadData()
-  }, [targetDomain, page, sortBy, sortOrder, searchQuery, limit])
+  }, [targetDomain, page, sortBy, sortOrder, searchQuery, limit, searchType, keywordMode])
 
   const loadData = async () => {
     if (!targetDomain || !targetDomain.trim()) {
@@ -90,22 +92,27 @@ export function CredentialsTab({ targetDomain }: CredentialsTabProps) {
 
     setIsLoading(true)
     try {
-      console.log("🔄 Loading credentials for domain:", targetDomain, "search:", searchQuery)
+      console.log("🔄 Loading credentials for:", searchType, targetDomain, "mode:", keywordMode, "search:", searchQuery)
+      const body: any = {
+        targetDomain,
+        searchType,
+        searchQuery: searchQuery.trim() || undefined,
+        pagination: {
+          page,
+          limit,
+          sortBy,
+          sortOrder,
+        },
+      }
+      if (searchType === 'keyword' && keywordMode) {
+        body.keywordMode = keywordMode
+      }
       const response = await fetch("/api/domain-recon/credentials", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          targetDomain,
-          searchQuery: searchQuery.trim() || undefined,
-          pagination: {
-            page,
-            limit,
-            sortBy,
-            sortOrder,
-          },
-        }),
+        body: JSON.stringify(body),
       })
 
       console.log("📡 Response status:", response.status, response.ok)

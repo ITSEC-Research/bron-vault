@@ -14,6 +14,8 @@ import { TimelineChart } from "./TimelineChart"
 
 interface OverviewTabProps {
   targetDomain: string
+  searchType?: 'domain' | 'keyword'
+  keywordMode?: 'domain-only' | 'full-url'
 }
 
 interface TopItem {
@@ -33,7 +35,7 @@ interface RankingListProps {
   targetDomain?: string
 }
 
-export function OverviewTab({ targetDomain }: OverviewTabProps) {
+export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }: OverviewTabProps) {
   const [topSubdomains, setTopSubdomains] = useState<TopItem[]>([])
   const [topPaths, setTopPaths] = useState<TopItem[]>([])
   const [timeline, setTimeline] = useState<any[]>([])
@@ -42,20 +44,25 @@ export function OverviewTab({ targetDomain }: OverviewTabProps) {
 
   useEffect(() => {
     loadOverviewData()
-  }, [targetDomain, timelineGranularity])
+  }, [targetDomain, timelineGranularity, searchType, keywordMode])
 
   const loadOverviewData = async () => {
     setIsLoading(true)
     try {
+      const body: any = {
+        targetDomain,
+        timelineGranularity,
+        searchType,
+      }
+      if (searchType === 'keyword' && keywordMode) {
+        body.keywordMode = keywordMode
+      }
       const response = await fetch("/api/domain-recon/overview", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          targetDomain,
-          timelineGranularity,
-        }),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {

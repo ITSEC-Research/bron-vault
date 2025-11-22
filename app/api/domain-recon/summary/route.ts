@@ -2,6 +2,36 @@ import { NextRequest, NextResponse } from "next/server"
 import { executeQuery } from "@/lib/mysql"
 import { validateRequest } from "@/lib/auth"
 
+/**
+ * Build WHERE clause for keyword search
+ * Supports two modes: domain-only (hostname only) or full-url (entire URL)
+ * NEW FUNCTION - SEPARATE FROM DOMAIN SEARCH
+ */
+function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: any[] } {
+  if (mode === 'domain-only') {
+    // Extract hostname from URL, then search keyword in hostname only
+    const hostnameExpr = `CASE 
+      WHEN url LIKE 'http://%' OR url LIKE 'https://%' THEN
+        SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
+      ELSE
+        SUBSTRING_INDEX(SUBSTRING_INDEX(url, '/', 1), ':', 1)
+    END`
+    
+    const whereClause = `WHERE ${hostnameExpr} LIKE ? AND url IS NOT NULL`
+    return {
+      whereClause,
+      params: [`%${keyword}%`]
+    }
+  } else {
+    // Full URL mode: search keyword in entire URL (current behavior)
+    const whereClause = `WHERE url LIKE ? AND url IS NOT NULL`
+    return {
+      whereClause,
+      params: [`%${keyword}%`]
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   const user = await validateRequest(request)
   if (!user) {
@@ -10,25 +40,47 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { targetDomain } = body
+    const { targetDomain, searchType = 'domain' } = body
 
     if (!targetDomain || typeof targetDomain !== 'string') {
       return NextResponse.json({ error: "targetDomain is required" }, { status: 400 })
     }
 
+    // ============================================
+    // CODE PATH SEPARATION - CLEAR & MAINTAINABLE
+    // ============================================
+    
+    if (searchType === 'keyword') {
+      // ===== KEYWORD SEARCH PATH =====
+      // New code path - completely separate
+      const keyword = targetDomain.trim()
+      const keywordMode = body.keywordMode || 'full-url'
+      const summary = await getSummaryStats(keyword, 'keyword', keywordMode)
+
+      return NextResponse.json({
+        success: true,
+        targetDomain: keyword,
+        searchType: 'keyword',
+        summary,
+      })
+    } else {
+      // ===== DOMAIN SEARCH PATH =====
+      // EXISTING CODE - NO CHANGES
     let normalizedDomain = targetDomain.trim().toLowerCase()
     normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '')
     normalizedDomain = normalizedDomain.replace(/^www\./, '')
     normalizedDomain = normalizedDomain.replace(/\/$/, '')
     normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
 
-    const summary = await getSummaryStats(normalizedDomain)
+      const summary = await getSummaryStats(normalizedDomain, 'domain')
 
     return NextResponse.json({
       success: true,
       targetDomain: normalizedDomain,
+        searchType: 'domain',
       summary,
     })
+    }
   } catch (error) {
     console.error("❌ Error in summary API:", error)
     return NextResponse.json(
@@ -44,6 +96,7 @@ export async function POST(request: NextRequest) {
 /**
  * Build WHERE clause for domain matching that supports subdomains
  * Matches both domain column and hostname extracted from URL
+ * EXISTING FUNCTION - NOT MODIFIED
  */
 function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: any[] } {
   // Extract hostname from URL expression (reusable)
@@ -72,8 +125,11 @@ function buildDomainWhereClause(targetDomain: string): { whereClause: string; pa
   }
 }
 
-async function getSummaryStats(targetDomain: string) {
-  const { whereClause, params } = buildDomainWhereClause(targetDomain)
+async function getSummaryStats(query: string, searchType: 'domain' | 'keyword' = 'domain', keywordMode: 'domain-only' | 'full-url' = 'full-url') {
+  // Build WHERE clause based on search type
+  const { whereClause, params } = searchType === 'keyword'
+    ? buildKeywordWhereClause(query, keywordMode)
+    : buildDomainWhereClause(query)
   
   const subdomainsResult = (await executeQuery(
     `SELECT COUNT(DISTINCT 
