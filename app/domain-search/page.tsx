@@ -9,12 +9,14 @@ export default function DomainSearchPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
 
-  const handleSearch = async (domain: string) => {
-    if (!domain || !domain.trim()) return
+  const handleSearch = async (query: string, searchType: "domain" | "keyword", keywordMode?: "domain-only" | "full-url") => {
+    if (!query || !query.trim()) return
     
     setIsLoading(true)
+    
+    if (searchType === 'domain') {
     // Normalize domain
-    let normalizedDomain = domain.trim().toLowerCase()
+      let normalizedDomain = query.trim().toLowerCase()
     normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '')
     normalizedDomain = normalizedDomain.replace(/^www\./, '')
     normalizedDomain = normalizedDomain.replace(/\/$/, '')
@@ -22,6 +24,12 @@ export default function DomainSearchPage() {
     
     // Navigate to domain page with overview tab
     router.push(`/domain-search/${encodeURIComponent(normalizedDomain)}?tab=overview`)
+    } else {
+      // Keyword search - pass as-is with type and mode parameters
+      const modeParam = keywordMode && keywordMode !== 'full-url' ? `&mode=${keywordMode}` : ''
+      router.push(`/domain-search/${encodeURIComponent(query.trim())}?type=keyword${modeParam}&tab=overview`)
+    }
+    
     setIsLoading(false)
   }
 

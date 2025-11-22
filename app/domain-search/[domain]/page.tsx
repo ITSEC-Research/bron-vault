@@ -24,6 +24,8 @@ export default function DomainSearchPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const domain = decodeURIComponent(params.domain as string)
+  const searchType = (searchParams.get('type') || 'domain') as 'domain' | 'keyword'
+  const keywordMode = (searchParams.get('mode') || 'full-url') as 'domain-only' | 'full-url'
   
   // Use local state for tab to make switching instant, sync with URL for bookmarking
   const [activeTab, setActiveTab] = useState<string>(searchParams.get('tab') || 'overview')
@@ -36,16 +38,21 @@ export default function DomainSearchPage() {
     }
   }, [searchParams])
 
-  const handleSearch = async (newDomain: string) => {
-    if (!newDomain || !newDomain.trim()) return
+  const handleSearch = async (query: string, newSearchType: "domain" | "keyword", newKeywordMode?: "domain-only" | "full-url") => {
+    if (!query || !query.trim()) return
     
-    let normalizedDomain = newDomain.trim().toLowerCase()
+    if (newSearchType === 'domain') {
+      let normalizedDomain = query.trim().toLowerCase()
     normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '')
     normalizedDomain = normalizedDomain.replace(/^www\./, '')
     normalizedDomain = normalizedDomain.replace(/\/$/, '')
     normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
     
     router.push(`/domain-search/${encodeURIComponent(normalizedDomain)}?tab=overview`)
+    } else {
+      const modeParam = newKeywordMode && newKeywordMode !== 'full-url' ? `&mode=${newKeywordMode}` : ''
+      router.push(`/domain-search/${encodeURIComponent(query.trim())}?type=keyword${modeParam}&tab=overview`)
+    }
   }
 
   const handleClear = () => {
@@ -56,7 +63,9 @@ export default function DomainSearchPage() {
     // Update state immediately for instant UI response (no delay)
     setActiveTab(tab)
     // Update URL asynchronously for bookmarking (non-blocking)
-    const newUrl = `/domain-search/${encodeURIComponent(domain)}?tab=${tab}`
+    const typeParam = searchType === 'keyword' ? '&type=keyword' : ''
+    const modeParam = searchType === 'keyword' && keywordMode !== 'full-url' ? `&mode=${keywordMode}` : ''
+    const newUrl = `/domain-search/${encodeURIComponent(domain)}?tab=${tab}${typeParam}${modeParam}`
     // Use startTransition to make URL update non-blocking
     router.replace(newUrl, { scroll: false })
   }
@@ -70,9 +79,10 @@ export default function DomainSearchPage() {
               onSearch={handleSearch}
               isLoading={false}
               targetDomain={domain}
+              keywordMode={searchType === 'keyword' ? keywordMode : undefined}
               onClear={handleClear}
             />
-            <DomainContent domain={domain} activeTab={activeTab} onTabChange={handleTabChange} />
+            <DomainContent domain={domain} searchType={searchType} keywordMode={searchType === 'keyword' ? keywordMode : undefined} activeTab={activeTab} onTabChange={handleTabChange} />
           </div>
         </main>
       </div>
@@ -82,10 +92,14 @@ export default function DomainSearchPage() {
 
 function DomainContent({ 
   domain, 
+  searchType,
+  keywordMode,
   activeTab, 
   onTabChange 
 }: { 
   domain: string
+  searchType: 'domain' | 'keyword'
+  keywordMode?: 'domain-only' | 'full-url'
   activeTab: string
   onTabChange: (tab: string) => void 
 }) {
@@ -94,15 +108,19 @@ function DomainContent({
 
   useEffect(() => {
     loadSummary()
-  }, [domain])
+  }, [domain, searchType, keywordMode])
 
   const loadSummary = async () => {
     setIsLoading(true)
     try {
+      const body: any = { targetDomain: domain, searchType }
+      if (searchType === 'keyword' && keywordMode) {
+        body.keywordMode = keywordMode
+      }
       const response = await fetch("/api/domain-recon/summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetDomain: domain }),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
@@ -148,15 +166,15 @@ function DomainContent({
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
-          <OverviewTab targetDomain={domain} />
+          <OverviewTab targetDomain={domain} searchType={searchType} keywordMode={keywordMode} />
         </TabsContent>
 
         <TabsContent value="subdomains" className="mt-4">
-          <SubdomainsTab targetDomain={domain} />
+          <SubdomainsTab targetDomain={domain} searchType={searchType} keywordMode={keywordMode} />
         </TabsContent>
 
         <TabsContent value="credentials" className="mt-4">
-          <CredentialsTab targetDomain={domain} />
+          <CredentialsTab targetDomain={domain} searchType={searchType} keywordMode={keywordMode} />
         </TabsContent>
       </Tabs>
     </div>

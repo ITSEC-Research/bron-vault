@@ -5,6 +5,7 @@ import { validateRequest } from "@/lib/auth"
 /**
  * Build WHERE clause for domain matching that supports subdomains
  * Matches both domain column and hostname extracted from URL
+ * EXISTING FUNCTION - NOT MODIFIED
  */
 function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: any[] } {
   // Extract hostname from URL expression (reusable)
@@ -33,6 +34,36 @@ function buildDomainWhereClause(targetDomain: string): { whereClause: string; pa
   }
 }
 
+/**
+ * Build WHERE clause for keyword search
+ * Supports two modes: domain-only (hostname only) or full-url (entire URL)
+ * NEW FUNCTION - SEPARATE FROM DOMAIN SEARCH
+ */
+function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: any[] } {
+  if (mode === 'domain-only') {
+    // Extract hostname from URL, then search keyword in hostname only
+    const hostnameExpr = `CASE 
+      WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
+        SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
+      ELSE
+        SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
+    END`
+    
+    const whereClause = `WHERE ${hostnameExpr} LIKE ? AND c.url IS NOT NULL`
+    return {
+      whereClause,
+      params: [`%${keyword}%`]
+    }
+  } else {
+    // Full URL mode: search keyword in entire URL (current behavior)
+    const whereClause = `WHERE c.url LIKE ? AND c.url IS NOT NULL`
+    return {
+      whereClause,
+      params: [`%${keyword}%`]
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   const user = await validateRequest(request)
   if (!user) {
@@ -41,21 +72,48 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { targetDomain, filters, pagination, searchQuery } = body
+    const { targetDomain, filters, pagination, searchQuery, searchType = 'domain' } = body
 
     if (!targetDomain || typeof targetDomain !== 'string') {
       return NextResponse.json({ error: "targetDomain is required" }, { status: 400 })
     }
 
+    // ============================================
+    // CODE PATH SEPARATION - CLEAR & MAINTAINABLE
+    // ============================================
+    
+    if (searchType === 'keyword') {
+      // ===== KEYWORD SEARCH PATH =====
+      // New code path - completely separate
+      const keyword = targetDomain.trim()
+      const keywordMode = body.keywordMode || 'full-url'
+      console.log("🔍 Credentials API called (keyword):", { keyword, keywordMode, filters, pagination, searchQuery })
+      const credentialsData = await getCredentialsData(keyword, filters, pagination, searchQuery, 'keyword', keywordMode)
+      console.log("✅ Credentials data retrieved (keyword):", {
+        dataCount: credentialsData.data?.length || 0,
+        pagination: credentialsData.pagination,
+        sample: credentialsData.data?.slice(0, 2),
+      })
+
+      return NextResponse.json({
+        success: true,
+        targetDomain: keyword,
+        searchType: 'keyword',
+        credentials: credentialsData.data || [],
+        pagination: credentialsData.pagination,
+      })
+    } else {
+      // ===== DOMAIN SEARCH PATH =====
+      // EXISTING CODE - NO CHANGES
     let normalizedDomain = targetDomain.trim().toLowerCase()
     normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '')
     normalizedDomain = normalizedDomain.replace(/^www\./, '')
     normalizedDomain = normalizedDomain.replace(/\/$/, '')
     normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
 
-    console.log("🔍 Credentials API called:", { normalizedDomain, filters, pagination, searchQuery })
-    const credentialsData = await getCredentialsData(normalizedDomain, filters, pagination, searchQuery)
-    console.log("✅ Credentials data retrieved:", {
+      console.log("🔍 Credentials API called (domain):", { normalizedDomain, filters, pagination, searchQuery })
+      const credentialsData = await getCredentialsData(normalizedDomain, filters, pagination, searchQuery, 'domain')
+      console.log("✅ Credentials data retrieved (domain):", {
       dataCount: credentialsData.data?.length || 0,
       pagination: credentialsData.pagination,
       sample: credentialsData.data?.slice(0, 2),
@@ -64,9 +122,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       targetDomain: normalizedDomain,
+        searchType: 'domain',
       credentials: credentialsData.data || [],
       pagination: credentialsData.pagination,
     })
+    }
   } catch (error) {
     console.error("❌ Error in credentials API:", error)
     return NextResponse.json(
@@ -80,10 +140,12 @@ export async function POST(request: NextRequest) {
 }
 
 async function getCredentialsData(
-  targetDomain: string,
+  query: string,
   filters?: any,
   pagination?: any,
-  searchQuery?: string
+  searchQuery?: string,
+  searchType: 'domain' | 'keyword' = 'domain',
+  keywordMode: 'domain-only' | 'full-url' = 'full-url'
 ) {
   const page = Number(pagination?.page) || 1
   const limit = Number(pagination?.limit) || 50
@@ -95,11 +157,13 @@ async function getCredentialsData(
     : 'created_at'
   const sortOrder = (pagination?.sortOrder || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
 
-  // Build WHERE clause for domain matching with subdomain support
-  const { whereClause, params: domainParams } = buildDomainWhereClause(targetDomain)
-  const params: any[] = [...domainParams]
+  // Build WHERE clause based on search type
+  const { whereClause, params: baseParams } = searchType === 'keyword'
+    ? buildKeywordWhereClause(query, keywordMode)
+    : buildDomainWhereClause(query)
+  const params: any[] = [...baseParams]
   
-  console.log("🔍 Building WHERE clause for domain:", targetDomain)
+  console.log("🔍 Building WHERE clause for:", searchType, query)
 
   let finalWhereClause = whereClause
   if (filters?.subdomain) {

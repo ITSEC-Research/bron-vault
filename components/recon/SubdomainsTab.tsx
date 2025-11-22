@@ -37,9 +37,11 @@ interface SubdomainItem {
 
 interface SubdomainsTabProps {
   targetDomain: string
+  searchType?: 'domain' | 'keyword'
+  keywordMode?: 'domain-only' | 'full-url'
 }
 
-export function SubdomainsTab({ targetDomain }: SubdomainsTabProps) {
+export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode }: SubdomainsTabProps) {
   const [data, setData] = useState<SubdomainItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -61,25 +63,30 @@ export function SubdomainsTab({ targetDomain }: SubdomainsTabProps) {
 
   useEffect(() => {
     loadData()
-  }, [targetDomain, page, sortBy, sortOrder, limit])
+  }, [targetDomain, page, sortBy, sortOrder, limit, searchType, keywordMode])
 
   const loadData = async () => {
     setIsLoading(true)
     try {
+      const body: any = {
+        targetDomain,
+        searchType,
+        pagination: {
+          page,
+          limit,
+          sortBy,
+          sortOrder,
+        },
+      }
+      if (searchType === 'keyword' && keywordMode) {
+        body.keywordMode = keywordMode
+      }
       const response = await fetch("/api/domain-recon/subdomains", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          targetDomain,
-          pagination: {
-            page,
-            limit,
-            sortBy,
-            sortOrder,
-          },
-        }),
+        body: JSON.stringify(body),
       })
 
       if (response.ok) {
