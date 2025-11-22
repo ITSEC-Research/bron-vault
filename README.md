@@ -71,7 +71,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 ![alt text](images/Bron-Vault-Device-Overview.png "Bron Vault Device Overview")
 
-![alt text](images/Bron-Vault-Domain-Search.png "Bron Vault Device Overview")
+![alt text](images/Bron-Vault-Domain-Keyword-Search.png "Bron Vault Device Overview")
 
 -----
 
