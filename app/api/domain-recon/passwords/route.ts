@@ -4,46 +4,52 @@ import { validateRequest } from "@/lib/auth"
 
 /**
  * Build WHERE clause for domain matching that supports subdomains
+ * OPTIMIZED: Avoid heavy string manipulation in SQL (REPLACE, SUBSTRING, CASE)
+ * Use simple LIKE patterns instead - much faster even if slightly less precise
  */
 function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: any[] } {
-  const hostnameExpr = `CASE 
-    WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-      LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1))
-    ELSE
-      LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1))
-  END`
-  
+  // Strategy: Check domain column (indexed) OR URL contains domain
+  // This avoids expensive string functions that prevent index usage
   const whereClause = `WHERE (
     c.domain = ? OR 
     c.domain LIKE CONCAT('%.', ?) OR
-    ${hostnameExpr} = ? OR
-    ${hostnameExpr} LIKE CONCAT('%.', ?)
+    c.url LIKE ? OR
+    c.url LIKE ?
   ) AND c.domain IS NOT NULL`
   
   return {
     whereClause,
-    params: [targetDomain, targetDomain, targetDomain, targetDomain]
+    params: [
+      targetDomain,                              // Exact domain match
+      targetDomain,                              // Subdomain match (%.target.com)
+      `%://${targetDomain}/%`,                   // Match: https://target.com/
+      `%://${targetDomain}:%`                    // Match: https://target.com:8080/
+    ]
   }
 }
 
 /**
  * Build WHERE clause for keyword search
+ * OPTIMIZED: Use simple LIKE instead of heavy string manipulation
  */
 function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: any[] } {
   if (mode === 'domain-only') {
-    const hostnameExpr = `CASE 
-      WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-        SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
-      ELSE
-        SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-    END`
-    
-    const whereClause = `WHERE ${hostnameExpr} LIKE ? AND c.url IS NOT NULL`
+    // For domain-only, check both domain column and URL
+    const whereClause = `WHERE (
+      c.domain LIKE ? OR
+      c.url LIKE ? OR
+      c.url LIKE ?
+    ) AND c.url IS NOT NULL`
     return {
       whereClause,
-      params: [`%${keyword}%`]
+      params: [
+        `%${keyword}%`,           // Domain column contains keyword
+        `%://%${keyword}%/%`,     // URL contains keyword in hostname
+        `%://%${keyword}%:%`       // URL contains keyword in hostname with port
+      ]
     }
   } else {
+    // Full URL mode: search keyword anywhere in URL
     const whereClause = `WHERE c.url LIKE ? AND c.url IS NOT NULL`
     return {
       whereClause,
@@ -87,43 +93,26 @@ export async function POST(request: NextRequest) {
       params = result.params
     }
 
-    console.log("🔑 Getting top passwords (separate endpoint)...")
+    console.log("🔑 Getting top passwords (optimized query)...")
     
-    // Use EXISTS for better performance
+    // OPTIMIZED QUERY:
+    // 1. Removed nested subquery - directly COUNT(DISTINCT device_id) in main query
+    // 2. Optimized password blacklist - use NOT IN for exact matches (faster than multiple NOT LIKE)
+    // 3. Simplified domain matching - uses LIKE instead of heavy string functions
+    // Result: 1 password per device for the domain, then count how many devices use each password
     const result = (await executeQuery(
       `SELECT 
-        ps.password,
-        COUNT(DISTINCT ps.device_id) as total_count
-      FROM password_stats ps
-      WHERE EXISTS (
-        SELECT 1
-        FROM credentials c
-        ${whereClause}
-        AND c.device_id = ps.device_id
-      )
-      AND ps.password IS NOT NULL 
-      AND ps.password != '' 
-      AND ps.password != ' '
-      AND TRIM(ps.password) != ''
-      AND LENGTH(TRIM(ps.password)) > 0
-      AND ps.password NOT LIKE '%null%'
-      AND ps.password NOT LIKE '%undefined%'
-      AND ps.password NOT LIKE '%N/A%'
-      AND ps.password NOT LIKE '%n/a%'
-      AND ps.password NOT LIKE '%none%'
-      AND ps.password NOT LIKE '%None%'
-      AND ps.password NOT LIKE '%NONE%'
-      AND ps.password NOT LIKE '%blank%'
-      AND ps.password NOT LIKE '%Blank%'
-      AND ps.password NOT LIKE '%BLANK%'
-      AND ps.password NOT LIKE '%empty%'
-      AND ps.password NOT LIKE '%Empty%'
-      AND ps.password NOT LIKE '%EMPTY%'
-      AND ps.password != '[NOT_SAVED]'
-      AND ps.password NOT LIKE '%[NOT_SAVED]%'
-      AND ps.password NOT REGEXP '^[[:space:]]*$'
-      GROUP BY ps.password
-      ORDER BY total_count DESC, ps.password ASC
+        c.password,
+        COUNT(DISTINCT c.device_id) as total_count
+      FROM credentials c
+      ${whereClause}
+      AND c.password IS NOT NULL
+      AND LENGTH(TRIM(c.password)) > 2
+      AND c.password NOT IN ('', ' ', 'null', 'undefined', 'N/A', 'n/a', 'none', 'None', 'NONE', 'blank', 'Blank', 'BLANK', 'empty', 'Empty', 'EMPTY', '[NOT_SAVED]')
+      AND c.password NOT LIKE '%[NOT_SAVED]%'
+      AND c.password NOT REGEXP '^[[:space:]]*$'
+      GROUP BY c.password
+      ORDER BY total_count DESC, c.password ASC
       LIMIT 10`,
       params
     )) as any[]
