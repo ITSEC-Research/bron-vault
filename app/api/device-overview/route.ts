@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
           -- Additional validation: must have at least 2 parts separated by dot (e.g., "example.com" not just "com")
           AND (LENGTH(extracted_host) - LENGTH(REPLACE(extracted_host, '.', ''))) >= 1
         ORDER BY count DESC 
-        LIMIT 8`,
+        LIMIT 7`,
         [deviceId]
       )) as any[]
 
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
             AND (LENGTH(domain) - LENGTH(REPLACE(domain, '.', ''))) >= 1
           GROUP BY domain 
           ORDER BY count DESC 
-          LIMIT 8`,
+          LIMIT 7`,
           [deviceId]
         )) as any[]
         topDomains = domainsFromColumn

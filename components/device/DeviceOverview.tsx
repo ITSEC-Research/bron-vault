@@ -206,17 +206,30 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
     }
   })
 
-  // Format file size distribution for chart
-  // Use consistent color for all bars since category is already clear from position
-  const chartFileSizes = (fileStatistics?.bySize || []).map((item, index) => ({
-    name: item.category,
-    value: item.count,
+  // Format file size distribution for chart - Static 6 categories (catch-all approach)
+  // Always show all 6 categories regardless of data, ensuring consistent layout
+  const staticCategories = [
+    '< 1 KB',
+    '1 KB - 10 KB',
+    '10 KB - 100 KB',
+    '100 KB - 1 MB',
+    '1 MB - 10 MB',
+    '> 10 MB' // Catch-all
+  ]
+  
+  const fileSizeMap = new Map(
+    (fileStatistics?.bySize || []).map((item: any) => [item.category, item.count])
+  )
+  
+  const chartFileSizes = staticCategories.map((category, index) => ({
+    name: category,
+    value: fileSizeMap.get(category) || 0, // Default to 0 if category doesn't exist in data
     color: "hsl(4, 100%, 45%)", // bron-accent-red - consistent color for all bars, matches Top Domains
   }))
 
-  // Format top domains for Horizontal Bar Chart (limit to 8)
+  // Format top domains for Horizontal Bar Chart (limit to 7)
   // Use consistent color for all bars since ranking is already clear from position
-  const chartDomains = (topDomains || []).slice(0, 8).map((item, index) => ({
+  const chartDomains = (topDomains || []).slice(0, 7).map((item, index) => ({
     name: item.domain && item.domain.length > 30 ? `${item.domain.substring(0, 30)}...` : (item.domain || "Unknown"),
     fullDomain: item.domain || "Unknown",
     value: item.count || 0,
@@ -548,88 +561,78 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
 
       {/* Charts Row 2: Top Domains & File Statistics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Top Domains Horizontal Bar Chart */}
-        <Card className="bg-bron-bg-tertiary border-bron-border">
-          <CardHeader className="pb-3 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold text-bron-text-primary flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              Top Domains
-            </CardTitle>
+        {/* Top Domains - Custom Bar Style (matching domain-search) */}
+        <Card className="bg-bron-bg-tertiary border-bron-border h-full flex flex-col">
+          <CardHeader className="!p-4 border-b border-bron-border">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <Globe className="h-4 w-4 mr-2 text-bron-text-muted" />
+                Top Domains
+              </CardTitle>
+              <span className="text-xs text-bron-text-muted">Top 7 by Volume</span>
+            </div>
           </CardHeader>
-          <CardContent className="px-4 pb-4">
+          <CardContent className="!pl-2 !pr-3 !pb-3 !pt-3 flex-1 overflow-auto">
             {chartDomains.length > 0 ? (
-              <div className="h-[380px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartDomains}
-                    layout="vertical"
-                    margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-                  >
-                    <XAxis 
-                      type="number" 
-                      tick={{ fill: "var(--bron-text-muted)", fontSize: 11 }}
-                      axisLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                      tickLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={120}
-                      tick={{ fill: "var(--bron-text-secondary)", fontSize: 11, fontWeight: 500 }}
-                      axisLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                      tickLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload || !payload.length) {
-                          return null
-                        }
-                        const data = payload[0]
-                        const value = data.value as number
-                        const payloadData = (data as any).payload || data
-                        const domain = payloadData?.fullDomain || payloadData?.name || "Unknown"
-                        const rank = payloadData?.rank || "?"
-                        
-                        return (
-                          <div
-                            style={{
-                              backgroundColor: "var(--bron-bg-tertiary)",
-                              border: "1px solid var(--bron-border)",
-                              borderRadius: "6px",
-                              color: "var(--bron-text-primary)",
-                              fontSize: "12px",
-                              padding: "8px 12px",
-                              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            <div style={{ color: "var(--bron-text-primary)", fontWeight: "500", marginBottom: "4px" }}>
-                              #{rank} - {domain}
-                            </div>
-                            <div style={{ color: "var(--bron-text-secondary)", fontSize: "11px" }}>
-                              {value} URL{value > 1 ? "s" : ""}
-                            </div>
-                          </div>
-                        )
-                      }}
-                    />
-                    <Bar
-                      dataKey="value"
-                      radius={[0, 6, 6, 0]}
+              <div className="space-y-2">
+                {chartDomains.map((item, index) => {
+                  const maxVal = Math.max(...chartDomains.map(d => d.value))
+                  const widthPercent = maxVal > 0 ? (item.value / maxVal) * 100 : 0
+                  const displayDomain = item.fullDomain || item.name || "Unknown"
+                  const isTruncated = displayDomain.length > 50
+
+                  return (
+                    <div 
+                      key={index} 
+                      className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-bron-bg-secondary/50 transition-colors"
                     >
-                      {chartDomains.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                          style={{
-                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer'
-                          }}
+                      {/* Rank Number */}
+                      <span className="w-8 text-xs font-mono text-bron-text-muted text-center mr-2">
+                        {item.rank}
+                      </span>
+
+                      {/* Progress Bar Container */}
+                      <div className="flex-1 relative h-8 bg-bron-bg-secondary/50 rounded-md overflow-hidden border border-bron-border group-hover:border-bron-border/70 transition-colors">
+                        {/* Background Progress Bar - Gradient Effect */}
+                        <div
+                          className="absolute top-0 left-0 h-full bg-red-500 opacity-10 group-hover:opacity-20 transition-all duration-500"
+                          style={{ width: `${widthPercent}%` }}
                         />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                        {/* Bottom accent line for progress */}
+                        <div
+                          className="absolute bottom-0 left-0 h-[2px] bg-red-500 opacity-60 group-hover:opacity-100 transition-all duration-500"
+                          style={{ width: `${widthPercent}%` }}
+                        />
+                        {/* Content inside the bar */}
+                        <div className="absolute inset-0 flex items-center justify-between px-3">
+                          <span 
+                            className="font-mono text-xs text-bron-text-secondary truncate z-10 max-w-[70%]"
+                            title={isTruncated ? displayDomain : undefined}
+                          >
+                            {displayDomain}
+                          </span>
+                          <span className="text-[10px] font-bold text-bron-text-muted bg-bron-bg-tertiary px-1.5 py-0.5 rounded border border-bron-border z-10">
+                            {item.value.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Tooltip for long domains - appears above */}
+                      {isTruncated && (
+                        <div className="absolute left-0 bottom-full mb-1 z-50 hidden group-hover:block pointer-events-none">
+                          <div className="bg-bron-bg-tertiary border border-bron-border rounded-md px-3 py-2 shadow-lg max-w-md">
+                            <p className="text-xs text-bron-text-primary font-mono break-all">
+                              {displayDomain}
+                            </p>
+                            <p className="text-[10px] text-bron-text-muted mt-1">
+                              {item.value} URL{item.value > 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             ) : (
               <div className="h-[380px] flex items-center justify-center">
@@ -639,96 +642,71 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
           </CardContent>
         </Card>
 
-        {/* File Size Distribution Horizontal Bar Chart */}
-        <Card className="bg-bron-bg-tertiary border-bron-border">
-          <CardHeader className="pb-3 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold text-bron-text-primary flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              File Size Distribution
-            </CardTitle>
+        {/* File Size Distribution - Custom Bar Style (matching domain-search) */}
+        <Card className="bg-bron-bg-tertiary border-bron-border h-full flex flex-col">
+          <CardHeader className="!p-4 border-b border-bron-border">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center text-bron-text-primary text-lg">
+                <BarChart3 className="h-4 w-4 mr-2 text-bron-text-muted" />
+                File Size Distribution
+              </CardTitle>
+              <span className="text-xs text-bron-text-muted">By Category</span>
+            </div>
           </CardHeader>
-          <CardContent className="px-4 pb-4">
-            {chartFileSizes.length > 0 ? (
-              <div className="h-[320px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={chartFileSizes}
-                    layout="vertical"
-                    margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-                  >
-                    <XAxis 
-                      type="number" 
-                      tick={{ fill: "var(--bron-text-muted)", fontSize: 11 }}
-                      axisLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                      tickLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      width={120}
-                      tick={{ fill: "var(--bron-text-secondary)", fontSize: 11, fontWeight: 500 }}
-                      axisLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                      tickLine={{ stroke: "var(--bron-border)", strokeOpacity: 0.3 }}
-                    />
-                    <Tooltip
-                      content={({ active, payload }) => {
-                        if (!active || !payload || !payload.length) {
-                          return null
-                        }
-                        const data = payload[0]
-                        const value = data.value as number
-                        const payloadData = (data as any).payload || data
-                        const category = payloadData?.name || "Unknown"
-                        
-                        return (
+          <CardContent className="!p-0 flex flex-col flex-1 min-h-0">
+            <div className="!pl-2 !pr-3 !pb-3 !pt-3 flex-1 overflow-auto">
+              {chartFileSizes.length > 0 ? (
+                <div className="space-y-2">
+                  {chartFileSizes.map((item, index) => {
+                    const maxVal = Math.max(...chartFileSizes.map(d => d.value), 1) // Ensure at least 1 to avoid division by zero
+                    const widthPercent = maxVal > 0 ? (item.value / maxVal) * 100 : 0
+                    const displayCategory = item.name || "Unknown"
+
+                    return (
+                      <div 
+                        key={index} 
+                        className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-bron-bg-secondary/50 transition-colors"
+                      >
+                        {/* Rank/Index Number */}
+                        <span className="w-8 text-xs font-mono text-bron-text-muted text-center mr-2">
+                          {index + 1}
+                        </span>
+
+                        {/* Progress Bar Container */}
+                        <div className="flex-1 relative h-8 bg-bron-bg-secondary/50 rounded-md overflow-hidden border border-bron-border group-hover:border-bron-border/70 transition-colors">
+                          {/* Background Progress Bar - Gradient Effect */}
                           <div
-                            style={{
-                              backgroundColor: "var(--bron-bg-tertiary)",
-                              border: "1px solid var(--bron-border)",
-                              borderRadius: "6px",
-                              color: "var(--bron-text-primary)",
-                              fontSize: "12px",
-                              padding: "8px 12px",
-                              boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            <div style={{ color: "var(--bron-text-primary)", fontWeight: "500", marginBottom: "4px" }}>
-                              {category}
-                            </div>
-                            <div style={{ color: "var(--bron-text-secondary)", fontSize: "11px" }}>
-                              {value} file{value > 1 ? "s" : ""}
-                            </div>
+                            className="absolute top-0 left-0 h-full bg-red-500 opacity-10 group-hover:opacity-20 transition-all duration-500"
+                            style={{ width: `${widthPercent}%` }}
+                          />
+                          {/* Bottom accent line for progress */}
+                          <div
+                            className="absolute bottom-0 left-0 h-[2px] bg-red-500 opacity-60 group-hover:opacity-100 transition-all duration-500"
+                            style={{ width: `${widthPercent}%` }}
+                          />
+                          {/* Content inside the bar */}
+                          <div className="absolute inset-0 flex items-center justify-between px-3">
+                            <span className="font-mono text-xs text-bron-text-secondary truncate z-10 max-w-[70%]">
+                              {displayCategory}
+                            </span>
+                            <span className="text-[10px] font-bold text-bron-text-muted bg-bron-bg-tertiary px-1.5 py-0.5 rounded border border-bron-border z-10">
+                              {item.value.toLocaleString()}
+                            </span>
                           </div>
-                        )
-                      }}
-                    />
-                    <Bar
-                      dataKey="value"
-                      radius={[0, 6, 6, 0]}
-                    >
-                      {chartFileSizes.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.color}
-                          style={{
-                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer'
-                          }}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-[320px] flex items-center justify-center">
-                <p className="text-xs text-bron-text-muted">No file data available</p>
-              </div>
-            )}
-            {/* Summary info below chart */}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="h-[320px] flex items-center justify-center">
+                  <p className="text-xs text-bron-text-muted">No file data available</p>
+                </div>
+              )}
+            </div>
+            {/* Summary info below chart - always visible */}
             {(fileStatistics?.totalDirectories > 0 || fileStatistics?.totalTxtFiles > 0 || fileStatistics?.totalOtherFiles > 0) && (
-              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-bron-border">
+              <div className="flex items-center gap-4 px-4 py-3 mt-auto border-t border-bron-border bg-bron-bg-secondary/30">
                 {fileStatistics.totalDirectories > 0 && (
                   <div className="flex items-center gap-2">
                     <FolderOpen className="h-4 w-4 text-bron-text-muted" />

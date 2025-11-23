@@ -23,17 +23,6 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     - A successful match reveals a "Supporting Files" tab with all data from the same device.
     - Seamlessly explore correlated cookies, browser history, and system files in a single click.
 
-  * **Domain Discovery**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
-    - Enter a `domain` or `keyword` to discover all related subdomains, paths, and exposed credentials.
-    - **Overview Tab**: 
-      - Timeline visualization showing when credentials were logged by stealers (log-date tracking).
-      - Top 10 most-used passwords observed for the queried domain or keyword.
-      - Top 10 subdomains by credential volume with horizontal bar charts.
-      - Top 10 paths by credential volume with horizontal bar charts.
-      - Summary statistics showing total subdomains, paths, credentials, and affected devices.
-    - **Subdomains Tab**: Browse all discovered subdomains with associated paths and credential counts. Includes deduplication feature that aggregates subdomains for clearer insights, automatically summing credential counts when multiple paths exist for the same subdomain.
-    - **Credentials Tab**: View all credentials associated with the domain, including URLs, usernames, passwords, log dates, and direct links to correlated devices.
-
   * **Device Detail View**: Explore individual device information with comprehensive details.
     - **Overview Tab**: Get an at-a-glance summary with engaging visualizations including:
       - Summary cards showing total credentials, software, and files
@@ -45,6 +34,17 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     - **User Credentials Tab**: Browse all credentials associated with the device
     - **Software Installed Tab**: See all installed software detected on the device
     - **Files Tab**: Explore the complete file structure with tree viewer
+
+  * **Domain Discovery**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
+    - Enter a `domain` or `keyword` to discover all related subdomains, paths, and exposed credentials.
+    - **Overview Tab**: 
+      - Timeline visualization showing when credentials were logged by stealers (log-date tracking).
+      - Top 10 most-used passwords observed for the queried domain or keyword.
+      - Top 10 subdomains by credential volume with horizontal bar charts.
+      - Top 10 paths by credential volume with horizontal bar charts.
+      - Summary statistics showing total subdomains, paths, credentials, and affected devices.
+    - **Subdomains Tab**: Browse all discovered subdomains with associated paths and credential counts. Includes deduplication feature that aggregates subdomains for clearer insights, automatically summing credential counts when multiple paths exist for the same subdomain.
+    - **Credentials Tab**: View all credentials associated with the domain, including URLs, usernames, passwords, log dates, and direct links to correlated devices.
 
   * **Statistical Dashboard**: Get a strategic overview of the data through clear visualizations, including:
       - Total domains and URLs (including IPs)
@@ -69,7 +69,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 ![alt text](images/Bron-Vault-Host-Information.png "Bron Vault Host Information")
 
-![alt text](images/Bron-Vault-Device-Overview.png "Bron Vault Device Overview")
+![alt text](images/Bron-Vault-DeviceOverview.png "Bron Vault Device Overview")
 
 ![alt text](images/Bron-Vault-Domain-Keyword-Search.png "Bron Vault Device Overview")
 
