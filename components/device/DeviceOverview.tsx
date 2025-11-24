@@ -423,17 +423,21 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                       minPointSize={15}
                       background={{ fill: "var(--bron-bg-secondary)", opacity: 0.3 }}
                     >
-                      {chartPasswords.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.color}
-                          style={{
-                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-                            transition: 'all 0.2s ease',
-                            cursor: 'pointer'
-                          }}
-                        />
-                      ))}
+                      {chartPasswords.map((entry, index) => {
+                        // Convert HSL to HSLA with opacity for softer appearance
+                        const colorWithOpacity = entry.color.replace('hsl(', 'hsla(').replace(')', ', 0.75)')
+                        return (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={colorWithOpacity}
+                            style={{
+                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+                              transition: 'all 0.2s ease',
+                              cursor: 'pointer'
+                            }}
+                          />
+                        )
+                      })}
                     </RadialBar>
                     <Tooltip
                       content={({ active, payload }) => {
