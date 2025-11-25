@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     let searchResults: any[]
 
     if (type === "email") {
-      // Search for email in file content - look in ALL text files, not just credentials table
+      // Search for email in credentials table - use username index
       searchResults = await executeQuery(
         `
         SELECT 
@@ -38,11 +38,20 @@ export async function POST(request: NextRequest) {
         JOIN credentials c ON d.device_id = c.device_id
         WHERE c.username LIKE ?
         ORDER BY d.upload_date DESC, d.device_name, c.url
+        LIMIT 1000
       `,
         [`%${query}%`],
       ) as any[]
     } else if (type === "domain") {
-      // Search for domain in file content - look in ALL text files
+      // Optimized search: Use domain index first, then URL LIKE as fallback
+      // Extract hostname from URL for better matching
+      const hostnameExpr = `CASE 
+        WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
+          LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1))
+        ELSE
+          LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1))
+      END`
+      
       searchResults = await executeQuery(
         `
         SELECT 
@@ -57,10 +66,15 @@ export async function POST(request: NextRequest) {
           c.file_path
         FROM devices d
         JOIN credentials c ON d.device_id = c.device_id
-        WHERE c.url LIKE ? OR c.domain LIKE ?
+        WHERE 
+          c.domain LIKE ? OR 
+          c.domain = ? OR
+          ${hostnameExpr} LIKE ? OR
+          c.url LIKE ?
         ORDER BY d.upload_date DESC, d.device_name, c.url
+        LIMIT 1000
       `,
-        [`%${query}%`, `%${query}%`],
+        [`%${query}%`, query, `%${query}%`, `%${query}%`],
       ) as any[]
     } else {
       return NextResponse.json({ error: "Invalid search type" }, { status: 400 })
@@ -111,27 +125,24 @@ export async function POST(request: NextRequest) {
 
     console.log(`📊 Grouped by devices: ${deviceMap.size} devices found`)
 
-    // Get complete file list and system information for each matching device
+    // OPTIMIZATION: Only get total file count and system info (log_date) for each device
+    // Don't load all files - that will be loaded lazily when device is clicked
     for (const [deviceId, device] of deviceMap) {
-      // Get file list
-      const allFiles = await executeQuery(
+      // Get only file count (much faster than loading all files)
+      const fileCount = await executeQuery(
         `
-        SELECT file_path, file_name, parent_path, is_directory, file_size, 
-               CASE WHEN content IS NOT NULL OR local_file_path IS NOT NULL THEN 1 ELSE 0 END as has_content
-        FROM files 
-        WHERE device_id = ?
-        ORDER BY file_path
+        SELECT COUNT(*) as total FROM files WHERE device_id = ?
       `,
         [deviceId],
       ) as any[]
 
-      device.files = allFiles
-      device.totalFiles = (allFiles as any[]).length
+      device.totalFiles = fileCount[0]?.total || 0
+      device.files = [] // Empty array - will be loaded when device is clicked
 
-      // Get system information from systeminformation table
+      // Get only system information (specifically log_date) - lightweight query
       const systemInfo = await executeQuery(
         `
-        SELECT os, computer_name, ip_address, country, file_path, username
+        SELECT log_date
         FROM systeminformation
         WHERE device_id = ?
         LIMIT 1
@@ -140,13 +151,7 @@ export async function POST(request: NextRequest) {
       ) as any[]
 
       if (systemInfo.length > 0) {
-        const sysInfo = systemInfo[0]
-        device.operatingSystem = sysInfo.os || undefined
-        device.hostname = sysInfo.computer_name || undefined
-        device.ipAddress = sysInfo.ip_address || undefined
-        device.country = sysInfo.country || undefined
-        device.filePath = sysInfo.file_path || undefined
-        device.username = sysInfo.username || undefined
+        device.logDate = systemInfo[0].log_date || undefined
       }
     }
 

@@ -32,13 +32,26 @@ export async function processZipWithBinaryStorage(
   logWithBroadcast: (message: string, type?: "info" | "success" | "warning" | "error") => void,
 ): Promise<ProcessingResult> {
   try {
+    const fileSizeMB = (arrayBuffer.byteLength / (1024 * 1024)).toFixed(2)
     logWithBroadcast(
-      `🚀 Processing ZIP file with BINARY STORAGE SUPPORT, size: ${arrayBuffer.byteLength} bytes`,
+      `🚀 Processing ZIP file with BINARY STORAGE SUPPORT, size: ${arrayBuffer.byteLength} bytes (${fileSizeMB} MB)`,
       "info",
     )
 
+    logWithBroadcast("📦 Loading ZIP file into JSZip...", "info")
     const zip = new JSZip()
-    const zipData = await zip.loadAsync(arrayBuffer)
+    let zipData
+    try {
+      zipData = await zip.loadAsync(arrayBuffer)
+      logWithBroadcast(`✅ ZIP loaded successfully, total entries: ${Object.keys(zipData.files).length}`, "success")
+    } catch (zipLoadError) {
+      const errorMsg = zipLoadError instanceof Error ? zipLoadError.message : String(zipLoadError)
+      logWithBroadcast(`❌ Failed to load ZIP file: ${errorMsg}`, "error")
+      if (zipLoadError instanceof Error && zipLoadError.stack) {
+        logWithBroadcast(`📋 Error stack: ${zipLoadError.stack}`, "error")
+      }
+      throw new Error(`Failed to load ZIP file: ${errorMsg}`)
+    }
 
     logWithBroadcast(`📦 ZIP loaded successfully, total entries: ${Object.keys(zipData.files).length}`, "info")
 
@@ -232,7 +245,22 @@ export async function processZipWithBinaryStorage(
       structureInfo,
     }
   } catch (error) {
-    logWithBroadcast("💥 Processing error:" + error, "error")
-    throw new Error(`Failed to process zip file: ${error instanceof Error ? error.message : "Unknown error"}`)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    logWithBroadcast(`💥 Processing error: ${errorMessage}`, "error")
+    if (errorStack) {
+      logWithBroadcast(`📋 Error stack: ${errorStack}`, "error")
+    }
+    
+    // Check for common error types
+    if (errorMessage.includes("memory") || errorMessage.includes("allocation") || errorMessage.includes("heap") || errorMessage.includes("out of memory")) {
+      logWithBroadcast(
+        "💡 TIP: File terlalu besar untuk diproses. JSZip memuat seluruh file ke memory. Untuk file > 1GB, pertimbangkan menggunakan streaming ZIP reader.",
+        "warning"
+      )
+    }
+    
+    throw new Error(`Failed to process zip file: ${errorMessage}`)
   }
 }

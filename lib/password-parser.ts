@@ -50,6 +50,47 @@ export function logPasswordInfo(password: string, context: string): void {
   }
 }
 
+// Maximum username length in database (VARCHAR(500))
+const MAX_USERNAME_LENGTH = 500
+
+/**
+ * Truncate username to fit database VARCHAR(500) constraint
+ * Returns truncated username and logs warning if truncation occurred
+ * @param username - The username to truncate
+ * @param context - Context for logging (e.g., file path or URL)
+ * @returns Object with truncated username and whether truncation occurred
+ */
+export function truncateUsername(
+  username: string | null | undefined,
+  context?: string
+): { username: string; wasTruncated: boolean; originalLength: number } {
+  if (!username) {
+    return { username: username || "", wasTruncated: false, originalLength: 0 }
+  }
+
+  const originalLength = username.length
+
+  if (originalLength <= MAX_USERNAME_LENGTH) {
+    return { username, wasTruncated: false, originalLength }
+  }
+
+  // Truncate to max length
+  const truncated = username.substring(0, MAX_USERNAME_LENGTH)
+  
+  // Log warning with context
+  const contextInfo = context ? ` (${context})` : ""
+  console.warn(
+    `⚠️ Username truncated from ${originalLength} to ${MAX_USERNAME_LENGTH} characters${contextInfo}. ` +
+    `Original: "${username.substring(0, 50)}..." → Truncated: "${truncated.substring(0, 50)}..."`
+  )
+
+  return {
+    username: truncated,
+    wasTruncated: true,
+    originalLength,
+  }
+}
+
 export function analyzePasswordFile(content: string): {
   credentialCount: number
   domainCount: number
