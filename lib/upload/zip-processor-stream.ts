@@ -461,8 +461,9 @@ export async function processZipStream(
     logWithBroadcast(`   - Total files: ${totalFiles}`, "info")
     logWithBroadcast(`   - Total binary files saved: ${totalBinaryFiles}`, "info")
 
-    // Clear analytics cache
-    await executeQuery("DELETE FROM analytics_cache WHERE cache_key LIKE 'stats_%'")
+    // Clear all analytics cache to ensure fresh data after upload
+    // This ensures users see new data immediately, not cached old data
+    await executeQuery("DELETE FROM analytics_cache WHERE cache_key IN ('stats_main', 'browser_analysis', 'software_analysis', 'top_tlds')")
 
     // Close zipfile2 to free resources
     try {

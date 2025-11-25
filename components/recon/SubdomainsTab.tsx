@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Globe, Link, ArrowUpDown, ArrowUp, ArrowDown, Filter, MoreHorizontal, Key } from "lucide-react"
+import { LoadingState, LoadingTable } from "@/components/ui/loading"
 import {
   Pagination,
   PaginationContent,
@@ -279,12 +280,16 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
 
         {/* Table */}
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-bron-text-muted">Loading...</p>
+          <div className="py-8">
+            <LoadingState 
+              type="data" 
+              message="Loading subdomains data..." 
+              size="md"
+            />
           </div>
         ) : filteredData.length === 0 ? (
           <div className="flex items-center justify-center h-64">
-            <p className="text-bron-text-muted">No data available</p>
+            <p className="text-bron-text-muted">No data available for this search</p>
           </div>
         ) : (
           <>

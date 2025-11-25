@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/mysql";
+import { pool, executeQuery } from "@/lib/mysql";
 import type { RowDataPacket } from "mysql2";
 import { validateRequest } from "@/lib/auth";
 
@@ -16,12 +16,39 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Query to get unique browsers per device_id
+    // Check cache first
+    const cacheResult = (await executeQuery(
+      "SELECT cache_data FROM analytics_cache WHERE cache_key = 'browser_analysis' AND expires_at > NOW()"
+    )) as any[]
+
+    if (Array.isArray(cacheResult) && cacheResult.length > 0) {
+      const cached = cacheResult[0].cache_data
+      let parsed: any = null
+
+      try {
+        if (typeof cached === "string") {
+          parsed = JSON.parse(cached)
+        } else if (typeof cached === "object" && cached !== null) {
+          parsed = cached
+        }
+      } catch (e) {
+        console.warn("Browser analysis cache parse failed, will recalc")
+      }
+
+      if (parsed && parsed.success && parsed.browserAnalysis) {
+        return NextResponse.json(parsed)
+      }
+    }
+
+    // Optimized query: Get unique browsers per device_id directly with COUNT
+    // This processes much less data than fetching all rows
     const [results] = await pool.query<RowDataPacket[]>(`
-      SELECT DISTINCT device_id, browser 
+      SELECT 
+        browser,
+        COUNT(DISTINCT device_id) as device_count
       FROM credentials 
       WHERE browser IS NOT NULL AND browser != ''
-      ORDER BY device_id, browser
+      GROUP BY browser
     `);
 
     if (!Array.isArray(results)) {
@@ -67,9 +94,9 @@ export async function GET(request: NextRequest) {
           .join(' ');
       }
 
-      // Count unique browsers per device
+      // Aggregate counts for normalized browser names
       if (normalizedBrowser) {
-        browserCounts[normalizedBrowser] = (browserCounts[normalizedBrowser] || 0) + 1;
+        browserCounts[normalizedBrowser] = (browserCounts[normalizedBrowser] || 0) + Number(row.device_count);
       }
     });
 
@@ -79,10 +106,18 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10); // Top 10 browsers
 
-    return NextResponse.json({ 
+    const result = { 
       success: true, 
       browserAnalysis 
-    });
+    };
+
+    // Cache for 10 minutes
+    await executeQuery(
+      "INSERT INTO analytics_cache (cache_key, cache_data, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE)) ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)",
+      ["browser_analysis", JSON.stringify(result)]
+    );
+
+    return NextResponse.json(result);
 
   } catch (error) {
     console.error("Browser analysis error:", error);

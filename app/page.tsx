@@ -93,14 +93,15 @@ export default function SearchPage() {
   const [selectedFileType, setSelectedFileType] = useState<'text' | 'image' | null>(null)
   const [searchActive, setSearchActive] = useState(false)
 
-  // Load credentials, software, and files when device is selected and reset password visibility
+  // Load device info, credentials, software, and files when device is selected and reset password visibility
   // Use deviceId as dependency instead of entire selectedDevice object to prevent infinite loop
   useEffect(() => {
     if (selectedDevice?.deviceId) {
-      console.log("🔄 Device selected, loading credentials, software, and files for:", selectedDevice.deviceId)
+      console.log("🔄 Device selected, loading device info, credentials, software, and files for:", selectedDevice.deviceId)
       setShowPasswords(false) // Reset password visibility for each device
       setCredentialsSearchQuery("") // Reset search query for each device
       setSoftwareSearchQuery("") // Reset software search query for each device
+      loadDeviceInfo(selectedDevice.deviceId)
       loadDeviceCredentials(selectedDevice.deviceId)
       loadDeviceSoftware(selectedDevice.deviceId)
       // Only load files if they haven't been loaded yet (empty array means not loaded)
@@ -134,6 +135,51 @@ export default function SearchPage() {
     : []
 
 
+
+  // Load device info function (OS, IP Address, Username, Hostname, Country, Path)
+  const loadDeviceInfo = async (deviceId: string) => {
+    console.log("🚀 Starting to load device info for device:", deviceId)
+
+    try {
+      console.log("📡 Making API call to /api/device-info")
+      const response = await fetch("/api/device-info", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deviceId }),
+      })
+
+      console.log("📡 API Response status:", response.status)
+      console.log("📡 API Response ok:", response.ok)
+
+      if (response.ok) {
+        const deviceInfo = await response.json()
+        console.log("✅ API returned device info:", deviceInfo)
+
+        // Update selectedDevice with system information using functional update
+        setSelectedDevice((prevDevice) => {
+          if (prevDevice && prevDevice.deviceId === deviceId) {
+            return {
+              ...prevDevice,
+              operatingSystem: deviceInfo.operatingSystem,
+              ipAddress: deviceInfo.ipAddress,
+              username: deviceInfo.username,
+              hostname: deviceInfo.hostname,
+              country: deviceInfo.country,
+              filePath: deviceInfo.filePath,
+            }
+          }
+          return prevDevice
+        })
+      } else {
+        const errorData = await response.json()
+        console.error("❌ API Error loading device info:", errorData)
+      }
+    } catch (error) {
+      console.error("❌ Failed to load device info:", error)
+    }
+  }
 
   // Load device credentials function
   const loadDeviceCredentials = async (deviceId: string) => {

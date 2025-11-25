@@ -95,21 +95,31 @@ function DashboardContent() {
   const loadDashboardData = async () => {
     setIsLoading(true)
     try {
-      // Load stats for dashboard
-      const statsResponse = await fetch("/api/stats")
+      // Load all data in parallel for faster loading
+      const [
+        statsResponse,
+        tldsResponse,
+        rssResponse,
+        ransomwareResponse,
+        browserResponse,
+        softwareResponse
+      ] = await Promise.all([
+        fetch("/api/stats"),
+        fetch("/api/top-tlds"),
+        fetch("/api/rss-feeds?source=malware-traffic"),
+        fetch("/api/rss-feeds?source=ransomware-live"),
+        fetch("/api/browser-analysis"),
+        fetch("/api/software-analysis")
+      ])
+
+      // Process stats response (contains both stats and top passwords)
       if (statsResponse.ok) {
         const statsData = await statsResponse.json()
         setStats(statsData.stats)
-      }
-      // Load top passwords
-      const passwordsResponse = await fetch("/api/stats")
-      if (passwordsResponse.ok) {
-        const passwordsData = await passwordsResponse.json()
-        setTopPasswords(passwordsData.topPasswords || [])
+        setTopPasswords(statsData.topPasswords || [])
       }
 
-      // Load top TLDs - FIXED: Properly handle the response structure
-      const tldsResponse = await fetch("/api/top-tlds")
+      // Process top TLDs response
       if (tldsResponse.ok) {
         const tldsData = await tldsResponse.json()
         console.log("📊 TLDs API Response:", tldsData)
@@ -118,16 +128,13 @@ function DashboardContent() {
           setTopTLDs(tldsData)
         } else if (tldsData.topTLDs && Array.isArray(tldsData.topTLDs)) {
           setTopTLDs(tldsData.topTLDs)
-        } else if (Array.isArray(tldsData)) {
-          setTopTLDs(tldsData)
         } else {
           console.warn("Unexpected TLDs response structure:", tldsData)
           setTopTLDs([])
         }
       }
 
-      // Load RSS feeds - FIXED: Add required source parameter
-      const rssResponse = await fetch("/api/rss-feeds?source=malware-traffic")
+      // Process RSS feeds response
       if (rssResponse.ok) {
         const rssData = await rssResponse.json()
         console.log("📡 RSS API Response:", rssData)
@@ -144,8 +151,7 @@ function DashboardContent() {
         console.error("RSS API failed:", rssResponse.status)
       }
 
-      // Load Ransomware Live RSS feeds
-      const ransomwareResponse = await fetch("/api/rss-feeds?source=ransomware-live")
+      // Process Ransomware Live RSS feeds response
       if (ransomwareResponse.ok) {
         const ransomwareData = await ransomwareResponse.json()
         console.log("🔒 Ransomware RSS API Response:", ransomwareData)
@@ -162,8 +168,7 @@ function DashboardContent() {
         console.error("Ransomware RSS API failed:", ransomwareResponse.status)
       }
 
-      // Load browser analysis
-      const browserResponse = await fetch("/api/browser-analysis")
+      // Process browser analysis response
       if (browserResponse.ok) {
         const browserData = await browserResponse.json()
         console.log("🌐 Browser Analysis API Response:", browserData)
@@ -177,8 +182,7 @@ function DashboardContent() {
         console.error("Browser Analysis API failed:", browserResponse.status)
       }
 
-      // Load software analysis
-      const softwareResponse = await fetch("/api/software-analysis")
+      // Process software analysis response
       if (softwareResponse.ok) {
         const softwareData = await softwareResponse.json()
         console.log("📦 Software Analysis API Response:", softwareData)

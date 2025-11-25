@@ -10,6 +10,7 @@ import { OverviewTab } from "@/components/recon/OverviewTab"
 import { SubdomainsTab } from "@/components/recon/SubdomainsTab"
 import { CredentialsTab } from "@/components/recon/CredentialsTab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { LoadingState, LoadingCard } from "@/components/ui/loading"
 
 interface SummaryStats {
   totalSubdomains: number
@@ -138,7 +139,17 @@ function DomainContent({
 
   return (
     <div className="space-y-4">
-      {summary && <ReconSummaryCards stats={summary} />}
+      {/* Loading state for summary cards */}
+      {isLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+          <LoadingCard />
+        </div>
+      ) : summary ? (
+        <ReconSummaryCards stats={summary} />
+      ) : null}
       
       <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
         <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-3 bg-bron-bg-tertiary border border-bron-border h-8">

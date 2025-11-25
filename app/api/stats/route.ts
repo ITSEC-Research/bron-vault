@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { executeQuery } from "@/lib/mysql"
+import { executeQuery, ensurePerformanceIndexes } from "@/lib/mysql"
 import { logInfo, logError } from "@/lib/logger"
 import { validateRequest } from "@/lib/auth"
 
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log("📊 Loading stats...")
 
-    // Check cache first
+    // Check cache first (indexes are ensured during database initialization, not here)
     const cacheResult = (await executeQuery(
       "SELECT cache_data FROM analytics_cache WHERE cache_key = 'stats_main' AND expires_at > NOW()",
     )) as any[]
@@ -45,99 +45,81 @@ export async function GET(request: NextRequest) {
 
     console.log("📊 Calculating fresh stats...")
 
-    // Get basic stats
-    const deviceCount = await executeQuery("SELECT COUNT(*) as count FROM devices")
-    const totalDevices = (deviceCount as any[])[0].count
-    console.log(`📊 Total devices: ${totalDevices}`)
-
-    const uniqueNames = await executeQuery("SELECT COUNT(DISTINCT device_name_hash) as count FROM devices")
-    const uniqueDeviceNames = (uniqueNames as any[])[0].count
-    console.log(`📊 Unique device names: ${uniqueDeviceNames}`)
-
-    const duplicateNames = await executeQuery(`
-      SELECT COUNT(*) as count 
-      FROM (
-        SELECT device_name_hash 
-        FROM devices 
-        GROUP BY device_name_hash 
-        HAVING COUNT(*) > 1
-      ) as duplicates
-    `)
-    const duplicateDeviceNames = (duplicateNames as any[])[0].count
-    console.log(`📊 Duplicate device names: ${duplicateDeviceNames}`)
-
-    const fileCount = await executeQuery("SELECT COUNT(*) as count FROM files WHERE is_directory = FALSE")
-    const totalFiles = (fileCount as any[])[0].count
-    console.log(`📊 Total files: ${totalFiles}`)
-
-    // Aggregated stats
-    const aggregatedStats = await executeQuery(`
-      SELECT 
-        SUM(total_credentials) as total_credentials,
-        SUM(total_domains) as total_domains,
-        SUM(total_urls) as total_urls
-      FROM devices
-    `)
-    const aggStats = (aggregatedStats as any[])[0]
-    console.log(`📊 Aggregated stats:`, aggStats)
-
-    // Top passwords
-    const topPasswords = await executeQuery(`
-      SELECT password, COUNT(DISTINCT device_id) as total_count
-      FROM (
-        SELECT DISTINCT device_id, password
+    // Run all queries in parallel for maximum speed
+    const [
+      deviceCountResult,
+      uniqueNamesResult,
+      fileCountResult,
+      aggregatedStatsResult,
+      topPasswordsResult,
+      recentDevicesResult,
+      batchStatsResult
+    ] = await Promise.all([
+      executeQuery("SELECT COUNT(*) as count FROM devices"),
+      executeQuery("SELECT COUNT(DISTINCT device_name_hash) as count FROM devices"),
+      executeQuery("SELECT COUNT(*) as count FROM files WHERE is_directory = FALSE"),
+      executeQuery(`
+        SELECT 
+          SUM(total_credentials) as total_credentials,
+          SUM(total_domains) as total_domains,
+          SUM(total_urls) as total_urls
+        FROM devices
+      `),
+      // Optimized: Remove nested subquery and simplify filters - use NOT IN for exact matches
+      executeQuery(`
+        SELECT password, COUNT(DISTINCT device_id) as total_count
         FROM password_stats
         WHERE password IS NOT NULL 
-          AND password != ''
-          AND password != ' '
-          AND TRIM(password) != ''
-          AND LENGTH(TRIM(password)) > 0
-          AND password NOT LIKE '%null%'
-          AND password NOT LIKE '%undefined%'
-          AND password NOT LIKE '%N/A%'
-          AND password NOT LIKE '%n/a%'
-          AND password NOT LIKE '%none%'
-          AND password NOT LIKE '%None%'
-          AND password NOT LIKE '%NONE%'
-          AND password NOT LIKE '%blank%'
-          AND password NOT LIKE '%Blank%'
-          AND password NOT LIKE '%BLANK%'
-          AND password NOT LIKE '%empty%'
-          AND password NOT LIKE '%Empty%'
-          AND password NOT LIKE '%EMPTY%'
-          AND password != '[NOT_SAVED]'
+          AND LENGTH(TRIM(password)) > 2
+          AND password NOT IN ('', ' ', 'null', 'undefined', 'N/A', 'n/a', 'none', 'None', 'NONE', 'blank', 'Blank', 'BLANK', 'empty', 'Empty', 'EMPTY', '[NOT_SAVED]')
           AND password NOT LIKE '%[NOT_SAVED]%'
-          AND password NOT REGEXP '^[[:space:]]*$'
-      ) as unique_passwords
-      GROUP BY password
-      ORDER BY total_count DESC, password ASC
-      LIMIT 5
-    `)
-    const topPasswordsArray = topPasswords as any[]
+          AND TRIM(password) REGEXP '^[^[:space:]]+$'
+        GROUP BY password
+        ORDER BY total_count DESC, password ASC
+        LIMIT 5
+      `),
+      executeQuery(`
+        SELECT device_id, device_name, upload_batch, upload_date, total_files, total_credentials, total_domains, total_urls
+        FROM devices 
+        ORDER BY upload_date DESC 
+        LIMIT 10
+      `),
+      executeQuery(`
+        SELECT 
+          upload_batch,
+          COUNT(*) as devices_count,
+          SUM(total_credentials) as batch_credentials,
+          SUM(total_domains) as batch_domains,
+          SUM(total_urls) as batch_urls,
+          MAX(upload_date) as upload_date
+        FROM devices 
+        GROUP BY upload_batch 
+        ORDER BY upload_date DESC 
+        LIMIT 10
+      `)
+    ])
+
+    const totalDevices = (deviceCountResult as any[])[0].count
+    console.log(`📊 Total devices: ${totalDevices}`)
+
+    const uniqueDeviceNames = (uniqueNamesResult as any[])[0].count
+    console.log(`📊 Unique device names: ${uniqueDeviceNames}`)
+
+    // Calculate duplicates: total - unique (much faster than subquery)
+    const duplicateDeviceNames = totalDevices - uniqueDeviceNames
+    console.log(`📊 Duplicate device names: ${duplicateDeviceNames}`)
+
+    const totalFiles = (fileCountResult as any[])[0].count
+    console.log(`📊 Total files: ${totalFiles}`)
+
+    const aggStats = (aggregatedStatsResult as any[])[0]
+    console.log(`📊 Aggregated stats:`, aggStats)
+
+    const topPasswordsArray = topPasswordsResult as any[]
     logInfo(`Top passwords: ${topPasswordsArray.length} found`, undefined, 'Stats API')
 
-    // Recent devices
-    const recentDevices = await executeQuery(`
-      SELECT device_id, device_name, upload_batch, upload_date, total_files, total_credentials, total_domains, total_urls
-      FROM devices 
-      ORDER BY upload_date DESC 
-      LIMIT 10
-    `)
-
-    // Batch stats
-    const batchStats = await executeQuery(`
-      SELECT 
-        upload_batch,
-        COUNT(*) as devices_count,
-        SUM(total_credentials) as batch_credentials,
-        SUM(total_domains) as batch_domains,
-        SUM(total_urls) as batch_urls,
-        MAX(upload_date) as upload_date
-      FROM devices 
-      GROUP BY upload_batch 
-      ORDER BY upload_date DESC 
-      LIMIT 10
-    `)
+    const recentDevices = recentDevicesResult as any[]
+    const batchStats = batchStatsResult as any[]
 
     const result = {
       stats: {
@@ -156,9 +138,9 @@ export async function GET(request: NextRequest) {
 
     logInfo(`Final stats result`, result.stats, 'Stats API')
 
-    // Cache for 5 minutes
+    // Cache for 30 minutes (longer cache for better performance)
     await executeQuery(
-      "INSERT INTO analytics_cache (cache_key, cache_data, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE)) ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)",
+      "INSERT INTO analytics_cache (cache_key, cache_data, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 MINUTE)) ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)",
       ["stats_main", JSON.stringify(result)],
     )
 
