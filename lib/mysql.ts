@@ -52,6 +52,9 @@ export async function initializeDatabase() {
     // IMPORTANT: Ensure local_file_path column exists
     await ensureLocalFilePathColumn()
 
+    // IMPORTANT: Ensure performance indexes exist for optimal query performance
+    await ensurePerformanceIndexes()
+
     console.log("Database initialized successfully")
   } catch (error) {
     console.error("Database initialization error:", error)
@@ -323,5 +326,142 @@ async function createAppSettingsTable() {
   } catch (error) {
     console.error("Error creating app_settings table:", error)
     throw error
+  }
+}
+
+/**
+ * Ensure performance indexes exist for optimal query performance
+ * This is called automatically during database initialization
+ * Safe to call multiple times - uses IF NOT EXISTS
+ * Can also be called separately if needed
+ */
+// Flag to prevent multiple simultaneous calls
+let indexesEnsuring = false
+let indexesEnsured = false
+
+export async function ensurePerformanceIndexes() {
+  // Prevent multiple simultaneous calls
+  if (indexesEnsured) {
+    return
+  }
+
+  // If already running, wait a bit and return (another process is handling it)
+  if (indexesEnsuring) {
+    // Wait up to 5 seconds for the other process to finish
+    for (let i = 0; i < 50; i++) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      if (indexesEnsured) return
+    }
+    return
+  }
+
+  indexesEnsuring = true
+
+  try {
+    console.log("🔧 Ensuring performance indexes exist...")
+
+    // Check and create indexes one by one to avoid errors if they already exist
+    // Note: Using CREATE INDEX without IF NOT EXISTS for compatibility with older MySQL versions
+    // We check if index exists first before creating
+    const indexes = [
+      {
+        name: 'idx_credentials_browser_device',
+        table: 'credentials',
+        sql: 'CREATE INDEX idx_credentials_browser_device ON credentials(browser, device_id)',
+        description: 'Browser analysis queries'
+      },
+      {
+        name: 'idx_credentials_tld_device',
+        table: 'credentials',
+        sql: 'CREATE INDEX idx_credentials_tld_device ON credentials(tld, device_id)',
+        description: 'TLD queries'
+      },
+      {
+        name: 'idx_files_is_directory',
+        table: 'files',
+        sql: 'CREATE INDEX idx_files_is_directory ON files(is_directory)',
+        description: 'File count queries'
+      },
+      {
+        name: 'idx_password_stats_password_device',
+        table: 'password_stats',
+        sql: 'CREATE INDEX idx_password_stats_password_device ON password_stats(password(100), device_id)',
+        description: 'Top passwords queries (critical)'
+      },
+      {
+        name: 'idx_software_name_version_device',
+        table: 'software',
+        sql: 'CREATE INDEX idx_software_name_version_device ON software(software_name(100), version(100), device_id)',
+        description: 'Software analysis queries (using prefix to avoid key length limit)'
+      },
+      {
+        name: 'idx_credentials_domain_url_prefix',
+        table: 'credentials',
+        sql: 'CREATE INDEX idx_credentials_domain_url_prefix ON credentials(domain, url(255))',
+        description: 'Domain and URL prefix searches (for domain-search optimization)'
+      }
+    ]
+
+    for (const index of indexes) {
+      try {
+        // Check if index already exists
+        const indexCheck = await executeQuery(
+          `
+          SELECT COUNT(*) as count
+          FROM INFORMATION_SCHEMA.STATISTICS
+          WHERE TABLE_SCHEMA = ? 
+            AND TABLE_NAME = ? 
+            AND INDEX_NAME = ?
+          `,
+          [dbConfig.database, index.table, index.name]
+        ) as any[]
+
+        const indexExists = indexCheck.length > 0 && indexCheck[0].count > 0
+
+        if (!indexExists) {
+          console.log(`➕ Creating index: ${index.name} (${index.description})`)
+          try {
+            await executeQuery(index.sql)
+            console.log(`✅ Created index: ${index.name}`)
+          } catch (createError: any) {
+            // Handle duplicate key error (race condition - another process created it)
+            const errorMessage = createError?.message || String(createError)
+            const errorCode = createError?.code || createError?.errno
+            
+            if (errorCode === 1061 || errorCode === 'ER_DUP_KEYNAME' || 
+                errorMessage.includes('Duplicate key name') || 
+                errorMessage.includes('already exists')) {
+              console.log(`✅ Index already exists: ${index.name} (created by another process)`)
+            } else {
+              // Re-throw other errors (like key too long)
+              throw createError
+            }
+          }
+        } else {
+          console.log(`✅ Index already exists: ${index.name}`)
+        }
+      } catch (error) {
+        // Handle other errors (like key too long, table doesn't exist, etc.)
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        const errorCode = (error as any)?.code || (error as any)?.errno
+        
+        // Key too long - log warning but continue
+        if (errorCode === 1071 || errorCode === 'ER_TOO_LONG_KEY' || 
+            errorMessage.includes('too long')) {
+          console.warn(`⚠️  Index ${index.name} cannot be created: key too long. This is OK, query will still work but may be slower.`)
+        } else {
+          console.warn(`⚠️  Could not create index ${index.name}:`, errorMessage)
+        }
+        // Continue with other indexes - don't fail the whole process
+      }
+    }
+
+    console.log("✅ Performance indexes ensured")
+    indexesEnsured = true
+  } catch (error) {
+    console.error("❌ Error ensuring performance indexes:", error)
+    // Don't throw - allow graceful degradation (app will work but might be slower)
+  } finally {
+    indexesEnsuring = false
   }
 }

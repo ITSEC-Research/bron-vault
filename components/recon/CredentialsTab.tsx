@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Key, Eye, EyeOff, Globe, User, Lock, Calendar, ArrowUpDown, ArrowUp, ArrowDown, MoreHorizontal, Copy, HardDrive } from "lucide-react"
+import { LoadingState, LoadingTable } from "@/components/ui/loading"
 import {
   Select,
   SelectContent,
@@ -414,13 +415,17 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
 
         {/* Table */}
         {isLoading ? (
-          <div className="flex items-center justify-center h-64">
-            <p className="text-bron-text-muted">Loading...</p>
+          <div className="py-8">
+            <LoadingState 
+              type="data" 
+              message="Loading credentials data..." 
+              size="md"
+            />
           </div>
         ) : data.length === 0 ? (
           <div className="flex items-center justify-center h-64">
             <p className="text-bron-text-muted">
-              {searchQuery ? `No credentials found matching "${searchQuery}"` : "No credentials found"}
+              {searchQuery ? `No credentials found matching "${searchQuery}"` : "No credentials found for this search"}
             </p>
           </div>
         ) : (

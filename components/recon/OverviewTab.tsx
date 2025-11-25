@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select"
 import { Globe, Link, LayoutDashboard, Key } from "lucide-react"
 import { TimelineChart } from "./TimelineChart"
+import { LoadingState, LoadingChart, LoadingCard } from "@/components/ui/loading"
 
 interface OverviewTabProps {
   targetDomain: string
@@ -153,6 +154,25 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
     }
   }
 
+  // Show loading state while initial data is being fetched
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Loading state for timeline and passwords */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          <LoadingChart height={300} />
+          <LoadingChart height={300} />
+        </div>
+        
+        {/* Loading state for subdomains and paths */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LoadingCard />
+          <LoadingCard />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Timeline Chart and Top 10 Passwords - Side by Side */}
@@ -208,7 +228,7 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
           colorClass="text-bron-accent-red"
           barColorClass="bg-blue-500"
           textColorClass="text-bron-text-secondary"
-          isLoading={isLoading}
+          isLoading={false}
           targetDomain={targetDomain}
         />
 
@@ -219,7 +239,7 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
           data={topPaths}
           colorClass="text-[#ff6b6b]"
           barColorClass="bg-red-500"
-          isLoading={isLoading}
+          isLoading={false}
         />
       </div>
     </div>
@@ -246,7 +266,9 @@ function RankingList({ title, icon: Icon, data, colorClass, barColorClass, textC
       </CardHeader>
       <CardContent className="!pl-2 !pr-3 !pb-3 !pt-3 flex-1 overflow-auto">
         {isLoading ? (
-          <p className="text-bron-text-muted text-sm">Loading...</p>
+          <div className="flex items-center justify-center py-8">
+            <LoadingState type="data" message="Loading..." size="sm" />
+          </div>
         ) : displayData.length > 0 ? (
           <div className="space-y-0.5">
             {displayData.map((item, index) => {

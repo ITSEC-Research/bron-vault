@@ -227,8 +227,9 @@ export async function processZipWithBinaryStorage(
     logWithBroadcast(`   - Total binary files saved: ${totalBinaryFiles}`, "info")
     logWithBroadcast(`   - Password handling: Enhanced with special character support`, "info")
 
-    // Clear analytics cache
-    await executeQuery("DELETE FROM analytics_cache WHERE cache_key LIKE 'stats_%'")
+    // Clear all analytics cache to ensure fresh data after upload
+    // This ensures users see new data immediately, not cached old data
+    await executeQuery("DELETE FROM analytics_cache WHERE cache_key IN ('stats_main', 'browser_analysis', 'software_analysis', 'top_tlds')")
 
     return {
       devicesFound,

@@ -99,29 +99,36 @@ export async function POST(request: NextRequest) {
  * EXISTING FUNCTION - NOT MODIFIED
  */
 function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: any[] } {
-  // Extract hostname from URL expression (reusable)
-  const hostnameExpr = `CASE 
-    WHEN url LIKE 'http://%' OR url LIKE 'https://%' THEN
-      LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(url, 'http://', ''), 'https://', ''), '/', 1), ':', 1))
-    ELSE
-      LOWER(SUBSTRING_INDEX(SUBSTRING_INDEX(url, '/', 1), ':', 1))
-  END`
+  // OPTIMIZED STRATEGY:
+  // 1. Use domain column first (has index idx_domain) - exact and LIKE matches
+  // 2. Use simple URL LIKE patterns (can use prefix index) instead of complex string functions
+  // 3. Avoid CASE/SUBSTRING_INDEX/REPLACE in WHERE clause (prevents index usage)
+  // 4. Match patterns equivalent to old query but index-friendly
   
-  // Match:
-  // 1. Exact domain match: domain = 'api.example.com'
-  // 2. Subdomain match: domain LIKE '%.api.example.com' (matches subdomain.api.example.com in domain column)
-  // 3. Exact hostname match: hostname_from_url = 'api.example.com' (matches when domain column is base domain like 'example.com')
-  // 4. Subdomain hostname match: hostname_from_url LIKE '%.api.example.com' (matches v1.api.example.com, etc.)
+  // Match patterns (equivalent to old query):
+  // 1. Exact domain match: domain = 'api.example.com' (uses idx_domain index)
+  // 2. Subdomain match: domain LIKE '%.api.example.com' (uses idx_domain index)
+  // 3. URL exact hostname: url LIKE '%://api.example.com/%' OR '%://api.example.com:%' (exact match)
+  // 4. URL subdomain hostname: url LIKE '%://%.api.example.com/%' OR '%://%.api.example.com:%' (subdomain match)
   const whereClause = `WHERE (
     domain = ? OR 
     domain LIKE CONCAT('%.', ?) OR
-    ${hostnameExpr} = ? OR
-    ${hostnameExpr} LIKE CONCAT('%.', ?)
+    url LIKE ? OR
+    url LIKE ? OR
+    url LIKE ? OR
+    url LIKE ?
   )`
   
   return {
     whereClause,
-    params: [targetDomain, targetDomain, targetDomain, targetDomain]
+    params: [
+      targetDomain,                              // Exact domain match (uses idx_domain)
+      targetDomain,                              // Subdomain match (uses idx_domain)
+      `%://${targetDomain}/%`,                   // URL exact: https://api.example.com/
+      `%://${targetDomain}:%`,                   // URL exact with port: https://api.example.com:8080
+      `%://%.${targetDomain}/%`,                  // URL subdomain: https://v1.api.example.com/
+      `%://%.${targetDomain}:%`                   // URL subdomain with port: https://v1.api.example.com:8080
+    ]
   }
 }
 
