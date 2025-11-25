@@ -257,4 +257,71 @@ async function createTables() {
       INDEX idx_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `)
+
+  // Create app_settings table
+  await createAppSettingsTable()
+}
+
+/**
+ * Create app_settings table if it doesn't exist
+ * This is called separately to ensure it's created even if initializeDatabase wasn't called
+ */
+export async function ensureAppSettingsTable() {
+  try {
+    await createAppSettingsTable()
+  } catch (error) {
+    console.error("Error ensuring app_settings table:", error)
+    // Don't throw - allow graceful degradation
+  }
+}
+
+async function createAppSettingsTable() {
+  try {
+    // Create app_settings table
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        key_name VARCHAR(255) UNIQUE NOT NULL,
+        value TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_key_name (key_name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `)
+
+    // Insert default settings if they don't exist
+    const existingSettings = await executeQuery(
+      'SELECT key_name FROM app_settings WHERE key_name IN (?, ?, ?)',
+      ['upload_max_file_size', 'upload_chunk_size', 'upload_max_concurrent_chunks']
+    ) as any[]
+
+    const existingKeys = new Set((existingSettings || []).map((s: any) => s.key_name))
+
+    if (!existingKeys.has('upload_max_file_size')) {
+      await executeQuery(
+        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
+        ['upload_max_file_size', '10737418240', 'Maximum file upload size in bytes (default: 10GB)']
+      )
+    }
+
+    if (!existingKeys.has('upload_chunk_size')) {
+      await executeQuery(
+        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
+        ['upload_chunk_size', '10485760', 'Chunk size for large file uploads in bytes (default: 10MB)']
+      )
+    }
+
+    if (!existingKeys.has('upload_max_concurrent_chunks')) {
+      await executeQuery(
+        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
+        ['upload_max_concurrent_chunks', '3', 'Maximum concurrent chunk uploads (default: 3)']
+      )
+    }
+
+    console.log("✅ app_settings table ensured")
+  } catch (error) {
+    console.error("Error creating app_settings table:", error)
+    throw error
+  }
 }

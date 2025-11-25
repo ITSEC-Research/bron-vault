@@ -3,7 +3,9 @@ export const dynamic = "force-dynamic";
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor } from "lucide-react"
+import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor, X } from "lucide-react"
+import { uploadFileInChunks, assembleAndProcessFile, calculateChunkSize } from "@/lib/upload/chunk-uploader"
+import { formatBytes } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -52,6 +54,16 @@ export default function UploadPage() {
   const [logSessionId, setLogSessionId] = useState<string>("")
   // Ref untuk auto scroll log (pada ScrollArea)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+  
+  // AbortController for cancelling uploads
+  const abortControllerRef = useRef<AbortController | null>(null)
+  
+  // Upload settings state
+  const [uploadSettings, setUploadSettings] = useState<{
+    maxFileSize: number
+    chunkSize: number
+    maxConcurrentChunks: number
+  } | null>(null)
 
   // Auto-scroll to the bottom whenever the logs update.
   useEffect(() => {
@@ -62,6 +74,33 @@ export default function UploadPage() {
       }
     }
   }, [logs])
+
+  // Load upload settings on mount
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await fetch("/api/settings/upload")
+        if (response.ok) {
+          const data = await response.json()
+          setUploadSettings({
+            maxFileSize: data.maxFileSize,
+            chunkSize: data.chunkSize,
+            maxConcurrentChunks: data.maxConcurrentChunks,
+          })
+        }
+      } catch (error) {
+        console.error("Failed to load upload settings:", error)
+        // Use defaults if settings fail to load (these should match database defaults)
+        // Note: These are fallback values only - settings should be loaded from database
+        setUploadSettings({
+          maxFileSize: 10737418240, // 10GB (default from database)
+          chunkSize: 10485760, // 10MB (default from database)
+          maxConcurrentChunks: 3, // (default from database)
+        })
+      }
+    }
+    loadSettings()
+  }, [])
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -178,7 +217,33 @@ export default function UploadPage() {
       return
     }
 
+    // Wait for settings to load if not loaded yet
+    if (!uploadSettings) {
+      setUploadStatus({
+        status: "error",
+        message: "Loading settings...",
+        progress: 0,
+        errorDetails: "Please wait for settings to load and try again.",
+      })
+      return
+    }
+
+    // Check file size against limit
+    if (file.size > uploadSettings.maxFileSize) {
+      setUploadStatus({
+        status: "error",
+        message: "File size exceeds maximum allowed size",
+        progress: 0,
+        errorDetails: `File size (${formatBytes(file.size)}) exceeds maximum allowed size (${formatBytes(uploadSettings.maxFileSize)}). Please adjust the limit in Settings or use a smaller file.`,
+      })
+      return
+    }
+
     console.log("✅ File accepted, proceeding with upload")
+
+    // Create new AbortController for this upload
+    abortControllerRef.current = new AbortController()
+    const signal = abortControllerRef.current.signal
 
     // Generate session ID dan clear logs
     const sessionId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -198,30 +263,112 @@ export default function UploadPage() {
       // Start log streaming and wait for connection
       logStream = await startLogStream(sessionId)
 
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("sessionId", sessionId) // Add session ID
+      // Determine upload method based on file size
+      // Use chunked upload for files >= 100MB, regular upload for smaller files
+      const CHUNKED_UPLOAD_THRESHOLD = 100 * 1024 * 1024 // 100MB
+      const useChunkedUpload = file.size >= CHUNKED_UPLOAD_THRESHOLD
 
-      // Step 2: Start upload
+      console.log("🔍 Upload method decision:", {
+        fileSize: formatBytes(file.size),
+        fileSizeBytes: file.size,
+        threshold: formatBytes(CHUNKED_UPLOAD_THRESHOLD),
+        useChunkedUpload,
+        chunkSize: formatBytes(uploadSettings.chunkSize),
+        maxConcurrentChunks: uploadSettings.maxConcurrentChunks,
+      })
+
+      if (useChunkedUpload) {
+        // Use chunked upload for large files
+        console.log("📦 Using CHUNKED UPLOAD for large file")
+        console.log(`📊 File will be split into ~${Math.ceil(file.size / uploadSettings.chunkSize)} chunks`)
+        
+        setUploadStatus({
+          status: "uploading",
+          message: "Uploading file in chunks...",
+          progress: 0,
+        })
+
+        // Upload chunks
+        console.log("🚀 Starting chunked upload process...")
+        const uploadResult = await uploadFileInChunks(file, sessionId, {
+          chunkSize: uploadSettings.chunkSize,
+          maxConcurrentChunks: uploadSettings.maxConcurrentChunks,
+          signal: signal, // Pass abort signal for cancellation
+          onProgress: (progress, uploaded, total) => {
+            console.log(`📈 Chunk upload progress: ${uploaded}/${total} chunks (${Math.round(progress)}%)`)
+            setUploadStatus((prev) => ({
+              ...prev,
+              progress: Math.round(progress),
+              message: `Uploading chunks... (${uploaded}/${total})`,
+            }))
+          },
+          onChunkComplete: (chunkIndex, totalChunks) => {
+            console.log(`✅ Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully`)
+          },
+          onError: (error, chunkIndex) => {
+            console.error(`❌ Error uploading chunk ${chunkIndex}:`, error)
+          },
+        })
+
+        console.log("📦 Chunk upload completed:", uploadResult)
+
+        // Check if upload was aborted
+        if (uploadResult.aborted) {
+          setUploadStatus({
+            status: "idle",
+            message: "Upload cancelled",
+            progress: 0,
+          })
+          return
+        }
+
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || "Failed to upload chunks")
+        }
+
+        // Assemble and process
+        setUploadStatus({
+          status: "processing",
+          message: "Assembling file and starting processing...",
+          progress: 100,
+        })
+
+        const processResult = await assembleAndProcessFile(uploadResult.fileId, file.name, sessionId)
+
+        if (!processResult.success) {
+          throw new Error(processResult.error || "Failed to process file")
+        }
+
+        // Success
+        setUploadStatus({
+          status: "success",
+          message: "File processed successfully with binary file support!",
+          progress: 100,
+          details: processResult.details,
+        })
+      } else {
+        // Use regular upload for small files (backward compatible)
+        console.log("📦 Using REGULAR UPLOAD for small file (backward compatible)")
+        
       setUploadStatus({
         status: "uploading",
         message: "Uploading file...",
         progress: 0,
       })
 
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("sessionId", sessionId)
+
       const response = await fetch("/api/upload", {
         method: "POST",
         body: formData,
+          signal: signal, // Pass abort signal for cancellation
       })
-
-      // Don't set processing status here - let it be updated from log stream
-
-      // Don't override status here - let log stream handle it
 
       if (response.ok) {
         const result = await response.json()
 
-        // Step 4: Success
         setUploadStatus({
           status: "success",
           message: "File processed successfully with binary file support!",
@@ -232,7 +379,18 @@ export default function UploadPage() {
         const errorData = await response.json()
         throw new Error(errorData.details || errorData.error || "Upload failed")
       }
-    } catch (error) {
+      }
+    } catch (error: any) {
+      // Don't show error if upload was cancelled
+      if (error.name === 'AbortError' || signal?.aborted) {
+        setUploadStatus({
+          status: "idle",
+          message: "Upload cancelled",
+          progress: 0,
+        })
+        return
+      }
+
       console.error("Upload error:", error)
       setUploadStatus({
         status: "error",
@@ -250,10 +408,27 @@ export default function UploadPage() {
           logStream.close()
         }
       }, 2000)
+      
+      // Clear abort controller
+      abortControllerRef.current = null
+    }
+  }
+
+  const cancelUpload = () => {
+    if (abortControllerRef.current) {
+      console.log("🛑 Cancelling upload...")
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
     }
   }
 
   const resetUpload = () => {
+    // Cancel any ongoing upload
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+
     setUploadStatus({
       status: "idle",
       message: "",
@@ -320,9 +495,20 @@ export default function UploadPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Upload className="h-4 w-4 animate-pulse text-bron-accent-blue" />
-                    <span className="text-bron-text-primary">Uploading file...</span>
+                    <span className="text-bron-text-primary">{uploadStatus.message || "Uploading file..."}</span>
                   </div>
+                  <div className="flex items-center space-x-3">
                   <div className="text-sm font-medium text-bron-accent-blue">{uploadStatus.progress}%</div>
+                    <Button
+                      onClick={cancelUpload}
+                      variant="outline"
+                      size="sm"
+                      className="bg-bron-accent-red/10 border-bron-accent-red/30 text-bron-accent-red hover:bg-bron-accent-red/20"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
                 <Progress value={uploadStatus.progress} className="w-full" />
               </div>

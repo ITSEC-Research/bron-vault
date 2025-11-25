@@ -10,6 +10,7 @@ import {
   hasSpecialCharacters,
   logPasswordInfo,
   analyzePasswordFile,
+  truncateUsername,
 } from "@/lib/password-parser"
 import { isLikelyTextFile } from "./zip-structure-analyzer"
 
@@ -180,6 +181,20 @@ export async function processDevice(
       // Log password info for debugging
       logPasswordInfo(credential.password, `Saving credential for ${credential.url}`)
       
+      // Truncate username if it exceeds database VARCHAR(500) limit
+      const context = `${credential.url || 'unknown'} (${credential.filePath || 'unknown file'})`
+      const { username: truncatedUsername, wasTruncated, originalLength } = truncateUsername(
+        credential.username,
+        context
+      )
+      
+      if (wasTruncated) {
+        logWithBroadcast(
+          `⚠️ Username truncated from ${originalLength} to 500 characters for URL: ${credential.url}`,
+          "warning"
+        )
+      }
+      
       await executeQuery(
         `INSERT INTO credentials (device_id, url, domain, tld, username, password, browser, file_path) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -188,7 +203,7 @@ export async function processDevice(
           credential.url,
           credential.domain,
           credential.tld,
-          credential.username,
+          truncatedUsername, // Use truncated username to fit VARCHAR(500)
           escapedPassword, // Use escaped password (can be empty string "")
           credential.browser || "Unknown",
           credential.filePath,

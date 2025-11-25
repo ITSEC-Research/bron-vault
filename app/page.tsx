@@ -93,17 +93,22 @@ export default function SearchPage() {
   const [selectedFileType, setSelectedFileType] = useState<'text' | 'image' | null>(null)
   const [searchActive, setSearchActive] = useState(false)
 
-  // Load credentials and software when device is selected and reset password visibility
+  // Load credentials, software, and files when device is selected and reset password visibility
+  // Use deviceId as dependency instead of entire selectedDevice object to prevent infinite loop
   useEffect(() => {
-    if (selectedDevice) {
-      console.log("🔄 Device selected, loading credentials and software for:", selectedDevice.deviceId)
+    if (selectedDevice?.deviceId) {
+      console.log("🔄 Device selected, loading credentials, software, and files for:", selectedDevice.deviceId)
       setShowPasswords(false) // Reset password visibility for each device
       setCredentialsSearchQuery("") // Reset search query for each device
       setSoftwareSearchQuery("") // Reset software search query for each device
       loadDeviceCredentials(selectedDevice.deviceId)
       loadDeviceSoftware(selectedDevice.deviceId)
+      // Only load files if they haven't been loaded yet (empty array means not loaded)
+      if (!selectedDevice.files || selectedDevice.files.length === 0) {
+        loadDeviceFiles(selectedDevice.deviceId)
+      }
     }
-  }, [selectedDevice])
+  }, [selectedDevice?.deviceId]) // Only depend on deviceId, not entire object
 
   // Prepare typing sentences for the typing effect
   const totalCreds =
@@ -122,9 +127,9 @@ export default function SearchPage() {
 
   const typingSentences = isStatsLoaded && validDevices && validFiles && validDomains && validUrls && validCreds
     ? [
-        `${stats.totalDevices} compromised devices, ${stats.totalFiles} files extracted.`,
-        `${stats.totalDomains} total domains, ${stats.totalUrls} total urls.`,
-        `${totalCreds} records ready to query...`,
+        `${stats.totalDevices.toLocaleString()} compromised devices, ${stats.totalFiles.toLocaleString()} files extracted.`,
+        `${stats.totalDomains.toLocaleString()} total domains, ${stats.totalUrls.toLocaleString()} total urls.`,
+        `${totalCreds.toLocaleString()} records ready to query...`,
       ]
     : []
 
@@ -215,6 +220,55 @@ export default function SearchPage() {
     } finally {
       setIsLoadingSoftware(false)
       console.log("🏁 Finished loading software")
+    }
+  }
+
+  // Load device files function
+  const loadDeviceFiles = async (deviceId: string) => {
+    // Skip if files already loaded for this device
+    if (selectedDevice?.deviceId === deviceId && selectedDevice?.files && selectedDevice.files.length > 0) {
+      console.log("⏭️ Files already loaded for device:", deviceId)
+      return
+    }
+
+    console.log("🚀 Starting to load files for device:", deviceId)
+
+    try {
+      console.log("📡 Making API call to /api/device-files")
+      const response = await fetch("/api/device-files", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deviceId }),
+      })
+
+      console.log("📡 API Response status:", response.status)
+      console.log("📡 API Response ok:", response.ok)
+
+      if (response.ok) {
+        const deviceFilesData = await response.json()
+        console.log("✅ API returned device files:", deviceFilesData)
+        console.log("📊 Number of files received:", deviceFilesData.files?.length || 0)
+
+        // Update selectedDevice with files data using functional update to avoid race conditions
+        setSelectedDevice((prevDevice) => {
+          if (prevDevice && prevDevice.deviceId === deviceId) {
+            return {
+              ...prevDevice,
+              files: deviceFilesData.files || [],
+              totalFiles: deviceFilesData.totalFiles || 0,
+              matchingFiles: deviceFilesData.matchingFiles || [],
+            }
+          }
+          return prevDevice
+        })
+      } else {
+        const errorData = await response.json()
+        console.error("❌ API Error loading files:", errorData)
+      }
+    } catch (error) {
+      console.error("❌ Failed to load files:", error)
     }
   }
 

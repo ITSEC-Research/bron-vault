@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug, Globe } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe, Settings } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -65,6 +65,17 @@ const menuGroups = [
         description: "Validate ZIP Files",
         url: "/debug-zip",
         icon: Bug,
+      },
+    ],
+  },
+  {
+    title: "System",
+    items: [
+      {
+        title: "Settings",
+        description: "Configure System",
+        url: "/settings",
+        icon: Settings,
       },
     ],
   },
