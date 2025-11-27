@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     const device = deviceCheck[0]
 
     // Get all files for this device
+    // Only files with local_file_path (all files should be migrated to disk)
     const files = (await executeQuery(
       `SELECT 
         file_path,
@@ -48,9 +49,10 @@ export async function POST(request: NextRequest) {
         is_directory,
         COALESCE(file_size, 0) as file_size,
         CASE 
-          WHEN content IS NOT NULL OR local_file_path IS NOT NULL THEN TRUE 
+          WHEN local_file_path IS NOT NULL THEN TRUE 
           ELSE FALSE 
-        END as has_content
+        END as has_content,
+        file_type
        FROM files 
        WHERE device_id = ? 
        ORDER BY file_path`,

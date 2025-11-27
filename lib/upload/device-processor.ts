@@ -366,77 +366,78 @@ export async function processDevice(
     logWithBroadcast(`⚠️ No system information files found in device: ${deviceName}`, "warning")
   }
 
-  // Process all files INCLUDING BINARY FILES with local storage
+  // Process all files - OPTIMIZED: All files go to disk, content = NULL in DB
   logWithBroadcast(`📁 Processing ${zipFiles.length} files for device ${deviceName}...`, "info")
   for (const zipFile of zipFiles) {
     const fileName = path.basename(zipFile.path)
     const parentPath = path.dirname(zipFile.path)
 
-    let content: string | null = null
     let localFilePath: string | null = null
     let size = 0
+    let fileType: "text" | "binary" | "unknown" = "unknown"
 
     if (!zipFile.entry.dir) {
       try {
         const isTextFile = isLikelyTextFile(fileName)
+        fileType = isTextFile ? "text" : "binary"
+
+        // ALL files go to disk (optimized approach)
+        let fileData: string | Uint8Array
 
         if (isTextFile) {
-          // Text files: store content in database
-          content = await zipFile.entry.async("text")
+          // Text files: read as text, save to disk
+          const content = await zipFile.entry.async("text")
           if (content === null) {
             size = 0
             logWithBroadcast(`⚠️ Text file is null: ${zipFile.path}`, "warning")
-          } else {
-            size = content.length
-            logWithBroadcast(`📄 Text file: ${zipFile.path} (${size} bytes)`, "info")
+            continue // Skip this file
           }
+          fileData = content
+          size = content.length
+          logWithBroadcast(`📄 Text file: ${zipFile.path} (${size} bytes)`, "info")
         } else {
-          // Binary files: save to local storage
+          // Binary files: read as binary, save to disk
           const binaryData = await zipFile.entry.async("uint8array")
+          fileData = binaryData
           size = binaryData.length
-
-          // Create safe file path
-          const safeFilePath = zipFile.path.replace(/[<>:"|?*]/g, "_")
-          const fullLocalPath = path.join(deviceDir, safeFilePath)
-
-          // Create directory structure if needed
-          const fileDir = path.dirname(fullLocalPath)
-          if (!existsSync(fileDir)) {
-            await mkdir(fileDir, { recursive: true })
-          }
-
-          // Save binary file
-          await writeFile(fullLocalPath, binaryData)
-          localFilePath = path.relative(process.cwd(), fullLocalPath)
-          deviceBinaryFiles++
-
-          logWithBroadcast(`💾 Binary file saved: ${zipFile.path} -> ${localFilePath} (${size} bytes)`, "info")
+          logWithBroadcast(`💾 Binary file: ${zipFile.path} (${size} bytes)`, "info")
         }
+
+        // Create safe file path
+        const safeFilePath = zipFile.path.replace(/[<>:"|?*]/g, "_")
+        const fullLocalPath = path.join(deviceDir, safeFilePath)
+
+        // Create directory structure if needed
+        const fileDir = path.dirname(fullLocalPath)
+        if (!existsSync(fileDir)) {
+          await mkdir(fileDir, { recursive: true })
+        }
+
+        // Save file to disk (text or binary)
+        if (isTextFile) {
+          await writeFile(fullLocalPath, fileData as string, "utf-8")
+        } else {
+          await writeFile(fullLocalPath, fileData as Uint8Array)
+          deviceBinaryFiles++
+        }
+
+        localFilePath = path.relative(process.cwd(), fullLocalPath)
+        logWithBroadcast(`💾 File saved to disk: ${zipFile.path} -> ${localFilePath} (${size} bytes, ${fileType})`, "info")
       } catch (error) {
         logWithBroadcast(`❌ Error processing file ${zipFile.path}: ${error}`, "error")
       }
     }
 
     try {
-      // FIXED: Use proper column insertion with local_file_path
+      // Save to DB: content = NULL, local_file_path = path, file_type = type
       await executeQuery(
-        `INSERT INTO files (device_id, file_path, file_name, parent_path, is_directory, file_size, content, local_file_path) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [deviceId, zipFile.path, fileName, parentPath, zipFile.entry.dir, size, content, localFilePath],
+        `INSERT INTO files (device_id, file_path, file_name, parent_path, is_directory, file_size, content, local_file_path, file_type) 
+         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+        [deviceId, zipFile.path, fileName, parentPath, zipFile.entry.dir, size, localFilePath, fileType],
       )
     } catch (fileError) {
       logWithBroadcast(`❌ Error saving file record: ${fileError}`, "error")
-      // If local_file_path column doesn't exist, try without it
-      try {
-        await executeQuery(
-          `INSERT INTO files (device_id, file_path, file_name, parent_path, is_directory, file_size, content) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [deviceId, zipFile.path, fileName, parentPath, zipFile.entry.dir, size, content],
-        )
-        logWithBroadcast(`⚠️ Saved file record without local_file_path column`, "warning")
-      } catch (fallbackError) {
-        logWithBroadcast(`❌ Fallback file save also failed: ${fallbackError}`, "error")
-      }
+      throw fileError // Re-throw to ensure we know about schema issues
     }
   }
 

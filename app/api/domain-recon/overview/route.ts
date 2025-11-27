@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
           console.error("❌ Error getting timeline data:", err)
           return []
         }),
-        getTopSubdomains(whereClause, params, 10).catch((err) => {
+        getTopSubdomains(whereClause, params, 10, 'keyword', keywordMode, keyword).catch((err) => {
           console.error("❌ Error getting top subdomains:", err)
           return []
         }),
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         console.error("❌ Error getting timeline data:", err)
         return []
       }),
-        getTopSubdomains(whereClause, params, 10).catch((err) => {
+        getTopSubdomains(whereClause, params, 10, 'domain').catch((err) => {
         console.error("❌ Error getting top subdomains:", err)
         return []
       }),
@@ -427,29 +427,62 @@ async function getTimelineData(whereClause: string, params: any[], granularity: 
   return mapped
 }
 
-async function getTopSubdomains(whereClause: string, params: any[], limit: number = 10) {
-  const result = (await executeQuery(
-    `SELECT 
-      CASE 
+async function getTopSubdomains(
+  whereClause: string, 
+  params: any[], 
+  limit: number = 10,
+  searchType: 'domain' | 'keyword' = 'domain',
+  keywordMode: 'domain-only' | 'full-url' = 'full-url',
+  keyword?: string
+) {
+  // Build hostname extraction expression
+  const hostnameExpr = `CASE 
         WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
           SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
         ELSE
           SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-      END as full_hostname,
+  END`
+  
+  // For keyword search in domain-only mode, we need to filter hostnames that contain the keyword
+  // This ensures we only show domains/subdomains that actually contain the keyword
+  // Use subquery approach to properly filter hostnames
+  let queryParams = [...params]
+  let query = ''
+  
+  if (searchType === 'keyword' && keywordMode === 'domain-only' && keyword) {
+    // Use subquery to filter hostnames that contain the keyword
+    query = `
+      SELECT 
+        full_hostname,
+        credential_count
+      FROM (
+        SELECT 
+          ${hostnameExpr} as full_hostname,
+          COUNT(*) as credential_count
+        FROM credentials c
+        ${whereClause}
+        GROUP BY ${hostnameExpr}
+      ) as subquery
+      WHERE full_hostname LIKE ?
+      ORDER BY credential_count DESC
+      LIMIT ${Number(limit)}
+    `
+    queryParams.push(`%${keyword}%`)
+  } else {
+    // Standard query without hostname filtering
+    query = `
+      SELECT 
+        ${hostnameExpr} as full_hostname,
       COUNT(*) as credential_count
     FROM credentials c
     ${whereClause}
-    GROUP BY 
-      CASE 
-        WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-          SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
-        ELSE
-          SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-      END
+      GROUP BY ${hostnameExpr}
     ORDER BY credential_count DESC
-    LIMIT ${Number(limit)}`,
-    params
-  )) as any[]
+      LIMIT ${Number(limit)}
+    `
+  }
+  
+  const result = (await executeQuery(query, queryParams)) as any[]
 
   return result.map((row: any) => ({
     fullHostname: row.full_hostname || '',

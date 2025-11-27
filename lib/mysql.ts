@@ -120,6 +120,7 @@ async function createTables() {
   `)
 
   // Create files table
+  // Updated: Removed FULLTEXT index (not used), added file_type column, added local_file_path support
   await executeQuery(`
     CREATE TABLE IF NOT EXISTS files (
       id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -130,13 +131,16 @@ async function createTables() {
       is_directory BOOLEAN DEFAULT FALSE,
       file_size INT DEFAULT 0,
       content LONGTEXT,
+      local_file_path TEXT NULL,
+      file_type ENUM('text', 'binary', 'unknown') DEFAULT 'unknown',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (device_id) REFERENCES devices(device_id) ON DELETE CASCADE,
       INDEX idx_device_id (device_id),
       INDEX idx_file_name (file_name),
       INDEX idx_created_at (created_at),
-      FULLTEXT idx_content (content)
+      INDEX idx_local_file_path (local_file_path(255))
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    COMMENT = 'Files table: metadata only. All file contents stored on disk via local_file_path'
   `)
 
   // Create credentials table
