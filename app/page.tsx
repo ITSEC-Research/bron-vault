@@ -73,7 +73,11 @@ export default function SearchPage() {
     searchType,
     setSearchType,
     handleSearch,
-    detectSearchType
+    detectSearchType,
+    loadMore,
+    pagination,
+    totalDevices,
+    hasSearched
   } = useSearch()
 
   // Local state for UI components
@@ -703,18 +707,32 @@ export default function SearchPage() {
             <SearchResults
               searchResults={searchResults}
               searchQuery={searchQuery}
+              isLoading={isLoading}
+              hasMore={pagination?.hasMore || false}
+              totalDevices={totalDevices}
+              onLoadMore={loadMore}
               onDeviceSelect={(device) => {
                 console.log("🖱️ Device card clicked:", device.deviceId, device.deviceName)
                 setSelectedDevice(device)
               }}
             />
 
-            {/* No results message */}
-            {searchResults.length === 0 && searchQuery && !isLoading && stats.totalFiles > 0 && (
+            {/* No results message - only show if search has been executed */}
+            {hasSearched && searchResults.length === 0 && searchQuery && !isLoading && stats.totalFiles > 0 && (
               <div className="text-center py-8">
                 <p className="text-bron-text-muted">No devices found containing "{searchQuery}"</p>
                 <p className="text-sm text-bron-text-muted mt-2">
                   Try searching with a different email or domain name.
+                </p>
+              </div>
+            )}
+            
+            {/* Prompt to search - show when user has typed but hasn't searched yet */}
+            {!hasSearched && searchQuery && !isLoading && (
+              <div className="text-center py-8">
+                <p className="text-bron-text-muted">Press Enter or click Search to find devices</p>
+                <p className="text-sm text-bron-text-muted mt-2">
+                  Search by email address or domain name.
                 </p>
               </div>
             )}

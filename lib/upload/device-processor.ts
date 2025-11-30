@@ -13,6 +13,8 @@ import {
   truncateUsername,
 } from "@/lib/password-parser"
 import { isLikelyTextFile } from "./zip-structure-analyzer"
+import { chunkArray } from "@/lib/utils"
+import { settingsManager } from "@/lib/settings"
 
 export interface DeviceProcessingResult {
   deviceCredentials: number
@@ -162,9 +164,25 @@ export async function processDevice(
     throw deviceError
   }
 
-  // SAVE CREDENTIALS
+  // SAVE CREDENTIALS - OPTIMIZED WITH BULK INSERT
   logWithBroadcast(`💾 Storing ${allCredentials.length} credentials...`, "info")
-  let credentialsSaved = 0
+  
+  // Get batch size from settings (with fallback)
+  const batchSettings = await settingsManager.getBatchSettings()
+  const credentialsBatchSize = batchSettings.credentialsBatchSize
+  
+  // Phase 1: Prepare and validate all credentials (keep all business logic)
+  const validCredentials: Array<{
+    url: string
+    domain: string | null
+    tld: string | null
+    username: string
+    password: string
+    browser: string | null
+    filePath: string
+  }> = []
+  let credentialsSkipped = 0
+  
   for (const credential of allCredentials) {
     try {
       // Escape password for safe database storage
@@ -175,6 +193,7 @@ export async function processDevice(
       // Empty password ("") is valid and should be saved
       if (credential.password === undefined || credential.password === null) {
         logWithBroadcast(`⚠️ Skipping credential with null/undefined password for URL: ${credential.url}`, "warning")
+        credentialsSkipped++
         continue
       }
       
@@ -195,31 +214,76 @@ export async function processDevice(
         )
       }
       
-      await executeQuery(
-        `INSERT INTO credentials (device_id, url, domain, tld, username, password, browser, file_path) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          deviceId,
-          credential.url,
-          credential.domain,
-          credential.tld,
-          truncatedUsername, // Use truncated username to fit VARCHAR(500)
-          escapedPassword, // Use escaped password (can be empty string "")
-          credential.browser || "Unknown",
-          credential.filePath,
-        ],
-      )
-      credentialsSaved++
+      // Collect valid credential
+      validCredentials.push({
+        url: credential.url,
+        domain: credential.domain,
+        tld: credential.tld,
+        username: truncatedUsername, // Use truncated username to fit VARCHAR(500)
+        password: escapedPassword, // Use escaped password (can be empty string "")
+        browser: credential.browser || "Unknown",
+        filePath: credential.filePath,
+      })
     } catch (credError) {
-      logWithBroadcast(`❌ Error saving credential: ${credError}`, "error")
+      logWithBroadcast(`❌ Error processing credential: ${credError}`, "error")
+      credentialsSkipped++
       // Continue processing other credentials even if one fails
       continue
     }
   }
+  
+  // Phase 2: Bulk insert in batches
+  let credentialsSaved = 0
+  const batches = chunkArray(validCredentials, credentialsBatchSize)
+  logWithBroadcast(`📦 Inserting ${validCredentials.length} credentials in ${batches.length} batches (batch size: ${credentialsBatchSize})...`, "info")
+  
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex]
+    try {
+      // Construct bulk INSERT query
+      const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ')
+      const query = `
+        INSERT INTO credentials (device_id, url, domain, tld, username, password, browser, file_path)
+        VALUES ${placeholders}
+      `
+      
+      // Flatten parameters array
+      const params: any[] = []
+      for (const cred of batch) {
+        params.push(
+          deviceId,
+          cred.url,
+          cred.domain,
+          cred.tld,
+          cred.username,
+          cred.password,
+          cred.browser,
+          cred.filePath
+        )
+      }
+      
+      await executeQuery(query, params)
+      credentialsSaved += batch.length
+      
+      if ((batchIndex + 1) % 10 === 0 || batchIndex === batches.length - 1) {
+        logWithBroadcast(`📊 Progress: ${credentialsSaved}/${validCredentials.length} credentials saved (batch ${batchIndex + 1}/${batches.length})`, "info")
+      }
+    } catch (batchError) {
+      logWithBroadcast(`❌ Error saving credentials batch ${batchIndex + 1}/${batches.length}: ${batchError}`, "error")
+      // Continue with next batch even if this one fails
+      // Note: Individual credentials in failed batch are lost, but we continue processing
+    }
+  }
 
-  logWithBroadcast(`✅ Successfully saved ${credentialsSaved}/${allCredentials.length} credentials`, "success")
+  logWithBroadcast(`✅ Successfully saved ${credentialsSaved}/${allCredentials.length} credentials (${credentialsSkipped} skipped)`, "success")
 
-  // Store password stats
+  // Store password stats - OPTIMIZED WITH BULK INSERT
+  const passwordStatsBatchSize = batchSettings.passwordStatsBatchSize
+  
+  // Phase 1: Prepare and validate all password stats (keep all business logic)
+  const validPasswordStats: Array<{ password: string; count: number }> = []
+  let passwordStatsSkipped = 0
+  
   for (const [password, count] of passwordCounts) {
     try {
       // Escape password for safe database storage
@@ -228,22 +292,57 @@ export async function processDevice(
       // Additional validation before database insertion
       if (!escapedPassword || escapedPassword.length === 0) {
         logWithBroadcast(`⚠️ Skipping password stat with empty password`, "warning")
+        passwordStatsSkipped++
         continue
       }
       
       // Log password info for debugging
       logPasswordInfo(password, `Saving password stat (count: ${count})`)
       
-      await executeQuery(`INSERT INTO password_stats (device_id, password, count) VALUES (?, ?, ?)`, [
-        deviceId,
-        escapedPassword, // Use escaped password
+      // Collect valid password stat
+      validPasswordStats.push({
+        password: escapedPassword, // Use escaped password
         count,
-      ])
+      })
     } catch (passwordError) {
-      logWithBroadcast(`❌ Error saving password stat: ${passwordError}`, "error")
+      logWithBroadcast(`❌ Error processing password stat: ${passwordError}`, "error")
+      passwordStatsSkipped++
       // Continue processing other password stats even if one fails
       continue
     }
+  }
+  
+  // Phase 2: Bulk insert in batches
+  if (validPasswordStats.length > 0) {
+    const batches = chunkArray(validPasswordStats, passwordStatsBatchSize)
+    logWithBroadcast(`📦 Inserting ${validPasswordStats.length} password stats in ${batches.length} batches (batch size: ${passwordStatsBatchSize})...`, "info")
+    
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex]
+      try {
+        // Construct bulk INSERT query
+        const placeholders = batch.map(() => '(?, ?, ?)').join(', ')
+        const query = `
+          INSERT INTO password_stats (device_id, password, count)
+          VALUES ${placeholders}
+        `
+        
+        // Flatten parameters array
+        const params: any[] = []
+        for (const stat of batch) {
+          params.push(deviceId, stat.password, stat.count)
+        }
+        
+        await executeQuery(query, params)
+      } catch (batchError) {
+        logWithBroadcast(`❌ Error saving password stats batch ${batchIndex + 1}/${batches.length}: ${batchError}`, "error")
+        // Continue with next batch even if this one fails
+      }
+    }
+    
+    logWithBroadcast(`✅ Successfully saved ${validPasswordStats.length} password stats (${passwordStatsSkipped} skipped)`, "success")
+  } else {
+    logWithBroadcast(`⚠️ No valid password stats to save`, "warning")
   }
 
   // Process software files
@@ -366,79 +465,187 @@ export async function processDevice(
     logWithBroadcast(`⚠️ No system information files found in device: ${deviceName}`, "warning")
   }
 
-  // Process all files - OPTIMIZED: All files go to disk, content = NULL in DB
+  // Process all files - OPTIMIZED: Pipeline Pattern (Read → Write → Free Memory)
   logWithBroadcast(`📁 Processing ${zipFiles.length} files for device ${deviceName}...`, "info")
-  for (const zipFile of zipFiles) {
-    const fileName = path.basename(zipFile.path)
-    const parentPath = path.dirname(zipFile.path)
-
-    let localFilePath: string | null = null
-    let size = 0
-    let fileType: "text" | "binary" | "unknown" = "unknown"
-
-    if (!zipFile.entry.dir) {
+  
+  const fileWriteParallelLimit = batchSettings.fileWriteParallelLimit
+  const filesBatchSize = batchSettings.filesBatchSize
+  
+  // File metadata for bulk insert (only metadata, NO file data)
+  interface FileMetadata {
+    zipFile: { path: string; entry: any }
+    fileName: string
+    parentPath: string
+    localFilePath: string | null
+    size: number
+    fileType: "text" | "binary" | "unknown"
+    isDirectory: boolean
+    error?: string
+  }
+  
+  const fileMetadataList: FileMetadata[] = []
+  
+  // Pipeline: Read → Write → Free Memory (per chunk)
+  // Process files in chunks to avoid memory buildup
+  for (let i = 0; i < zipFiles.length; i += fileWriteParallelLimit) {
+    const chunk = zipFiles.slice(i, i + fileWriteParallelLimit)
+    
+    // Process each chunk: Read → Write → Free Memory immediately
+    const chunkPromises = chunk.map(async (zipFile): Promise<FileMetadata> => {
+      const fileName = path.basename(zipFile.path)
+      const parentPath = path.dirname(zipFile.path)
+      
+      // Handle directories (no read/write needed)
+      if (zipFile.entry.dir) {
+        return {
+          zipFile,
+          fileName,
+          parentPath,
+          localFilePath: null,
+          size: 0,
+          fileType: "unknown",
+          isDirectory: true,
+        }
+      }
+      
+      // Pipeline: Read → Write → Free Memory
       try {
         const isTextFile = isLikelyTextFile(fileName)
-        fileType = isTextFile ? "text" : "binary"
-
-        // ALL files go to disk (optimized approach)
-        let fileData: string | Uint8Array
-
+        const fileType = isTextFile ? "text" : "binary"
+        let fileData: string | Uint8Array | null = null
+        let size = 0
+        
+        // Step 1: Read file data
         if (isTextFile) {
-          // Text files: read as text, save to disk
           const content = await zipFile.entry.async("text")
           if (content === null) {
-            size = 0
             logWithBroadcast(`⚠️ Text file is null: ${zipFile.path}`, "warning")
-            continue // Skip this file
+            return {
+              zipFile,
+              fileName,
+              parentPath,
+              localFilePath: null,
+              size: 0,
+              fileType: "unknown",
+              isDirectory: false,
+              error: "Text file is null",
+            }
           }
           fileData = content
           size = content.length
           logWithBroadcast(`📄 Text file: ${zipFile.path} (${size} bytes)`, "info")
         } else {
-          // Binary files: read as binary, save to disk
           const binaryData = await zipFile.entry.async("uint8array")
           fileData = binaryData
           size = binaryData.length
           logWithBroadcast(`💾 Binary file: ${zipFile.path} (${size} bytes)`, "info")
         }
-
-        // Create safe file path
+        
+        // Step 2: Write to disk immediately (while data is still in scope)
         const safeFilePath = zipFile.path.replace(/[<>:"|?*]/g, "_")
         const fullLocalPath = path.join(deviceDir, safeFilePath)
-
+        
         // Create directory structure if needed
         const fileDir = path.dirname(fullLocalPath)
         if (!existsSync(fileDir)) {
           await mkdir(fileDir, { recursive: true })
         }
-
-        // Save file to disk (text or binary)
-        if (isTextFile) {
+        
+        // Write file to disk
+        if (fileType === "text") {
           await writeFile(fullLocalPath, fileData as string, "utf-8")
         } else {
           await writeFile(fullLocalPath, fileData as Uint8Array)
           deviceBinaryFiles++
         }
-
-        localFilePath = path.relative(process.cwd(), fullLocalPath)
+        
+        const localFilePath = path.relative(process.cwd(), fullLocalPath)
         logWithBroadcast(`💾 File saved to disk: ${zipFile.path} -> ${localFilePath} (${size} bytes, ${fileType})`, "info")
+        
+        // Step 3: fileData goes out of scope here → memory freed automatically
+        // Only save metadata (no file data)
+        return {
+          zipFile,
+          fileName,
+          parentPath,
+          localFilePath,
+          size,
+          fileType,
+          isDirectory: false,
+        }
       } catch (error) {
-        logWithBroadcast(`❌ Error processing file ${zipFile.path}: ${error}`, "error")
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        logWithBroadcast(`❌ Error processing file ${zipFile.path}: ${errorMsg}`, "error")
+        return {
+          zipFile,
+          fileName,
+          parentPath,
+          localFilePath: null,
+          size: 0,
+          fileType: "unknown",
+          isDirectory: false,
+          error: errorMsg,
+        }
+      }
+    })
+    
+    // Wait for chunk to complete (read + write), then memory is freed
+    const chunkResults = await Promise.allSettled(chunkPromises)
+    for (const result of chunkResults) {
+      if (result.status === "fulfilled") {
+        // Only metadata is stored (no file data)
+        fileMetadataList.push(result.value)
+      } else {
+        logWithBroadcast(`❌ Error in file processing promise: ${result.reason}`, "error")
       }
     }
-
-    try {
-      // Save to DB: content = NULL, local_file_path = path, file_type = type
-      await executeQuery(
-        `INSERT INTO files (device_id, file_path, file_name, parent_path, is_directory, file_size, content, local_file_path, file_type) 
-         VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-        [deviceId, zipFile.path, fileName, parentPath, zipFile.entry.dir, size, localFilePath, fileType],
-      )
-    } catch (fileError) {
-      logWithBroadcast(`❌ Error saving file record: ${fileError}`, "error")
-      throw fileError // Re-throw to ensure we know about schema issues
+    
+    // At this point, all fileData from this chunk is out of scope → memory freed
+  }
+  
+  // Phase 2: Bulk insert file metadata (only metadata, no file data)
+  const validFileMetadata = fileMetadataList.filter(f => !f.error)
+  
+  if (validFileMetadata.length > 0) {
+    const batches = chunkArray(validFileMetadata, filesBatchSize)
+    logWithBroadcast(`📦 Inserting ${validFileMetadata.length} file records in ${batches.length} batches (batch size: ${filesBatchSize})...`, "info")
+    
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex]
+      try {
+        // Construct bulk INSERT query
+        const placeholders = batch.map(() => '(?, ?, ?, ?, ?, ?, NULL, ?, ?)').join(', ')
+        const query = `
+          INSERT INTO files (device_id, file_path, file_name, parent_path, is_directory, file_size, content, local_file_path, file_type)
+          VALUES ${placeholders}
+        `
+        
+        // Flatten parameters array
+        const params: any[] = []
+        for (const file of batch) {
+          params.push(
+            deviceId,
+            file.zipFile.path,
+            file.fileName,
+            file.parentPath,
+            file.isDirectory,
+            file.size,
+            file.localFilePath,
+            file.fileType
+          )
+        }
+        
+        await executeQuery(query, params)
+      } catch (batchError) {
+        logWithBroadcast(`❌ Error saving files batch ${batchIndex + 1}/${batches.length}: ${batchError}`, "error")
+        // Re-throw to ensure we know about schema issues (same as original behavior)
+        throw batchError
+      }
     }
+    
+    logWithBroadcast(`✅ Successfully saved ${validFileMetadata.length} file records`, "success")
+  } else {
+    logWithBroadcast(`⚠️ No valid file records to save`, "warning")
   }
 
   logWithBroadcast(`✅ Processed device: ${deviceName} (${deviceBinaryFiles} binary files saved)`, "success")

@@ -1,7 +1,7 @@
 "use client"
 
-import React from "react"
-import { Copy, CloudUpload, CalendarClock } from "lucide-react"
+import React, { useEffect, useRef } from "react"
+import { Copy, CloudUpload, CalendarClock, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { LoadingState, LoadingTable } from "@/components/ui/loading"
@@ -23,9 +23,23 @@ interface SearchResultsProps {
   searchResults: SearchResult[]
   searchQuery: string
   onDeviceSelect: (device: SearchResult) => void
+  isLoading?: boolean
+  hasMore?: boolean
+  totalDevices?: number
+  onLoadMore?: () => void
 }
 
-export function SearchResults({ searchResults, searchQuery, onDeviceSelect }: SearchResultsProps) {
+export function SearchResults({ 
+  searchResults, 
+  searchQuery, 
+  onDeviceSelect,
+  isLoading = false,
+  hasMore = false,
+  totalDevices = 0,
+  onLoadMore,
+}: SearchResultsProps) {
+  const loadMoreRef = useRef<HTMLDivElement>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
   const formatDate = (dateString: string) => {
     if (!dateString) return "N/A"
     try {
@@ -176,17 +190,85 @@ export function SearchResults({ searchResults, searchQuery, onDeviceSelect }: Se
     return grouped
   }
 
-  if (searchResults.length === 0) {
+  // Infinite scroll: Setup Intersection Observer
+  useEffect(() => {
+    if (!onLoadMore || !hasMore) return
+
+    // Disconnect previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+    }
+
+    // Create new observer
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && onLoadMore) {
+          onLoadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    // Observe the load more trigger element
+    if (loadMoreRef.current) {
+      observerRef.current.observe(loadMoreRef.current)
+    }
+
+    // Cleanup
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect()
+      }
+    }
+  }, [hasMore, isLoading, onLoadMore])
+
+  // Don't render anything if no results and not loading and no search query
+  if (searchResults.length === 0 && !isLoading && !searchQuery) {
     return null
   }
 
   const groupedResults = groupResultsByName(searchResults)
+  const displayCount = totalDevices > 0 ? totalDevices : searchResults.length
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold text-bron-text-primary">
-        Found {searchResults.length} device instance(s) containing "{searchQuery}"
-      </h2>
+      {/* Header - only show count if we have results or finished loading */}
+      {(!isLoading && (searchResults.length > 0 || totalDevices > 0)) && (
+        <h2 className="text-lg font-semibold text-bron-text-primary">
+          Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
+          {searchResults.length < displayCount && (
+            <span className="text-sm text-bron-text-muted font-normal ml-2">
+              (showing {searchResults.length.toLocaleString()})
+            </span>
+          )}
+        </h2>
+      )}
+      
+      {/* Loading indicator */}
+      {isLoading && searchResults.length === 0 && (
+        <div className="flex items-center gap-2 text-bron-text-muted">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <h2 className="text-lg font-semibold text-bron-text-primary">
+            Searching for devices containing "{searchQuery}"...
+          </h2>
+        </div>
+      )}
+      
+      {/* Show existing results while loading more */}
+      {isLoading && searchResults.length > 0 && (
+        <h2 className="text-lg font-semibold text-bron-text-primary">
+          Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
+          {searchResults.length < displayCount && (
+            <span className="text-sm text-bron-text-muted font-normal ml-2">
+              (showing {searchResults.length.toLocaleString()})
+            </span>
+          )}
+          <span className="text-sm text-bron-text-muted font-normal ml-2">
+            <Loader2 className="h-4 w-4 inline animate-spin mr-1" />
+            Loading more...
+          </span>
+        </h2>
+      )}
 
       <div className="grid gap-3">
         {Array.from(groupedResults.entries()).map(([deviceName, devices]) => (
@@ -287,6 +369,25 @@ export function SearchResults({ searchResults, searchQuery, onDeviceSelect }: Se
           </div>
         ))}
       </div>
+
+      {/* Infinite scroll trigger and loading indicator */}
+      {hasMore && (
+        <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
+          {isLoading && (
+            <div className="flex items-center gap-2 text-bron-text-muted">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading more devices...</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* All devices loaded message */}
+      {!hasMore && searchResults.length > 0 && (
+        <div className="text-center text-bron-text-muted py-4 text-sm">
+          All {displayCount.toLocaleString()} device(s) loaded
+        </div>
+      )}
     </div>
   )
 }
