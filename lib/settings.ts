@@ -15,6 +15,11 @@ export const SETTING_KEYS = {
   UPLOAD_MAX_FILE_SIZE: 'upload_max_file_size',
   UPLOAD_CHUNK_SIZE: 'upload_chunk_size',
   UPLOAD_MAX_CONCURRENT_CHUNKS: 'upload_max_concurrent_chunks',
+  // Database batch size settings
+  DB_BATCH_SIZE_CREDENTIALS: 'db_batch_size_credentials',
+  DB_BATCH_SIZE_PASSWORD_STATS: 'db_batch_size_password_stats',
+  DB_BATCH_SIZE_FILES: 'db_batch_size_files',
+  FILE_WRITE_PARALLEL_LIMIT: 'file_write_parallel_limit',
 } as const
 
 export type SettingKey = typeof SETTING_KEYS[keyof typeof SETTING_KEYS]
@@ -23,6 +28,13 @@ export interface UploadSettings {
   maxFileSize: number
   chunkSize: number
   maxConcurrentChunks: number
+}
+
+export interface BatchSettings {
+  credentialsBatchSize: number
+  passwordStatsBatchSize: number
+  filesBatchSize: number
+  fileWriteParallelLimit: number
 }
 
 class SettingsManager {
@@ -255,6 +267,25 @@ class SettingsManager {
       maxFileSize,
       chunkSize,
       maxConcurrentChunks,
+    }
+  }
+
+  /**
+   * Get batch size settings for database operations (convenience method)
+   */
+  async getBatchSettings(): Promise<BatchSettings> {
+    const [credentialsBatchSize, passwordStatsBatchSize, filesBatchSize, fileWriteParallelLimit] = await Promise.all([
+      this.getSettingNumber(SETTING_KEYS.DB_BATCH_SIZE_CREDENTIALS, 1000), // 1000 default
+      this.getSettingNumber(SETTING_KEYS.DB_BATCH_SIZE_PASSWORD_STATS, 500), // 500 default
+      this.getSettingNumber(SETTING_KEYS.DB_BATCH_SIZE_FILES, 500), // 500 default
+      this.getSettingNumber(SETTING_KEYS.FILE_WRITE_PARALLEL_LIMIT, 10), // 10 default
+    ])
+
+    return {
+      credentialsBatchSize,
+      passwordStatsBatchSize,
+      filesBatchSize,
+      fileWriteParallelLimit,
     }
   }
 

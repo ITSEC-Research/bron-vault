@@ -299,8 +299,16 @@ async function createAppSettingsTable() {
 
     // Insert default settings if they don't exist
     const existingSettings = await executeQuery(
-      'SELECT key_name FROM app_settings WHERE key_name IN (?, ?, ?)',
-      ['upload_max_file_size', 'upload_chunk_size', 'upload_max_concurrent_chunks']
+      'SELECT key_name FROM app_settings WHERE key_name IN (?, ?, ?, ?, ?, ?, ?)',
+      [
+        'upload_max_file_size',
+        'upload_chunk_size',
+        'upload_max_concurrent_chunks',
+        'db_batch_size_credentials',
+        'db_batch_size_password_stats',
+        'db_batch_size_files',
+        'file_write_parallel_limit'
+      ]
     ) as any[]
 
     const existingKeys = new Set((existingSettings || []).map((s: any) => s.key_name))
@@ -323,6 +331,35 @@ async function createAppSettingsTable() {
       await executeQuery(
         'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
         ['upload_max_concurrent_chunks', '3', 'Maximum concurrent chunk uploads (default: 3)']
+      )
+    }
+
+    // Insert default batch size settings
+    if (!existingKeys.has('db_batch_size_credentials')) {
+      await executeQuery(
+        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
+        ['db_batch_size_credentials', '1000', 'Batch size for credentials bulk insert (default: 1000)']
+      )
+    }
+
+    if (!existingKeys.has('db_batch_size_password_stats')) {
+      await executeQuery(
+        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
+        ['db_batch_size_password_stats', '500', 'Batch size for password stats bulk insert (default: 500)']
+      )
+    }
+
+    if (!existingKeys.has('db_batch_size_files')) {
+      await executeQuery(
+        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
+        ['db_batch_size_files', '500', 'Batch size for files bulk insert (default: 500)']
+      )
+    }
+
+    if (!existingKeys.has('file_write_parallel_limit')) {
+      await executeQuery(
+        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
+        ['file_write_parallel_limit', '10', 'Maximum concurrent file writes (default: 10)']
       )
     }
 
