@@ -59,7 +59,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     
   * **Simple RSS Feeds**: Integrated RSS feeds from **ransomware.live** and **malware-traffic-analysis.net** to keep you updated on the latest threats.
   
-![alt text](images/Bron-Vault---Search-I.png "Bron Vault Search I")
+![alt text](images/Bron-Vault-Search-I.png "Bron Vault Search I")
 
 ![alt text](images/Bron-Vault---Search-II.png "Bron Vault Search II")
 
@@ -67,11 +67,11 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 ![alt text](images/Bron-Vault---Search-IV.png "Bron Vault Search IV")
 
-![alt text](images/Bron-Vault-Host-Information.png "Bron Vault Host Information")
+![alt text](images/Bron-Vault-Host-Info.png "Bron Vault Host Information")
 
-![alt text](images/Bron-Vault-Device-Overview.png "Bron Vault Device Overview")
+![alt text](images/Bron-Vault-DeviceOverview.png "Bron Vault Device Overview")
 
-![alt text](images/Bron-Vault-Domain-Keyword-Search.png "Bron Vault Device Overview")
+![alt text](images/Bron-Vault-Domain-KeywordSearch.png "Bron Vault Device Overview")
 
 -----
 
