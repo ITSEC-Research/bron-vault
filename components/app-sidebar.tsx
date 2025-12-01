@@ -127,21 +127,21 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
       <SidebarContent className="bg-bron-bg-secondary flex flex-col h-full">
-        <div className="flex-1 overflow-auto space-y-0.5 p-4">
+        <div className="flex-1 overflow-auto space-y-0 p-4">
           {menuGroups.map((group) => (
-            <SidebarGroup key={group.title}>
-              <SidebarGroupLabel className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-bron-text-muted">
+            <SidebarGroup key={group.title} className="mb-[2px]">
+              <SidebarGroupLabel className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-bron-text-muted">
                 {group.title}
               </SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu className="gap-0 space-y-[4px]">
+                <SidebarMenu className="gap-0 space-y-[2px]">
                   {group.items.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
                         isActive={isMenuItemActive(item.url)}
                         className={`
-                          h-auto flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors
+                          h-auto flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors
                           ${isMenuItemActive(item.url)
                             ? "!bg-red-500/10 dark:!bg-red-500/20 !text-bron-text-primary" 
                             : "text-bron-text-secondary hover:text-bron-text-primary hover:bg-bron-bg-tertiary"
