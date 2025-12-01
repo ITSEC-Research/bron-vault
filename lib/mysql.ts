@@ -184,24 +184,11 @@ async function createTables() {
     CREATE TABLE IF NOT EXISTS analytics_cache (
       id INT AUTO_INCREMENT PRIMARY KEY,
       cache_key VARCHAR(255) UNIQUE NOT NULL,
-      cache_data JSON,
+      cache_data LONGTEXT,
       expires_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       INDEX idx_cache_key (cache_key),
       INDEX idx_expires_at (expires_at)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-  `)
-
-  // Create search_cache table
-  await executeQuery(`
-    CREATE TABLE IF NOT EXISTS search_cache (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      search_query VARCHAR(500) NOT NULL,
-      search_type ENUM('email', 'domain') NOT NULL,
-      results JSON,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      INDEX idx_search (search_query, search_type),
-      INDEX idx_created (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `)
 
