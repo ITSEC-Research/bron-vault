@@ -10,7 +10,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 > ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#important-notice) section below.
 
-![alt text](images/Bron-Vault-Dashboard.png "Bron Vault Dashboard")
+![alt text](images/Bron-Vault---Dashboard.png "Bron Vault Dashboard")
 
 -----
 
