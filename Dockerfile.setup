@@ -1,0 +1,37 @@
+# Dockerfile.setup
+# Setup container to run setup-docker.sh inside Docker environment
+
+FROM alpine:3.19
+
+# Install dependencies required by the script
+# - bash: to run setup-docker.sh (alpine default uses sh)
+# - curl: for ClickHouse HTTP API connection
+# - mysql-client: for MySQL connection
+RUN apk add --no-cache \
+    bash \
+    curl \
+    mysql-client \
+    ca-certificates
+
+# Set working directory
+WORKDIR /scripts
+
+# Copy setup script into the image
+# setup-docker.sh is copied as setup.sh inside the container
+# (internal name in container, source remains setup-docker.sh)
+COPY setup-docker.sh setup.sh
+
+# ---------------------------------------------------------
+# IMPORTANT FIX FOR WINDOWS USERS
+# Remove \r (Carriage Return) characters if file was edited on Windows
+# to avoid "bad interpreter" error on Linux
+# ---------------------------------------------------------
+RUN sed -i 's/\r$//' setup.sh
+
+# Ensure script is executable (permission fix)
+RUN chmod +x setup.sh
+
+# Run script
+# Using bash explicitly because the script uses bash syntax
+CMD ["/bin/bash", "setup.sh"]
+

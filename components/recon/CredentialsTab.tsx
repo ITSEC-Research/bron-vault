@@ -50,6 +50,73 @@ interface CredentialsTabProps {
   keywordMode?: 'domain-only' | 'full-url'
 }
 
+// --- Helper function to mask password ---
+const maskPassword = (password: string) => {
+  if (!password) return ""
+  return "•".repeat(Math.min(password.length, 20))
+}
+
+// --- Copyable Cell Component with hover effect and copy functionality ---
+// FIX: Moved outside component to prevent remounting and UX bugs
+const CopyableCell = ({ 
+  content, 
+  label, 
+  isPassword = false,
+  isMasked = false,
+  itemId
+}: { 
+  content: string
+  label: string
+  isPassword?: boolean
+  isMasked?: boolean
+  itemId?: number
+}) => {
+  const displayContent = isMasked 
+    ? maskPassword(content || "") // Safety check if content null
+    : (content || "")
+    
+  const tooltipKey = itemId ? `copyable-${itemId}-${label}` : `copyable-${label}`
+  
+  return (
+    <TooltipProvider key={tooltipKey} delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors w-full block truncate min-w-0">
+            {isPassword ? (
+              <span className="font-mono text-bron-text-primary">{displayContent}</span>
+            ) : (
+              <span className="text-bron-text-primary">{displayContent}</span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
+        >
+          <div className="space-y-2">
+            <div key={`${tooltipKey}-header`} className="flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-bron-text-secondary">{label}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigator.clipboard.writeText(content || "")
+                }}
+                className="p-1 hover:bg-bron-bg-primary rounded transition-colors"
+                title={`Copy ${label}`}
+              >
+                <Copy className="h-3 w-3 text-bron-text-muted hover:text-bron-accent-blue" />
+              </button>
+            </div>
+            <div key={`${tooltipKey}-content`} className={`text-xs ${isPassword ? 'font-mono' : ''} text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border`}>
+              {content || "-"}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
 export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMode }: CredentialsTabProps) {
   const router = useRouter()
   const [data, setData] = useState<CredentialItem[]>([])
@@ -126,11 +193,30 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
           success: result.success,
           targetDomain: result.targetDomain,
           sample: result.credentials?.slice(0, 2),
+          sampleUsernames: result.credentials?.slice(0, 5).map((c: any) => ({
+            id: c.id,
+            username: c.username,
+            url: c.url?.substring(0, 50)
+          })),
           fullResult: result,
         })
         
         if (result.success && Array.isArray(result.credentials)) {
-          setData(result.credentials)
+          // Debug: Check username values before setting data
+          const credentialsWithUsernameCheck = result.credentials.map((cred: any) => {
+            if (!cred.username && cred.url) {
+              console.warn("⚠️ Empty username in credential:", {
+                id: cred.id,
+                url: cred.url?.substring(0, 50),
+                hasUsername: !!cred.username,
+                usernameValue: cred.username,
+                allKeys: Object.keys(cred)
+              })
+            }
+            return cred
+          })
+          
+          setData(credentialsWithUsernameCheck)
           setTotalPages(result.pagination?.totalPages || 1)
           setTotal(result.pagination?.total || 0)
         } else {
@@ -318,65 +404,6 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
     }
   }
 
-  const maskPassword = (password: string) => {
-    if (!password) return ""
-    return "•".repeat(Math.min(password.length, 20))
-  }
-
-  // Copyable Cell Component with hover effect and copy functionality
-  const CopyableCell = ({ 
-    content, 
-    label, 
-    isPassword = false,
-    isMasked = false 
-  }: { 
-    content: string
-    label: string
-    isPassword?: boolean
-    isMasked?: boolean
-  }) => {
-    const displayContent = isMasked ? maskPassword(content) : content
-    
-    return (
-      <TooltipProvider delayDuration={200}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors w-full block truncate">
-              {isPassword ? (
-                <span className="font-mono text-bron-text-primary">{displayContent}</span>
-              ) : (
-                <span className="text-bron-text-primary">{displayContent}</span>
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent 
-            side="top" 
-            className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
-          >
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-bron-text-secondary">{label}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigator.clipboard.writeText(content)
-                  }}
-                  className="p-1 hover:bg-bron-bg-primary rounded transition-colors"
-                  title={`Copy ${label}`}
-                >
-                  <Copy className="h-3 w-3 text-bron-text-muted hover:text-bron-accent-blue" />
-                </button>
-              </div>
-              <div className={`text-xs ${isPassword ? 'font-mono' : ''} text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border`}>
-                {content}
-              </div>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    )
-  }
-
   return (
     <Card className="bg-bron-bg-tertiary border-bron-border">
       <CardHeader className="!p-4">
@@ -489,7 +516,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                       className="border-b border-bron-border hover:bg-bron-bg-primary"
                     >
                       <TableCell className="text-xs py-2 px-3 font-mono w-[35%]">
-                        <TooltipProvider delayDuration={200}>
+                        <TooltipProvider key={`url-tooltip-${item.id}`} delayDuration={200}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <div className="truncate max-w-[350px] cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors">
@@ -501,7 +528,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                               className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
                             >
                               <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-2">
+                                <div key={`url-header-${item.id}`} className="flex items-center justify-between gap-2">
                                   <span className="text-xs font-semibold text-bron-text-secondary">Full URL</span>
                                   <button
                                     onClick={(e) => {
@@ -514,7 +541,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                                     <Copy className="h-3 w-3 text-bron-text-muted hover:text-bron-accent-blue" />
                                   </button>
                                 </div>
-                                <div className="text-xs font-mono text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border">
+                                <div key={`url-content-${item.id}`} className="text-xs font-mono text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border">
                                   {item.url}
                                 </div>
                               </div>
@@ -526,6 +553,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                         <CopyableCell 
                           content={item.username} 
                           label="Username"
+                          itemId={item.id}
                         />
                       </TableCell>
                       <TableCell className="text-xs py-2 px-3 font-mono w-[16%]">
@@ -534,6 +562,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                             content={item.password} 
                             label="Password"
                             isPassword={true}
+                            itemId={item.id}
                           />
                         ) : (
                           <CopyableCell 
@@ -541,6 +570,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                             label="Password"
                             isPassword={true}
                             isMasked={true}
+                            itemId={item.id}
                           />
                         )}
                       </TableCell>
@@ -550,7 +580,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                         </div>
                       </TableCell>
                       <TableCell className="text-xs py-2 px-3 text-left w-[18%]">
-                        <TooltipProvider delayDuration={200}>
+                        <TooltipProvider key={`device-tooltip-${item.id}`} delayDuration={200}>
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
@@ -580,7 +610,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
             {/* Page size selector and Pagination */}
             <div className="mt-4">
               <div className="flex items-center w-full">
-                {/* KOLOM KIRI: Page Size Selector */}
+                {/* LEFT COLUMN: Page Size Selector */}
                 <div className="flex-1 flex items-center justify-start space-x-2 text-sm text-bron-text-muted">
                   <span className="text-xs whitespace-nowrap">Show</span>
                   <Select
@@ -598,7 +628,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                   </Select>
                   <span className="text-xs whitespace-nowrap">per page</span>
                 </div>
-                {/* KOLOM TENGAH: Pagination */}
+                {/* MIDDLE COLUMN: Pagination */}
                 <div className="flex items-center justify-center">
                   {totalPages > 1 && (
                     <Pagination className="w-auto mx-0">
@@ -641,7 +671,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                     </Pagination>
                   )}
                 </div>
-                {/* KOLOM KANAN: Jump to Page */}
+                {/* RIGHT COLUMN: Jump to Page */}
                 <div className="flex-1 flex items-center justify-end gap-2">
                   {totalPages > 1 && (
                     <>

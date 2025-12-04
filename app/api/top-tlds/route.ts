@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { executeQuery } from "@/lib/mysql"
+import { executeQuery as executeMySQLQuery } from "@/lib/mysql"
+import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
@@ -17,9 +18,9 @@ export async function GET(request: NextRequest) {
   try {
     console.log("📊 [TOP-TLDS] Loading top TLDs for user:", (user as any).username || "<unknown>")
 
-    // Check cache first
+    // Check cache first (analytics_cache tetap di MySQL - operational table)
     console.log("📊 [TOP-TLDS] Checking cache...")
-    const cacheResult = (await executeQuery(
+    const cacheResult = (await executeMySQLQuery(
       "SELECT cache_data FROM analytics_cache WHERE cache_key = 'top_tlds' AND expires_at > NOW()",
     )) as any[]
 
@@ -57,12 +58,13 @@ export async function GET(request: NextRequest) {
 
     console.log("📊 [TOP-TLDS] Calculating fresh top TLDs...")
 
-    // Get top TLDs from credentials table
-    const topTlds = await executeQuery(`
+    // Get top TLDs from credentials table (ClickHouse)
+    // Convert: COUNT(DISTINCT device_id) -> uniq(device_id) untuk performa lebih baik
+    const topTlds = await executeClickHouseQuery(`
       SELECT 
         tld,
-        COUNT(*) as count,
-        COUNT(DISTINCT device_id) as affected_devices
+        count() as count,
+        uniq(device_id) as affected_devices
       FROM credentials 
       WHERE tld IS NOT NULL 
         AND tld != ''
@@ -90,8 +92,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Cache for 10 minutes (upsert)
+    // analytics_cache tetap di MySQL (operational table)
     console.log("📊 [TOP-TLDS] Caching results...")
-    await executeQuery(
+    await executeMySQLQuery(
       `
       INSERT INTO analytics_cache (cache_key, cache_data, expires_at)
       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))

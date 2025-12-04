@@ -1,72 +1,110 @@
 import { NextRequest, NextResponse } from "next/server"
-import { executeQuery } from "@/lib/mysql"
+import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 
+// ============================================
+// CLICKHOUSE EXPRESSIONS (CONSTANTS) - DRY Principle
+// ============================================
+
 /**
- * Build WHERE clause for domain matching that supports subdomains
- * OPTIMIZED: Uses index-friendly patterns to leverage idx_domain index
- * Prioritizes domain column (indexed) over URL parsing (slower)
+ * Extract Hostname (Domain)
+ * OPTIMIZED: Uses native domain() function for maximum performance (C++ level execution)
+ * Strategy:
+ * 1. Try domain() native function first (fastest)
+ * 2. If empty and URL doesn't have scheme, add 'http://' prefix and try again
+ * 3. If still empty, use regex fallback for edge cases
  */
-function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: any[] } {
-  // OPTIMIZED STRATEGY:
-  // 1. Use domain column first (has index idx_domain) - exact and LIKE matches
-  // 2. Use simple URL LIKE patterns (can use prefix index) instead of complex string functions
-  // 3. Avoid CASE/SUBSTRING_INDEX/REPLACE in WHERE clause (prevents index usage)
-  // 4. Match patterns equivalent to old query but index-friendly
-  
-  // Match patterns (equivalent to old query):
-  // 1. Exact domain match: domain = 'api.example.com' (uses idx_domain index)
-  // 2. Subdomain match: domain LIKE '%.api.example.com' (uses idx_domain index)
-  // 3. URL exact hostname: url LIKE '%://api.example.com/%' OR '%://api.example.com:%' (exact match)
-  // 4. URL subdomain hostname: url LIKE '%://%.api.example.com/%' OR '%://%.api.example.com:%' (subdomain match)
+const HOSTNAME_EXPR = `if(
+  length(domain(c.url)) > 0,
+  domain(c.url),
+  if(
+    c.url NOT LIKE 'http://%' AND c.url NOT LIKE 'https://%',
+    domain(concat('http://', c.url)),
+    coalesce(
+      replaceRegexpOne(
+        replaceRegexpOne(
+          replaceRegexpOne(c.url, '^https?://', ''),
+          '/.*$', ''
+        ),
+        ':.*$', ''
+      ),
+      ''
+    )
+  )
+)`
+
+/**
+ * Extract Path
+ * OPTIMIZED: Uses native path() function for maximum performance (C++ level execution)
+ * path() automatically removes query string (?) and fragment (#)
+ * Strategy:
+ * 1. Try path() native function first (fastest)
+ * 2. If empty and URL doesn't have scheme but has path separator, add 'http://' prefix and try again
+ * 3. Default to '/' if no path found
+ */
+const PATH_EXPR = `if(
+  length(path(c.url)) > 0,
+  path(c.url),
+  if(
+    c.url NOT LIKE 'http://%' AND c.url NOT LIKE 'https://%' AND c.url LIKE '%/%',
+    path(concat('http://', c.url)),
+    '/'
+  )
+)`
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Build WHERE clause for domain matching that supports subdomains (ClickHouse version)
+ * OPTIMIZED: Uses index-friendly patterns to leverage idx_domain index
+ * Uses named parameters for ClickHouse
+ */
+function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: Record<string, string> } {
+  // Use ilike for case-insensitive matching (data in DB might be mixed case)
   const whereClause = `WHERE (
-    c.domain = ? OR 
-    c.domain LIKE CONCAT('%.', ?) OR
-    c.url LIKE ? OR
-    c.url LIKE ? OR
-    c.url LIKE ? OR
-    c.url LIKE ?
+    c.domain = {domain:String} OR 
+    c.domain ilike concat('%.', {domain:String}) OR
+    c.url ilike {pattern1:String} OR
+    c.url ilike {pattern2:String} OR
+    c.url ilike {pattern3:String} OR
+    c.url ilike {pattern4:String}
   )`
   
   return {
     whereClause,
-    params: [
-      targetDomain,                              // Exact domain match (uses idx_domain)
-      targetDomain,                              // Subdomain match (uses idx_domain)
-      `%://${targetDomain}/%`,                   // URL exact: https://api.example.com/
-      `%://${targetDomain}:%`,                   // URL exact with port: https://api.example.com:8080
-      `%://%.${targetDomain}/%`,                  // URL subdomain: https://v1.api.example.com/
-      `%://%.${targetDomain}:%`                   // URL subdomain with port: https://v1.api.example.com:8080
-    ]
+    params: {
+      domain: targetDomain,                              // Exact domain match (uses idx_domain)
+      pattern1: `%://${targetDomain}/%`,                   // URL exact: https://api.example.com/
+      pattern2: `%://${targetDomain}:%`,                   // URL exact with port: https://api.example.com:8080
+      pattern3: `%://%.${targetDomain}/%`,                  // URL subdomain: https://v1.api.example.com/
+      pattern4: `%://%.${targetDomain}:%`                   // URL subdomain with port: https://v1.api.example.com:8080
+    }
   }
 }
 
 /**
- * Build WHERE clause for keyword search
+ * Build WHERE clause for keyword search (ClickHouse version)
  * Supports two modes: domain-only (hostname only) or full-url (entire URL)
- * NEW FUNCTION - SEPARATE FROM DOMAIN SEARCH
+ * Uses ilike for case-insensitive search
+ * OPTIMIZED: Reuses HOSTNAME_EXPR constant for consistency
  */
-function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: any[] } {
+function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: Record<string, string> } {
   if (mode === 'domain-only') {
-    // Extract hostname from URL, then search keyword in hostname only
-    const hostnameExpr = `CASE 
-      WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-        SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
-      ELSE
-        SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-    END`
-    
-    const whereClause = `WHERE ${hostnameExpr} LIKE ? AND c.url IS NOT NULL`
+    // Extract hostname from URL, then search keyword in hostname only (ClickHouse)
+    // OPTIMIZED: Reuse HOSTNAME_EXPR constant for consistency and performance
+    const whereClause = `WHERE ${HOSTNAME_EXPR} ilike {keyword:String} AND c.url IS NOT NULL`
     return {
       whereClause,
-      params: [`%${keyword}%`]
+      params: { keyword: `%${keyword}%` }
     }
   } else {
-    // Full URL mode: search keyword in entire URL (current behavior)
-    const whereClause = `WHERE c.url LIKE ? AND c.url IS NOT NULL`
+    // Full URL mode: search keyword in entire URL (ClickHouse: use ilike)
+    const whereClause = `WHERE c.url ilike {keyword:String} AND c.url IS NOT NULL`
     return {
       whereClause,
-      params: [`%${keyword}%`]
+      params: { keyword: `%${keyword}%` }
     }
   }
 }
@@ -141,9 +179,10 @@ async function getSubdomainsData(
   searchType: 'domain' | 'keyword' = 'domain',
   keywordMode: 'domain-only' | 'full-url' = 'full-url'
 ) {
-  const page = Number(pagination?.page) || 1
-  const limit = Number(pagination?.limit) || 50
-  const offset = Number((page - 1) * limit)
+  // Validate and sanitize pagination parameters
+  const page = Math.max(1, Number(pagination?.page) || 1)
+  const limit = Math.max(1, Math.min(Number(pagination?.limit) || 50, 1000)) // Max 1000 for safety
+  const offset = Math.max(0, (page - 1) * limit)
   
   const allowedSortColumns = ['credential_count', 'full_hostname', 'path']
   const sortBy = allowedSortColumns.includes(pagination?.sortBy) 
@@ -151,165 +190,77 @@ async function getSubdomainsData(
     : 'credential_count'
   const sortOrder = (pagination?.sortOrder || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
 
-  // Build WHERE clause based on search type
+  // Build WHERE clause based on search type (ClickHouse: named parameters)
   const { whereClause, params: baseParams } = searchType === 'keyword' 
     ? buildKeywordWhereClause(query, keywordMode)
     : buildDomainWhereClause(query)
-  const params: any[] = [...baseParams]
+  const params: Record<string, string> = { ...baseParams }
 
+  // Build final WHERE clause with filters
+  // OPTIMIZED: Reuse HOSTNAME_EXPR and PATH_EXPR constants (defined at top of file)
   let finalWhereClause = whereClause
   if (filters?.subdomain) {
-    finalWhereClause += ` AND (
-      CASE 
-        WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-          SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
-        ELSE
-          SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-      END
-    ) LIKE ?`
-    params.push(`%${filters.subdomain}%`)
+    const subdomainParam = `subdomainFilter${Object.keys(params).length}`
+    finalWhereClause += ` AND ${HOSTNAME_EXPR} ilike {${subdomainParam}:String}`
+    params[subdomainParam] = `%${filters.subdomain}%`
   }
 
   if (filters?.path) {
-    finalWhereClause += ` AND c.url LIKE ?`
-    params.push(`%${filters.path}%`)
+    const pathParam = `pathFilter${Object.keys(params).length}`
+    finalWhereClause += ` AND c.url ilike {${pathParam}:String}`
+    params[pathParam] = `%${filters.path}%`
   }
 
-  const countResult = (await executeQuery(
-    `SELECT COUNT(DISTINCT CONCAT(
-      CASE 
-        WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-          SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
-        ELSE
-          SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-      END,
-      '|',
-      CASE 
-        WHEN c.url LIKE '%/%' THEN
-          COALESCE(
-            SUBSTRING_INDEX(
-              SUBSTRING_INDEX(
-                CASE 
-                  WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-                    CASE 
-                      WHEN LOCATE('/', c.url, LOCATE('://', c.url) + 3) > 0 THEN
-                        SUBSTRING(c.url, LOCATE('/', c.url, LOCATE('://', c.url) + 3))
-                      ELSE
-                        '/'
-                    END
-                  ELSE
-                    CASE 
-                      WHEN LOCATE('/', c.url) > 0 THEN
-                        SUBSTRING(c.url, LOCATE('/', c.url))
-                      ELSE
-                        '/'
-                    END
-                END,
-                '?', 1
-              ),
-              '#', 1
-            ),
-            '/'
-          )
-        ELSE
-          '/'
-      END
-    )) as total
-    FROM credentials c
-    ${finalWhereClause}`,
-    params
-  )) as any[]
-
-  const total = countResult[0]?.total || 0
-
-  const data = (await executeQuery(
-    `SELECT 
-      CASE 
-        WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-          SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
-        ELSE
-          SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-      END as full_hostname,
-      CASE 
-        WHEN c.url LIKE '%/%' THEN
-          COALESCE(
-            SUBSTRING_INDEX(
-              SUBSTRING_INDEX(
-                CASE 
-                  WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-                    CASE 
-                      WHEN LOCATE('/', c.url, LOCATE('://', c.url) + 3) > 0 THEN
-                        SUBSTRING(c.url, LOCATE('/', c.url, LOCATE('://', c.url) + 3))
-                      ELSE
-                        '/'
-                    END
-                  ELSE
-                    CASE 
-                      WHEN LOCATE('/', c.url) > 0 THEN
-                        SUBSTRING(c.url, LOCATE('/', c.url))
-                      ELSE
-                        '/'
-                    END
-                END,
-                '?', 1
-              ),
-              '#', 1
-            ),
-            '/'
-          )
-        ELSE
-          '/'
-      END as path,
-      COUNT(*) as credential_count
+  // ============================================
+  // OPTIMIZED QUERY: TOTAL COUNT
+  // ============================================
+  // OPTIMIZED: Use uniq() with tuple (multiple arguments) instead of concat()
+  // This avoids string concatenation for millions of rows, much more efficient
+  // uniq() with tuple uses tuple comparison which is faster than string concat
+  const countQuery = `
+    SELECT uniq(
+      ${HOSTNAME_EXPR}, 
+      ${PATH_EXPR}
+    ) as total
     FROM credentials c
     ${finalWhereClause}
-    GROUP BY 
-      CASE 
-        WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-          SUBSTRING_INDEX(SUBSTRING_INDEX(REPLACE(REPLACE(c.url, 'http://', ''), 'https://', ''), '/', 1), ':', 1)
-        ELSE
-          SUBSTRING_INDEX(SUBSTRING_INDEX(c.url, '/', 1), ':', 1)
-      END,
-      CASE 
-        WHEN c.url LIKE '%/%' THEN
-          COALESCE(
-            SUBSTRING_INDEX(
-              SUBSTRING_INDEX(
-                CASE 
-                  WHEN c.url LIKE 'http://%' OR c.url LIKE 'https://%' THEN
-                    CASE 
-                      WHEN LOCATE('/', c.url, LOCATE('://', c.url) + 3) > 0 THEN
-                        SUBSTRING(c.url, LOCATE('/', c.url, LOCATE('://', c.url) + 3))
-                      ELSE
-                        '/'
-                    END
-                  ELSE
-                    CASE 
-                      WHEN LOCATE('/', c.url) > 0 THEN
-                        SUBSTRING(c.url, LOCATE('/', c.url))
-                      ELSE
-                        '/'
-                    END
-                END,
-                '?', 1
-              ),
-              '#', 1
-            ),
-            '/'
-          )
-        ELSE
-          '/'
-      END
-    ORDER BY ${sortBy === 'full_hostname' ? 'full_hostname' : sortBy === 'path' ? 'path' : 'credential_count'} ${sortOrder}
-    LIMIT ${Number(limit)} OFFSET ${Number(offset)}`,
-    [...params]
-  )) as any[]
+  `
+
+  const countResult = (await executeClickHouseQuery(countQuery, params)) as any[]
+  const total = Number(countResult[0]?.total || 0)
+
+  // ============================================
+  // OPTIMIZED QUERY: DATA
+  // ============================================
+  // OPTIMIZED: 
+  // 1. Use native path() and domain() functions (C++ level, very fast)
+  // 2. Use expressions in GROUP BY (not aliases) for compatibility
+  // 3. Use safe LIMIT/OFFSET interpolation with validation
+  const sortByExpr = sortBy === 'full_hostname' 
+    ? HOSTNAME_EXPR 
+    : sortBy === 'path' 
+      ? PATH_EXPR 
+      : 'credential_count'
+
+  const dataQuery = `
+    SELECT 
+      ${HOSTNAME_EXPR} as full_hostname,
+      ${PATH_EXPR} as path,
+      count() as credential_count
+    FROM credentials c
+    ${finalWhereClause}
+    GROUP BY ${HOSTNAME_EXPR}, ${PATH_EXPR}
+    ORDER BY ${sortByExpr} ${sortOrder}
+    LIMIT ${limit} OFFSET ${offset}
+  `
+
+  const data = (await executeClickHouseQuery(dataQuery, params)) as any[]
 
   return {
     data: data.map((row: any) => ({
       fullHostname: row.full_hostname || '',
       path: row.path || '/',
-      credentialCount: row.credential_count || 0,
+      credentialCount: Number(row.credential_count || 0), // PENTING: Cast ke Number (ClickHouse return String)
     })),
     pagination: {
       page,

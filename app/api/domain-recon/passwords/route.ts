@@ -1,59 +1,58 @@
 import { NextRequest, NextResponse } from "next/server"
-import { executeQuery } from "@/lib/mysql"
+import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 
 /**
- * Build WHERE clause for domain matching that supports subdomains
- * OPTIMIZED: Avoid heavy string manipulation in SQL (REPLACE, SUBSTRING, CASE)
- * Use simple LIKE patterns instead - much faster even if slightly less precise
+ * Build WHERE clause for domain matching that supports subdomains (ClickHouse version)
+ * OPTIMIZED: Avoid heavy string manipulation in SQL
+ * Uses named parameters for ClickHouse
  */
-function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: any[] } {
-  // Strategy: Check domain column (indexed) OR URL contains domain
-  // This avoids expensive string functions that prevent index usage
+function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: Record<string, string> } {
+  // Use ilike for case-insensitive matching (data in DB might be mixed case)
   const whereClause = `WHERE (
-    c.domain = ? OR 
-    c.domain LIKE CONCAT('%.', ?) OR
-    c.url LIKE ? OR
-    c.url LIKE ?
+    c.domain = {domain:String} OR 
+    c.domain ilike concat('%.', {domain:String}) OR
+    c.url ilike {pattern1:String} OR
+    c.url ilike {pattern2:String}
   ) AND c.domain IS NOT NULL`
   
   return {
     whereClause,
-    params: [
-      targetDomain,                              // Exact domain match
-      targetDomain,                              // Subdomain match (%.target.com)
-      `%://${targetDomain}/%`,                   // Match: https://target.com/
-      `%://${targetDomain}:%`                    // Match: https://target.com:8080/
-    ]
+    params: {
+      domain: targetDomain,                              // Exact domain match
+      pattern1: `%://${targetDomain}/%`,                   // Match: https://target.com/
+      pattern2: `%://${targetDomain}:%`                    // Match: https://target.com:8080/
+    }
   }
 }
 
 /**
- * Build WHERE clause for keyword search
+ * Build WHERE clause for keyword search (ClickHouse version)
  * OPTIMIZED: Use simple LIKE instead of heavy string manipulation
+ * Uses ilike for case-insensitive search
  */
-function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: any[] } {
+function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: Record<string, string> } {
   if (mode === 'domain-only') {
-    // For domain-only, check both domain column and URL
+    // For domain-only, check both domain column and URL (ClickHouse: use ilike)
     const whereClause = `WHERE (
-      c.domain LIKE ? OR
-      c.url LIKE ? OR
-      c.url LIKE ?
+      c.domain ilike {keyword:String} OR
+      c.url ilike {pattern1:String} OR
+      c.url ilike {pattern2:String}
     ) AND c.url IS NOT NULL`
     return {
       whereClause,
-      params: [
-        `%${keyword}%`,           // Domain column contains keyword
-        `%://%${keyword}%/%`,     // URL contains keyword in hostname
-        `%://%${keyword}%:%`       // URL contains keyword in hostname with port
-      ]
+      params: {
+        keyword: `%${keyword}%`,           // Domain column contains keyword
+        pattern1: `%://%${keyword}%/%`,     // URL contains keyword in hostname
+        pattern2: `%://%${keyword}%:%`       // URL contains keyword in hostname with port
+      }
     }
   } else {
-    // Full URL mode: search keyword anywhere in URL
-    const whereClause = `WHERE c.url LIKE ? AND c.url IS NOT NULL`
+    // Full URL mode: search keyword anywhere in URL (ClickHouse: use ilike)
+    const whereClause = `WHERE c.url ilike {keyword:String} AND c.url IS NOT NULL`
     return {
       whereClause,
-      params: [`%${keyword}%`]
+      params: { keyword: `%${keyword}%` }
     }
   }
 }
@@ -73,7 +72,7 @@ export async function POST(request: NextRequest) {
     }
 
     let whereClause: string
-    let params: any[]
+    let params: Record<string, string>
 
     if (searchType === 'keyword') {
       const keyword = targetDomain.trim()
@@ -95,22 +94,22 @@ export async function POST(request: NextRequest) {
 
     console.log("🔑 Getting top passwords (optimized query)...")
     
-    // OPTIMIZED QUERY:
-    // 1. Removed nested subquery - directly COUNT(DISTINCT device_id) in main query
-    // 2. Optimized password blacklist - use NOT IN for exact matches (faster than multiple NOT LIKE)
-    // 3. Simplified domain matching - uses LIKE instead of heavy string functions
+    // OPTIMIZED QUERY (ClickHouse):
+    // 1. Convert COUNT(DISTINCT device_id) -> uniq(device_id)
+    // 2. Convert LENGTH(TRIM(password)) -> length(trimBoth(password))
+    // 3. Convert REGEXP -> match
     // Result: 1 password per device for the domain, then count how many devices use each password
-    const result = (await executeQuery(
+    const result = (await executeClickHouseQuery(
       `SELECT 
         c.password,
-        COUNT(DISTINCT c.device_id) as total_count
+        uniq(c.device_id) as total_count
       FROM credentials c
       ${whereClause}
       AND c.password IS NOT NULL
-      AND LENGTH(TRIM(c.password)) > 2
+      AND length(trimBoth(c.password)) > 2
       AND c.password NOT IN ('', ' ', 'null', 'undefined', 'N/A', 'n/a', 'none', 'None', 'NONE', 'blank', 'Blank', 'BLANK', 'empty', 'Empty', 'EMPTY', '[NOT_SAVED]')
       AND c.password NOT LIKE '%[NOT_SAVED]%'
-      AND c.password NOT REGEXP '^[[:space:]]*$'
+      AND NOT match(c.password, '^[[:space:]]*$')
       GROUP BY c.password
       ORDER BY total_count DESC, c.password ASC
       LIMIT 10`,

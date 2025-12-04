@@ -1,12 +1,12 @@
-// Database operations untuk System Information Parser
+// Database operations for System Information Parser
 
 import { executeQuery } from '@/lib/mysql';
 import { ParsedLogData } from './types';
 import { isValidIP } from './helpers';
 
 /**
- * Merge strategy untuk multiple files per device
- * Gabungkan data yang lebih lengkap (prioritaskan non-null values)
+ * Merge strategy for multiple files per device
+ * Combine more complete data (prioritize non-null values)
  */
 function mergeSystemInformation(
   existing: ParsedLogData | null,
@@ -14,9 +14,9 @@ function mergeSystemInformation(
 ): ParsedLogData {
   if (!existing) return newData;
   
-  // Merge strategy: ambil nilai yang lebih lengkap
-  // Jika existing null tapi newData ada, gunakan newData
-  // Jika keduanya ada, prioritaskan newData (file terakhir)
+  // Merge strategy: take the more complete value
+  // If existing is null but newData exists, use newData
+  // If both exist, prioritize newData (last file)
   return {
     stealerType: newData.stealerType || existing.stealerType,
     os: newData.os || existing.os,
@@ -28,6 +28,7 @@ function mergeSystemInformation(
     gpu: newData.gpu || existing.gpu,
     country: newData.country || existing.country,
     logDate: newData.logDate || existing.logDate,
+    logTime: newData.logTime || existing.logTime || '00:00:00', // Default if not present
     hwid: newData.hwid || existing.hwid,
     filePath: newData.filePath || existing.filePath,
     antivirus: newData.antivirus || existing.antivirus,
@@ -35,7 +36,7 @@ function mergeSystemInformation(
 }
 
 /**
- * Validasi data sebelum save
+ * Validate data before save
  */
 function validateSystemInformation(data: ParsedLogData): {
   isValid: boolean;
@@ -43,17 +44,17 @@ function validateSystemInformation(data: ParsedLogData): {
 } {
   const errors: string[] = [];
   
-  // Validasi IP address jika ada
+  // Validate IP address if present
   if (data.ipAddress && !isValidIP(data.ipAddress)) {
     errors.push(`Invalid IP address: ${data.ipAddress}`);
   }
   
-  // Validasi OS minimal length
+  // Validate OS minimum length
   if (data.os && data.os.length < 3) {
     errors.push(`OS value too short: ${data.os}`);
   }
   
-  // Validasi username minimal length
+  // Validate username minimum length
   if (data.username && data.username.length < 1) {
     errors.push(`Username value too short: ${data.username}`);
   }
@@ -65,7 +66,7 @@ function validateSystemInformation(data: ParsedLogData): {
 }
 
 /**
- * Ambil existing data dari database
+ * Get existing data from database
  */
 async function getExistingSystemInformation(
   deviceId: string
@@ -103,7 +104,7 @@ async function getExistingSystemInformation(
 }
 
 /**
- * Save system information dengan merge strategy dan validasi
+ * Save system information with merge strategy and validation
  */
 export async function saveSystemInformation(
   deviceId: string,
@@ -111,25 +112,25 @@ export async function saveSystemInformation(
   sourceFile: string
 ): Promise<void> {
   try {
-    // Validasi data
+    // Validate data
     const validation = validateSystemInformation(data);
     if (!validation.isValid) {
       console.warn(`Validation errors for device ${deviceId}:`, validation.errors);
-      // Continue anyway, tapi log warning
+      // Continue anyway, but log warning
     }
     
-    // Ambil existing data jika ada
+    // Get existing data if present
     const existing = await getExistingSystemInformation(deviceId);
     
-    // Merge dengan existing data
+    // Merge with existing data
     const mergedData = mergeSystemInformation(existing, data);
     
-    // Save ke database
+    // Save to database
     const query = `
       INSERT INTO systeminformation (
         device_id, stealer_type, os, ip_address, username, cpu, ram,
-        computer_name, gpu, country, log_date, hwid, file_path, antivirus, source_file
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        computer_name, gpu, country, log_date, log_time, hwid, file_path, antivirus, source_file
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         stealer_type = VALUES(stealer_type),
         os = VALUES(os),
@@ -141,6 +142,7 @@ export async function saveSystemInformation(
         gpu = VALUES(gpu),
         country = VALUES(country),
         log_date = VALUES(log_date),
+        log_time = VALUES(log_time),
         hwid = VALUES(hwid),
         file_path = VALUES(file_path),
         antivirus = VALUES(antivirus),
@@ -160,6 +162,7 @@ export async function saveSystemInformation(
       mergedData.gpu,
       mergedData.country,
       mergedData.logDate,
+      mergedData.logTime || '00:00:00', // Default if not present
       mergedData.hwid,
       mergedData.filePath,
       mergedData.antivirus,

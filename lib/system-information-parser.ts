@@ -33,6 +33,7 @@ import { parseBanshee } from './system-information-parser/parsers/banshee.parser
 import { saveSystemInformation } from './system-information-parser/database';
 import { ParsedLogData, SystemInfoFile, ParserFunction } from './system-information-parser/types';
 import { normalizeEncoding, cleanValue } from './system-information-parser/helpers';
+import { normalizeDateTime } from './system-information-parser/date-normalizer';
 
 // Parser map
 const PARSER_MAP: Record<string, ParserFunction> = {
@@ -68,7 +69,7 @@ const PARSER_MAP: Record<string, ParserFunction> = {
 };
 
 /**
- * Process system information files dengan error handling dan logging
+ * Process system information files with error handling and logging
  */
 export async function processSystemInformationFiles(
   deviceId: string,
@@ -84,7 +85,7 @@ export async function processSystemInformationFiles(
     errors: [] as Array<{ fileName: string; error: string }>,
   };
   
-  // Filter files yang relevan (system information files)
+  // Filter relevant files (system information files)
   const systemInfoFiles = files.filter(file => {
     const lowerFileName = file.fileName.toLowerCase();
     const systemInfoPatterns = [
@@ -115,6 +116,12 @@ export async function processSystemInformationFiles(
         parsedData.stealerType = stealerType;
         
         // Clean values (remove "Unknown", "[redacted]", dll)
+        const cleanedLogDate = cleanValue(parsedData.logDate);
+        
+        // ENHANCEMENT: Normalize date & time format (after parsing, before save)
+        // IMPORTANT: Parser still returns raw string (AS IS), normalization only converts format
+        const normalizedDateTime = normalizeDateTime(cleanedLogDate);
+        
         parsedData = {
           ...parsedData,
           os: cleanValue(parsedData.os),
@@ -125,7 +132,8 @@ export async function processSystemInformationFiles(
           computerName: cleanValue(parsedData.computerName),
           gpu: cleanValue(parsedData.gpu),
           country: cleanValue(parsedData.country),
-          logDate: cleanValue(parsedData.logDate),
+          logDate: normalizedDateTime.date,      // ← NORMALIZED DATE (YYYY-MM-DD)
+          logTime: normalizedDateTime.time,       // ← NORMALIZED TIME (HH:mm:ss)
           hwid: cleanValue(parsedData.hwid),
           filePath: cleanValue(parsedData.filePath),
           antivirus: cleanValue(parsedData.antivirus),
