@@ -18,16 +18,24 @@ import { readFile } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
 
-// Load .env.local FIRST
+// Load .env.local or .env
 async function loadEnv() {
-  const envPath = path.join(process.cwd(), ".env.local")
-  if (!existsSync(envPath)) {
-    console.error("❌ .env.local file not found!")
-    console.error("   Please create .env.local with MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE")
+  // Try .env.local first, then fallback to .env
+  const envLocalPath = path.join(process.cwd(), ".env.local")
+  const envPath = path.join(process.cwd(), ".env")
+  
+  let finalEnvPath: string
+  if (existsSync(envLocalPath)) {
+    finalEnvPath = envLocalPath
+  } else if (existsSync(envPath)) {
+    finalEnvPath = envPath
+  } else {
+    console.error("❌ Environment file not found!")
+    console.error("   Please create .env.local or .env with MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE")
     process.exit(1)
   }
 
-  const content = await readFile(envPath, "utf-8")
+  const content = await readFile(finalEnvPath, "utf-8")
   for (const line of content.split("\n")) {
     const trimmed = line.trim()
     if (trimmed && !trimmed.startsWith("#") && trimmed.includes("=")) {

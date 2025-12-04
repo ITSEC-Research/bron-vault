@@ -84,57 +84,138 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 ## Getting Started
 
+### Architecture & Performance
+
+Broń Vault now features **ClickHouse integration** to dramatically accelerate analytics queries and domain searches. With ClickHouse's columnar storage and MaterializedMySQL replication, complex queries that previously took seconds now complete much faster, enabling real-time exploration of large datasets.
+
+**Automatic Data Synchronization:** ClickHouse automatically replicates data from MySQL through MaterializedMySQL. Once configured, every change in MySQL is synced to ClickHouse in real-time (no manual steps required). You can focus on analytics while the system handles all synchronization behind the scenes.
+
+> 💡 **And don't worry about the complexity!** We've created a complete Docker service setup that handles all the configuration automatically. Just run a single script, and everything -> MySQL, ClickHouse, MaterializedMySQL replication, and the Next.js application, will be set up and ready to use.
+
 Follow these steps to get Broń Vault up and running locally.
 
 ### Prerequisites
 
-  * Node.js & npm
-  * MySQL (or use Docker for an easier setup)
+  * **Docker** and **Docker Compose** installed and running
+    * Docker Desktop: [Download here](https://www.docker.com/products/docker-desktop)
+    * Linux: Install via package manager (e.g., `sudo apt-get install docker.io docker-compose`)
+  * Git (for cloning the repository)
 
 ### Tested Environments
 
 This application has been successfully tested on the following operating systems:
 
   * Ubuntu 24.04 LTS
+  * Kali Linux 2025.3
   * macOS Sequoia
   * Windows 11 Pro
 
 ### Installation & Running
 
+#### Quick Start (Recommended)
+
 1.  **Clone this repository:**
 
     ```bash
-    git clone https://github.com/your-username/bron-vault.git
+    git clone https://github.com/ITSEC-Research/bron-vault
     cd bron-vault
     ```
 
-2.  **Install dependencies:**
+2.  **Configure the Environment:**
 
     ```bash
-    npm install
+    # Copy the example environment file
+    cp .env.example .env
+    
+    # Edit .env with your secure passwords
+    # IMPORTANT: Change all default passwords for security!
     ```
 
-3.  **Configure the Environment:**
+3.  **Start all services:**
 
-      * Copy `.env.example` to `.env.local`.
-      * Update `.env.local` with your MySQL database connection details.
-
-4.  **Run the development server:**
-
+    **For Linux/macOS:**
     ```bash
-    npm run dev
+    ./docker-start.sh
     ```
+
+    **For Windows:**
+    ```cmd
+    docker-start.bat
+    ```
+
+    As a note, this script will:
+    - Build Docker images (only on the first run)
+    - Start MySQL, ClickHouse, and the Next.js application
+    - Run the setup script to configure MaterializedMySQL replication
+    - Display service status and access URLs
+
+4.  **Access the application:**
+
+    Open your browser and navigate to:
+    ```
+    http://localhost:3000
+    ```
+
+#### Default Login Credentials
+
+After the first startup, you can log in with:
+
+- **Email:** `admin@bronvault.local`
+- **Password:** `admin`
+
+> ⚠️ **Security Note:** Please change the default password immediately after first login!
+
+#### Service URLs
+
+Once all services are running, you can access:
+
+- **Bron Vault App:** http://localhost:3000
+- **ClickHouse Play:** http://localhost:8123/play
+- **MySQL:** localhost:3306
+- **ClickHouse HTTP API:** http://localhost:8123
+
+#### Useful Commands
+
+**Check service status:**
+```bash
+# Linux/macOS
+./docker-status.sh
+
+# Windows
+docker-status.bat
+```
+
+**View logs:**
+```bash
+docker-compose logs -f
+```
+
+**Stop all services:**
+```bash
+docker-compose down
+```
+
+**Restart services:**
+```bash
+docker-compose restart
+```
 
 ### Initial Setup
 
-Once the server is running, perform this one-time setup:
+The first time you start the services:
 
-1.  Open `http://localhost:3000` in your browser.
-2.  The app will automatically detect that no users exist and will direct you to create an account.
-3.  Create your first **administrator** account.
-4.  Log in with your newly created credentials.
+1. The setup script will automatically:
+   - Create MySQL replication user for ClickHouse sync
+   - Configure MaterializedMySQL database in ClickHouse
+   - Initialize all database tables and indexes
 
-You are now ready to start using Broń Vault\!
+2. Wait for all services to be ready (usually about 60 seconds)
+
+3. Access the application at `http://localhost:3000` and log in with the default credentials above
+
+4. **Important:** Change the default password immediately after first login
+
+You are now ready to start using Broń Vault!
 Just upload the stealer logs, and it will automatically parse them.
 
 -----

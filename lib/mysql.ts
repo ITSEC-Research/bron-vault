@@ -232,7 +232,8 @@ async function createTables() {
       computer_name VARCHAR(500) NULL,
       gpu VARCHAR(500) NULL,
       country VARCHAR(100) NULL,
-      log_date VARCHAR(100) NULL,
+      log_date VARCHAR(10) NULL COMMENT 'Normalized date in YYYY-MM-DD format',
+      log_time VARCHAR(8) NOT NULL DEFAULT '00:00:00' COMMENT 'Normalized time in HH:mm:ss format (always string, default 00:00:00)',
       hwid VARCHAR(255) NULL,
       file_path TEXT NULL,
       antivirus VARCHAR(500) NULL,
@@ -251,6 +252,47 @@ async function createTables() {
       INDEX idx_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `)
+  
+  // Add log_time column if it doesn't exist (for existing databases)
+  try {
+    // Check if column exists first (MySQL doesn't support IF NOT EXISTS for ADD COLUMN)
+    const columnCheck = await executeQuery(
+      `
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'systeminformation' AND COLUMN_NAME = 'log_time'
+    `,
+      [dbConfig.database],
+    )
+
+    if ((columnCheck as any[]).length === 0) {
+      console.log("➕ Adding log_time column to systeminformation table...")
+      await executeQuery(`
+        ALTER TABLE systeminformation 
+        ADD COLUMN log_time VARCHAR(8) NOT NULL DEFAULT '00:00:00'
+        COMMENT 'Normalized time in HH:mm:ss format (always string, default 00:00:00)' 
+        AFTER log_date
+      `)
+      console.log("✅ log_time column added successfully")
+    } else {
+      console.log("✅ log_time column already exists")
+    }
+  } catch (error) {
+    // Column might already exist or other error, log but don't fail
+    console.log('⚠️ Error checking/adding log_time column:', error);
+  }
+  
+  // Update log_date column size if needed (for existing databases)
+  try {
+    await executeQuery(`
+      ALTER TABLE systeminformation 
+      MODIFY COLUMN log_date VARCHAR(10) NULL 
+      COMMENT 'Normalized date in YYYY-MM-DD format'
+    `);
+  } catch (error) {
+    // Ignore error if column doesn't exist or modification fails
+    console.log('⚠️ Could not modify log_date column:', error);
+  }
 
   // Create app_settings table
   await createAppSettingsTable()

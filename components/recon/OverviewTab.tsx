@@ -47,131 +47,171 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
   const [topPasswords, setTopPasswords] = useState<TopPassword[]>([])
   const [isPasswordsLoading, setIsPasswordsLoading] = useState(false)
   const [timeline, setTimeline] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  // Separate loading states for progressive rendering
+  const [loadingStates, setLoadingStates] = useState({
+    stats: true,      // Subdomains + Paths (fast data)
+    timeline: true,   // Timeline (slow data)
+  })
   const [timelineGranularity, setTimelineGranularity] = useState<"auto" | "weekly" | "monthly">("auto")
 
+  // ============================================
+  // SPLIT REQUESTS STRATEGY - Progressive Loading
+  // ============================================
+  // Load fast data (Stats) and slow data (Timeline) separately
+  // This allows fast content to appear first (~200ms) while Timeline loads (~2s)
   useEffect(() => {
-    loadOverviewData()
+    const abortController = new AbortController()
+
+    // Reset loading states
+    setLoadingStates({ stats: true, timeline: true })
+
+    // 1. Fast Request: Stats (Subdomains + Paths) - ~200ms
+    const loadStats = async () => {
+      try {
+        const body: any = {
+          targetDomain,
+          searchType,
+          type: 'stats', // Request only stats data
+        }
+        if (searchType === 'keyword' && keywordMode) {
+          body.keywordMode = keywordMode
+        }
+
+        const response = await fetch("/api/domain-recon/overview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("📥 Stats data received:", {
+            topSubdomains: data.topSubdomains?.length || 0,
+            topPaths: data.topPaths?.length || 0,
+          })
+          
+          setTopSubdomains(data.topSubdomains || [])
+          setTopPaths(data.topPaths || [])
+          setLoadingStates(prev => ({ ...prev, stats: false }))
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          console.error("❌ Stats API error:", response.status, errorData)
+          setTopSubdomains([])
+          setTopPaths([])
+          setLoadingStates(prev => ({ ...prev, stats: false }))
+        }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error("Error loading stats data:", error)
+          setTopSubdomains([])
+          setTopPaths([])
+          setLoadingStates(prev => ({ ...prev, stats: false }))
+        }
+      }
+    }
+
+    // 2. Slow Request: Timeline - ~2s
+    const loadTimeline = async () => {
+      try {
+        const body: any = {
+          targetDomain,
+          timelineGranularity,
+          searchType,
+          type: 'timeline', // Request only timeline data
+        }
+        if (searchType === 'keyword' && keywordMode) {
+          body.keywordMode = keywordMode
+        }
+
+        const response = await fetch("/api/domain-recon/overview", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const timelineData = Array.isArray(data.timeline) ? data.timeline : []
+          console.log("📥 Timeline data received:", {
+            timeline: timelineData.length,
+            timelineSample: timelineData.slice(0, 3),
+          })
+          
+          setTimeline(timelineData)
+          setLoadingStates(prev => ({ ...prev, timeline: false }))
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          console.error("❌ Timeline API error:", response.status, errorData)
+          setTimeline([])
+          setLoadingStates(prev => ({ ...prev, timeline: false }))
+        }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error("Error loading timeline data:", error)
+          setTimeline([])
+          setLoadingStates(prev => ({ ...prev, timeline: false }))
+        }
+      }
+    }
+
+    // 3. Passwords Request - ~200ms (parallel with stats and timeline)
+    const loadPasswordsParallel = async () => {
+      setIsPasswordsLoading(true)
+      try {
+        const body: any = {
+          targetDomain,
+          searchType,
+        }
+        if (searchType === 'keyword' && keywordMode) {
+          body.keywordMode = keywordMode
+        }
+
+        const response = await fetch("/api/domain-recon/passwords", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          console.log("🔑 Passwords data received:", {
+            topPasswords: data.topPasswords?.length || 0,
+          })
+          setTopPasswords(data.topPasswords || [])
+        } else {
+          const errorData = await response.json().catch(() => ({}))
+          console.error("❌ Passwords API error:", response.status, errorData)
+          setTopPasswords([])
+        }
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error("Error loading passwords data:", error)
+          setTopPasswords([])
+        }
+      } finally {
+        setIsPasswordsLoading(false)
+      }
+    }
+
+    // Fire all 3 requests in parallel for maximum performance
+    loadStats()
+    loadTimeline()
+    loadPasswordsParallel()
+
+    // Cleanup: Cancel requests if component unmounts or dependencies change
+    return () => {
+      abortController.abort()
+    }
   }, [targetDomain, timelineGranularity, searchType, keywordMode])
-
-  // Load passwords separately after main data is loaded
-  useEffect(() => {
-    if (!isLoading && targetDomain) {
-      loadPasswords()
-    }
-  }, [targetDomain, searchType, keywordMode, isLoading])
-
-  const loadOverviewData = async () => {
-    setIsLoading(true)
-    try {
-      const body: any = {
-        targetDomain,
-        timelineGranularity,
-        searchType,
-      }
-      if (searchType === 'keyword' && keywordMode) {
-        body.keywordMode = keywordMode
-      }
-      const response = await fetch("/api/domain-recon/overview", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log("📥 Overview data received:", {
-          topSubdomains: data.topSubdomains?.length || 0,
-          topPaths: data.topPaths?.length || 0,
-          timeline: data.timeline?.length || 0,
-          success: data.success,
-          timelineIsArray: Array.isArray(data.timeline),
-          timelineSample: data.timeline?.slice(0, 3),
-          topSubdomainsSample: data.topSubdomains?.slice(0, 2),
-          topPathsSample: data.topPaths?.slice(0, 2),
-        })
-        // Set all data at once to avoid race conditions
-        const timelineData = Array.isArray(data.timeline) ? data.timeline : []
-        console.log("✅ Setting all data:", {
-          timeline: timelineData.length,
-          subdomains: (data.topSubdomains || []).length,
-          paths: (data.topPaths || []).length,
-        })
-        
-        setTopSubdomains(data.topSubdomains || [])
-        setTopPaths(data.topPaths || [])
-        setTimeline(timelineData)
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error("❌ Overview API error:", response.status, errorData)
-        setTopSubdomains([])
-        setTopPaths([])
-        setTimeline([])
-      }
-    } catch (error) {
-      console.error("Error loading overview data:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadPasswords = async () => {
-    setIsPasswordsLoading(true)
-    try {
-      const body: any = {
-        targetDomain,
-        searchType,
-      }
-      if (searchType === 'keyword' && keywordMode) {
-        body.keywordMode = keywordMode
-      }
-      const response = await fetch("/api/domain-recon/passwords", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log("🔑 Passwords data received:", {
-          topPasswords: data.topPasswords?.length || 0,
-        })
-        setTopPasswords(data.topPasswords || [])
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error("❌ Passwords API error:", response.status, errorData)
-        setTopPasswords([])
-      }
-    } catch (error) {
-      console.error("Error loading passwords data:", error)
-      setTopPasswords([])
-    } finally {
-      setIsPasswordsLoading(false)
-    }
-  }
-
-  // Show loading state while initial data is being fetched
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {/* Loading state for timeline and passwords */}
-        <div className="flex flex-col lg:flex-row gap-6">
-          <LoadingChart height={300} />
-          <LoadingChart height={300} />
-        </div>
-        
-        {/* Loading state for subdomains and paths */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <LoadingCard />
-          <LoadingCard />
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">
@@ -201,11 +241,15 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
             </div>
         </CardHeader>
         <CardContent className="!p-4 !pt-0">
-          <TimelineChart 
-            data={timeline} 
-            targetDomain={targetDomain}
-            onGranularityChange={setTimelineGranularity}
-          />
+          {loadingStates.timeline ? (
+            <LoadingChart height={300} />
+          ) : (
+            <TimelineChart 
+              data={timeline} 
+              targetDomain={targetDomain}
+              onGranularityChange={setTimelineGranularity}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -228,7 +272,7 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
           colorClass="text-bron-accent-red"
           barColorClass="bg-blue-500"
           textColorClass="text-bron-text-secondary"
-          isLoading={false}
+          isLoading={loadingStates.stats}
           targetDomain={targetDomain}
         />
 
@@ -239,7 +283,7 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
           data={topPaths}
           colorClass="text-[#ff6b6b]"
           barColorClass="bg-red-500"
-          isLoading={false}
+          isLoading={loadingStates.stats}
         />
       </div>
     </div>
@@ -332,7 +376,7 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const scrollCountRef = useRef(0)
 
-  // Effect 1: Reset index saat data baru dimuat
+  // Effect 1: Reset index when new data is loaded
   useEffect(() => {
     if (!isLoading && displayData.length > 0) {
       setCurrentIndex(0)
@@ -342,23 +386,23 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
     }
   }, [isLoading, data, displayData.length])
 
-  // Effect 2: Timer Logic - Mengubah index setiap 2 detik, reset setelah 8 detik (4 item)
+  // Effect 2: Timer Logic - Change index every 2 seconds, reset after 8 seconds (4 items)
   useEffect(() => {
     if (isLoading || displayData.length === 0) return
 
-    // Reset counter saat effect dimulai
+    // Reset counter when effect starts
     scrollCountRef.current = 0
-    const maxScrolls = 4 // 4 item = 8 detik
+    const maxScrolls = 4 // 4 items = 8 seconds
 
     const interval = setInterval(() => {
       scrollCountRef.current++
       
       if (scrollCountRef.current >= maxScrolls) {
-        // Setelah 8 detik (4 item), reset ke index 0
+        // After 8 seconds (4 items), reset to index 0
         setCurrentIndex(0)
         scrollCountRef.current = 0
       } else {
-        // Scroll ke item berikutnya
+        // Scroll to next item
         setCurrentIndex((prev) => prev + 1)
       }
     }, 2000) // 2 seconds
@@ -366,7 +410,7 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
     return () => clearInterval(interval)
   }, [isLoading, displayData.length])
 
-  // Effect 3: Scroll Logic Manual (Fix untuk delay & alignment)
+  // Effect 3: Manual Scroll Logic (Fix for delay & alignment)
   useEffect(() => {
     if (displayData.length === 0) return
 
@@ -375,17 +419,17 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
 
     if (!container) return
 
-    // Khusus untuk index 0 (rank 1), langsung reset ke top tanpa smooth untuk menghindari stuck
-    // Ini mengatasi masalah ketika loop kembali ke rank 1 dari rank 10
+    // Special case for index 0 (rank 1), directly reset to top without smooth to avoid stuck
+    // This fixes the issue when loop returns to rank 1 from rank 10
     if (currentIndex === 0) {
-      // Reset langsung tanpa smooth untuk menghindari delay
+      // Direct reset without smooth to avoid delay
       container.scrollTop = 0
     } else if (targetItem) {
-      // Ambil posisi item relatif terhadap container
+      // Get item position relative to container
       const itemTop = targetItem.offsetTop
 
-      // ADJUSTMENT: Kurangi dengan 12px (sesuai padding !pt-3) agar tidak nempel border atas
-      // Ini menjaga konsistensi visual antara load pertama dan looping berikutnya
+      // ADJUSTMENT: Subtract 12px (matching padding !pt-3) to avoid sticking to top border
+      // This maintains visual consistency between first load and subsequent loops
       const topBuffer = 12
 
       container.scrollTo({

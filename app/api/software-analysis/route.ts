@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pool, executeQuery } from "@/lib/mysql";
-import type { RowDataPacket } from "mysql2";
+import { executeQuery as executeMySQLQuery } from "@/lib/mysql";
+import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse";
 import { validateRequest } from "@/lib/auth";
 
 interface SoftwareData {
@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Check cache first
-    const cacheResult = (await executeQuery(
+    // Check cache first (analytics_cache remains in MySQL - operational table)
+    const cacheResult = (await executeMySQLQuery(
       "SELECT cache_data FROM analytics_cache WHERE cache_key = 'software_analysis' AND expires_at > NOW()"
     )) as any[]
 
@@ -42,14 +42,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Query to get software grouped by name and version for attack surface management
-    const [results] = await pool.query<RowDataPacket[]>(`
-      SELECT software_name, version, COUNT(DISTINCT device_id) as count
+    // ClickHouse: Convert COUNT(DISTINCT device_id) -> uniq(device_id)
+    const results = await executeClickHouseQuery(`
+      SELECT software_name, version, uniq(device_id) as count
       FROM software 
       WHERE software_name IS NOT NULL AND software_name != ''
       GROUP BY software_name, version
       ORDER BY count DESC, software_name, version
       LIMIT 10
-    `);
+    `) as any[];
 
     if (!Array.isArray(results)) {
       return NextResponse.json({ success: false, error: "Invalid data format" }, { status: 500 });
@@ -68,7 +69,8 @@ export async function GET(request: NextRequest) {
     };
 
     // Cache for 10 minutes
-    await executeQuery(
+    // analytics_cache remains in MySQL (operational table)
+    await executeMySQLQuery(
       "INSERT INTO analytics_cache (cache_key, cache_data, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE)) ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)",
       ["software_analysis", JSON.stringify(result)]
     );
