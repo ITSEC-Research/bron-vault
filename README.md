@@ -35,7 +35,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     - **Software Installed Tab**: See all installed software detected on the device
     - **Files Tab**: Explore the complete file structure with tree viewer
 
-  * **Domain Discovery**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
+  * **Asset Discovery**: Search for subdomains, paths, and associated credentials for any domain across all uploaded logs.
     - Enter a `domain` or `keyword` to discover all related subdomains, paths, and exposed credentials.
     - **Overview Tab**: 
       - Timeline visualization showing when credentials were logged by stealers (log-date tracking).
@@ -134,8 +134,10 @@ This application has been successfully tested on the following operating systems
 3.  **Start all services:**
 
     **For Linux/macOS:**
+    Run the script with elevated privileges:
+
     ```bash
-    ./docker-start.sh
+    sudo bash docker-start.sh
     ```
 
     **For Windows:**
