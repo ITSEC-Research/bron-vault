@@ -108,7 +108,6 @@ This application has been successfully tested on the following operating systems
   * Ubuntu 24.04 LTS
   * Kali Linux 2025.3
   * macOS Sequoia
-  * Windows 11 Pro
 
 ### Installation & Running
 
