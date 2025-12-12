@@ -10,7 +10,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
 
 > ⚠️ **Note:** This tool was developed as a side project and is not intended for production use. Please see the [Important Notice](#important-notice) section below.
 
-![alt text](images/Bron-Vault---Dashboard.png "Bron Vault Dashboard")
+![alt text](images/Bron-Vault-Dashboard.png "Bron Vault Dashboard")
 
 -----
 
@@ -59,19 +59,19 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     
   * **Simple RSS Feeds**: Integrated RSS feeds from **ransomware.live** and **malware-traffic-analysis.net** to keep you updated on the latest threats.
   
-![alt text](images/Bron-Vault-Search-I.png "Bron Vault Search I")
+![alt text](images/Bron-Vault-Search-1.png "Bron Vault Search 1")
 
-![alt text](images/Bron-Vault---Search-II.png "Bron Vault Search II")
+![alt text](images/Bron-Vault-Search-2.png "Bron Vault Search 2")
 
-![alt text](images/Bron-Vault---Search-III.png "Bron Vault Search III")
+![alt text](images/Bron-Vault-Search-3.png "Bron Vault Search 3")
 
-![alt text](images/Bron-Vault---Search-IV.png "Bron Vault Search IV")
+![alt text](images/Bron-Vault-Search-4.png "Bron Vault Search 4")
 
-![alt text](images/Bron-Vault-Host-Info.png "Bron Vault Host Information")
+![alt text](images/Bron-Vault-Host-Information.png "Bron Vault Host Information")
 
-![alt text](images/Bron-Vault-DeviceOverview.png "Bron Vault Device Overview")
+![alt text](images/Bron-Vault-Device-Overview.png "Bron Vault Device Overview")
 
-![alt text](images/Bron-Vault-Domain-KeywordSearch.png "Bron Vault Device Overview")
+![alt text](images/Bron-Vault-Domain-Keyword-Search.png "Bron Vault Device Overview")
 
 -----
 
@@ -140,11 +140,6 @@ This application has been successfully tested on the following operating systems
     sudo bash docker-start.sh
     ```
 
-    **For Windows:**
-    ```cmd
-    docker-start.bat
-    ```
-
     As a note, this script will:
     - Build Docker images (only on the first run)
     - Start MySQL, ClickHouse, and the Next.js application
@@ -182,10 +177,6 @@ Once all services are running, you can access:
 ```bash
 # Linux/macOS
 ./docker-status.sh
-
-# Windows
-docker-status.bat
-```
 
 **View logs:**
 ```bash

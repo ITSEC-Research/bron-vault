@@ -234,10 +234,10 @@ export function SearchResults({
     <div className="space-y-4">
       {/* Header - only show count if we have results or finished loading */}
       {(!isLoading && (searchResults.length > 0 || totalDevices > 0)) && (
-        <h2 className="text-lg font-semibold text-bron-text-primary">
+        <h2 className="text-lg font-semibold text-foreground">
           Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
           {searchResults.length < displayCount && (
-            <span className="text-sm text-bron-text-muted font-normal ml-2">
+            <span className="text-sm text-muted-foreground font-normal ml-2">
               (showing {searchResults.length.toLocaleString()})
             </span>
           )}
@@ -246,9 +246,9 @@ export function SearchResults({
       
       {/* Loading indicator */}
       {isLoading && searchResults.length === 0 && (
-        <div className="flex items-center gap-2 text-bron-text-muted">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <h2 className="text-lg font-semibold text-bron-text-primary">
+          <h2 className="text-lg font-semibold text-foreground">
             Searching for devices containing "{searchQuery}"...
           </h2>
         </div>
@@ -256,14 +256,14 @@ export function SearchResults({
       
       {/* Show existing results while loading more */}
       {isLoading && searchResults.length > 0 && (
-        <h2 className="text-lg font-semibold text-bron-text-primary">
+        <h2 className="text-lg font-semibold text-foreground">
           Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
           {searchResults.length < displayCount && (
-            <span className="text-sm text-bron-text-muted font-normal ml-2">
+            <span className="text-sm text-muted-foreground font-normal ml-2">
               (showing {searchResults.length.toLocaleString()})
             </span>
           )}
-          <span className="text-sm text-bron-text-muted font-normal ml-2">
+          <span className="text-sm text-muted-foreground font-normal ml-2">
             <Loader2 className="h-4 w-4 inline animate-spin mr-1" />
             Loading more...
           </span>
@@ -277,7 +277,7 @@ export function SearchResults({
               <div className="flex items-center space-x-2 mb-2">
                 <Badge
                   variant="outline"
-                  className="bg-bron-accent-yellow/20 text-bron-accent-yellow border-bron-accent-yellow"
+                  className="glass border-primary/30 text-primary"
                 >
                   <Copy className="h-3 w-3 mr-1" />
                   {devices.length} instances of "{deviceName}"
@@ -290,49 +290,49 @@ export function SearchResults({
               return (
                 <Card
                   key={result.deviceId}
-                  className="w-full cursor-pointer hover:shadow-md transition-shadow bg-bron-bg-tertiary border-bron-border hover:border-bron-accent-red"
+                  className="w-full cursor-pointer glass-card border-border hover:border-primary/70 transition-all duration-300"
                   onClick={() => onDeviceSelect(result)}
                 >
                   <CardContent className="p-4">
                     <div className="flex flex-col gap-2">
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-base text-bron-text-primary truncate">
+                          <h3 className="font-semibold text-base text-foreground truncate">
                             {result.deviceName}
                           </h3>
                           {devices.length > 1 && (
                             <Badge
                               variant="secondary"
-                              className="text-xs bg-bron-bg-secondary text-bron-text-secondary border-bron-border shrink-0"
+                              className="text-xs glass border-white/5 shrink-0"
                             >
                               #{index + 1}
                             </Badge>
                           )}
                         </div>
                         <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-bron-text-muted font-mono opacity-70 truncate">
+                          <p className="text-xs text-muted-foreground font-mono opacity-70 truncate">
                             ID: {result.deviceId}
                           </p>
                           <div className="flex items-center gap-2 shrink-0 ml-2">
-                            <div className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] bg-bron-bg-secondary text-bron-text-secondary border-bron-border">
+                            <div className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] glass border-white/5">
                               {result.matchingFiles.length.toLocaleString()} matches
                             </div>
-                            <div className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] bg-bron-bg-secondary text-bron-text-secondary border-bron-border">
+                            <div className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] glass border-white/5">
                               {result.totalFiles.toLocaleString()} files
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-bron-text-muted -mt-1">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground -mt-1">
                         <div className="flex items-center gap-1.5">
                           <CloudUpload className="w-3.5 h-3.5" />
                           <span>{formatDate(result.uploadDate || result.upload_date || "")}</span>
                         </div>
                         {result.logDate && (
                           <>
-                            <span className="hidden sm:inline text-bron-text-muted/20">|</span>
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border bg-bron-accent-blue/5 text-bron-accent-blue border-bron-accent-blue/30">
+                            <span className="hidden sm:inline text-muted-foreground/20">|</span>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium glass border-blue-500/30 text-blue-500">
                               <CalendarClock className="w-3 h-3" />
                               <span className="text-xs">Log: {normalizeLogDate(result.logDate)}</span>
                             </div>
@@ -341,19 +341,19 @@ export function SearchResults({
                       </div>
 
                       {matchingFileNames.length > 0 && (
-                        <div className="flex items-center gap-2 pt-3 border-t border-bron-border/40 mt-1">
-                          <span className="text-xs text-bron-text-muted">Files:</span>
+                        <div className="flex items-center gap-2 pt-3 border-t border-border/40 mt-1">
+                          <span className="text-xs text-muted-foreground">Files:</span>
                           <div className="flex flex-wrap gap-1">
                             {matchingFileNames.slice(0, 2).map((fileName, idx) => (
                               <div
                                 key={idx}
-                                className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] bg-bron-accent-yellow/10 text-bron-accent-yellow border-bron-accent-yellow/40"
+                                className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] glass border-orange-500/30 text-orange-500"
                               >
                                 {fileName}
                               </div>
                             ))}
                             {matchingFileNames.length > 2 && (
-                              <div className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] bg-bron-accent-yellow/10 text-bron-accent-yellow border-bron-accent-yellow/40">
+                              <div className="inline-flex items-center rounded-full border px-2 py-0.5 font-medium text-[10px] glass border-orange-500/30 text-orange-500">
                                 +{matchingFileNames.length - 2} more
                               </div>
                             )}
@@ -374,7 +374,7 @@ export function SearchResults({
       {hasMore && (
         <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
           {isLoading && (
-            <div className="flex items-center gap-2 text-bron-text-muted">
+            <div className="flex items-center gap-2 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading more devices...</span>
             </div>
@@ -384,7 +384,7 @@ export function SearchResults({
 
       {/* All devices loaded message */}
       {!hasMore && searchResults.length > 0 && (
-        <div className="text-center text-bron-text-muted py-4 text-sm">
+        <div className="text-center text-muted-foreground py-4 text-sm">
           All {displayCount.toLocaleString()} device(s) loaded
         </div>
       )}

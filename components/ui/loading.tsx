@@ -64,7 +64,7 @@ export function LoadingState({
     )}>
       <Icon 
         className={cn(
-          "animate-spin text-bron-accent-blue mb-3",
+          "animate-spin text-primary mb-3",
           size === "sm" && "h-6 w-6",
           size === "md" && "h-8 w-8",
           size === "lg" && "h-12 w-12"
@@ -72,7 +72,7 @@ export function LoadingState({
         aria-label="Loading"
       />
       <p className={cn(
-        "text-bron-text-muted",
+        "text-muted-foreground",
         size === "sm" && "text-sm",
         size === "md" && "text-base",
         size === "lg" && "text-lg"
@@ -92,20 +92,20 @@ interface LoadingCardProps {
 export function LoadingCard({ title, description, className }: LoadingCardProps) {
   return (
     <div className={cn(
-      "bg-bron-bg-tertiary border border-bron-border rounded-lg p-6",
+      "glass-card rounded-lg p-6",
       className
     )}>
       <div className="animate-pulse">
         {title && (
-          <div className="h-6 bg-bron-bg-secondary rounded mb-4 w-3/4"></div>
+          <div className="h-6 bg-card/40 rounded mb-4 w-3/4"></div>
         )}
         <div className="space-y-3">
-          <div className="h-4 bg-bron-bg-secondary rounded w-full"></div>
-          <div className="h-4 bg-bron-bg-secondary rounded w-5/6"></div>
-          <div className="h-4 bg-bron-bg-secondary rounded w-4/6"></div>
+          <div className="h-4 bg-card/40 rounded w-full"></div>
+          <div className="h-4 bg-card/40 rounded w-5/6"></div>
+          <div className="h-4 bg-card/40 rounded w-4/6"></div>
         </div>
         {description && (
-          <div className="h-3 bg-bron-bg-secondary rounded mt-4 w-2/3"></div>
+          <div className="h-3 bg-card/40 rounded mt-4 w-2/3"></div>
         )}
       </div>
     </div>
@@ -124,7 +124,7 @@ export function LoadingTable({ rows = 5, columns = 4, className }: LoadingTableP
       {/* Header */}
       <div className="grid gap-4 animate-pulse" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
         {Array.from({ length: columns }).map((_, i) => (
-          <div key={i} className="h-4 bg-bron-bg-secondary rounded"></div>
+          <div key={i} className="h-4 bg-card/40 rounded"></div>
         ))}
       </div>
       
@@ -141,7 +141,7 @@ export function LoadingTable({ rows = 5, columns = 4, className }: LoadingTableP
           {Array.from({ length: columns }).map((_, colIndex) => (
             <div 
               key={colIndex} 
-              className="h-3 bg-bron-bg-secondary rounded"
+              className="h-3 bg-card/40 rounded"
               style={{ width: `${Math.random() * 40 + 60}%` }}
             ></div>
           ))}
@@ -159,19 +159,19 @@ interface LoadingChartProps {
 export function LoadingChart({ height = 300, className }: LoadingChartProps) {
   return (
     <div 
-      className={cn("bg-bron-bg-tertiary border border-bron-border rounded-lg p-4", className)}
+      className={cn("glass-card rounded-lg p-4", className)}
       style={{ height }}
     >
       <div className="animate-pulse h-full flex flex-col">
         {/* Chart title */}
-        <div className="h-4 bg-bron-bg-secondary rounded w-1/3 mb-4"></div>
+        <div className="h-4 bg-card/40 rounded w-1/3 mb-4"></div>
         
         {/* Chart area */}
         <div className="flex-1 flex items-end justify-between space-x-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div 
               key={i}
-              className="bg-bron-bg-secondary rounded-t"
+              className="bg-card/40 rounded-t"
               style={{ 
                 height: `${Math.random() * 80 + 20}%`,
                 width: '12%'
@@ -183,7 +183,7 @@ export function LoadingChart({ height = 300, className }: LoadingChartProps) {
         {/* X-axis labels */}
         <div className="flex justify-between mt-2">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-2 bg-bron-bg-secondary rounded w-8"></div>
+            <div key={i} className="h-2 bg-card/40 rounded w-8"></div>
           ))}
         </div>
       </div>
@@ -212,8 +212,8 @@ export function LoadingButton({
       disabled={disabled || loading}
       className={cn(
         "inline-flex items-center justify-center px-4 py-2 rounded-md",
-        "bg-bron-accent-blue text-white font-medium",
-        "hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500",
+        "bg-primary text-primary-foreground font-medium",
+        "hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary",
         "disabled:opacity-50 disabled:cursor-not-allowed",
         "transition-colors duration-200",
         className

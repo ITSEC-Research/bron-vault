@@ -52,7 +52,7 @@ export function TypingEffect({
 
   return (
     <div className="w-full flex flex-col items-center mb-4 mt-8">
-      <span className="font-mono text-bron-text-muted text-2xl font-bold mb-2 h-8 min-h-[2rem]">
+      <span className="font-mono text-muted-foreground text-2xl font-bold mb-2 h-8 min-h-[2rem]">
         {typeof typingText === "string" ? typingText.replace(/undefined/g, "") : ""}
         {typingText.length > 0 && typingText.length < sentences[typingIndex].length ? (
           <span className="inline-block w-2 animate-pulse align-bottom">|</span>

@@ -47,7 +47,7 @@ export function TimelineChart({ data: initialData, targetDomain, onGranularityCh
     console.warn("⚠️ TimelineChart: No data available")
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-bron-text-muted">No timeline data available</p>
+        <p className="text-muted-foreground">No timeline data available</p>
       </div>
     )
   }

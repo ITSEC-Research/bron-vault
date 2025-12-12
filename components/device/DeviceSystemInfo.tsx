@@ -44,27 +44,27 @@ export function DeviceSystemInfo({
       <div
         className={`flex items-center space-x-1.5 px-2 py-1.5 rounded-md transition-colors ${
           isPrimary
-            ? "bg-gradient-to-r from-bron-accent-red/10 via-bron-accent-red/5 to-bron-bg-tertiary border border-bron-accent-red/30"
-            : "bg-bron-bg-tertiary border border-bron-border hover:bg-bron-bg-primary"
+            ? "bg-gradient-to-r from-primary/10 via-primary/5 to-card/60 border border-primary/30"
+            : "bg-background/60 border border-border/50 hover:bg-card/80"
         }`}
       >
         <Icon
           className={`h-3.5 w-3.5 shrink-0 ${
-            isPrimary ? "text-bron-accent-red" : "text-bron-text-secondary"
+            isPrimary ? "text-primary" : "text-muted-foreground"
           }`}
         />
         <div className="flex items-center space-x-1.5 flex-1 min-w-0">
           <span
             className={`text-xs font-medium shrink-0 ${
-              isPrimary ? "text-bron-accent-red" : "text-bron-text-secondary"
+              isPrimary ? "text-primary" : "text-muted-foreground"
             }`}
           >
             {label}:
           </span>
           <span
             className={`text-xs truncate ${
-              isPrimary ? "text-bron-text-primary font-semibold" : "text-bron-text-primary"
-            } ${isEmpty ? "text-bron-text-muted italic" : ""}`}
+              isPrimary ? "text-foreground font-semibold" : "text-foreground"
+            } ${isEmpty ? "text-muted-foreground italic" : ""}`}
           >
             {displayValue}
           </span>
@@ -77,27 +77,27 @@ export function DeviceSystemInfo({
       <div
         className={`flex items-start space-x-2 p-2 rounded-md transition-colors ${
           isPrimary
-            ? "bg-gradient-to-r from-bron-accent-red/10 via-bron-accent-red/5 to-bron-bg-tertiary border border-bron-accent-red/30"
-            : "bg-bron-bg-tertiary border border-bron-border hover:bg-bron-bg-primary"
+            ? "bg-gradient-to-r from-primary/10 via-primary/5 to-card/60 border border-primary/30"
+            : "bg-background/60 border border-border/50 hover:bg-card/80"
         }`}
       >
         <Icon
           className={`h-4 w-4 mt-0.5 shrink-0 ${
-            isPrimary ? "text-bron-accent-red" : "text-bron-text-secondary"
+            isPrimary ? "text-primary" : "text-muted-foreground"
           }`}
         />
         <div className="flex-1 min-w-0">
           <div
             className={`text-xs font-medium mb-0.5 ${
-              isPrimary ? "text-bron-accent-red" : "text-bron-text-secondary"
+              isPrimary ? "text-primary" : "text-muted-foreground"
             }`}
           >
             {label}
           </div>
           <div
             className={`text-sm truncate ${
-              isPrimary ? "text-bron-text-primary font-semibold" : "text-bron-text-primary"
-            } ${isEmpty ? "text-bron-text-muted italic" : ""}`}
+              isPrimary ? "text-foreground font-semibold" : "text-foreground"
+            } ${isEmpty ? "text-muted-foreground italic" : ""}`}
           >
             {displayValue}
           </div>
@@ -115,9 +115,9 @@ export function DeviceSystemInfo({
             <TooltipTrigger asChild>{content}</TooltipTrigger>
             <TooltipContent
               side="top"
-              className="max-w-xs break-all bg-bron-bg-tertiary border border-bron-border shadow-lg p-3"
+              className="max-w-xs break-all glass-card shadow-lg p-3"
             >
-              <div className="font-mono text-xs select-text text-bron-text-primary">{value}</div>
+              <div className="font-mono text-xs select-text text-foreground">{value}</div>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -128,7 +128,7 @@ export function DeviceSystemInfo({
   }
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border">
+    <Card className="glass-card">
       <CardContent className="p-2.5 space-y-2">
         {/* System Information - Grid 3 Columns (Compact for 13" screens) */}
         <div className="grid grid-cols-3 gap-1.5">

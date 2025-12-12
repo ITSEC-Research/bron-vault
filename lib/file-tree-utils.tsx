@@ -56,20 +56,20 @@ export function renderASCIITree(
     return (
       <div key={`${node.path || node.name}-${index}`}>
         <div className="flex items-center font-mono text-sm">
-          <span className="text-bron-text-muted select-none">{prefix}</span>
+          <span className="text-muted-foreground select-none">{prefix}</span>
           
           {node.type === "directory" ? (
-            <span className="text-bron-accent-blue font-medium">
+            <span className="text-primary font-medium">
               📁 {node.name}/
             </span>
           ) : (
             <div className="flex items-center space-x-2">
-              <span className="text-bron-text-primary">
+              <span className="text-foreground">
                 📄 {node.name}
               </span>
               
               {node.size && (
-                <span className="text-xs text-bron-text-muted">
+                <span className="text-xs text-muted-foreground">
                   ({(node.size / 1024).toFixed(1)} KB)
                 </span>
               )}
@@ -77,7 +77,7 @@ export function renderASCIITree(
               {isViewable && onFileClick && (
                 <button
                   onClick={() => onFileClick(node.path || node.name, node.name)}
-                  className="text-xs bg-bron-accent-green text-white px-2 py-1 rounded hover:bg-green-600 transition-colors"
+                  className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600 transition-colors"
                   title="Click to view file content"
                 >
                   View

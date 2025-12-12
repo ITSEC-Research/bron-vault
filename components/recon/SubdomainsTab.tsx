@@ -163,12 +163,12 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
 
   const getSortIcon = (column: 'full_hostname' | 'path' | 'credential_count') => {
     if (sortBy !== column) {
-      return <ArrowUpDown className="h-3 w-3 ml-1 text-bron-text-muted" />
+      return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground" />
     }
     if (sortOrder === 'asc') {
-      return <ArrowUp className="h-3 w-3 ml-1 text-bron-accent-red" />
+      return <ArrowUp className="h-3 w-3 ml-1 text-primary" />
     }
-    return <ArrowDown className="h-3 w-3 ml-1 text-bron-accent-red" />
+    return <ArrowDown className="h-3 w-3 ml-1 text-primary" />
   }
 
   // Calculate which page numbers to display (always 7 elements)
@@ -235,17 +235,17 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
   }
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border">
+    <Card className="glass-card border-border/50">
       <CardHeader className="!p-4">
-        <CardTitle className="flex items-center text-bron-text-primary text-lg">
-          <Globe className="h-4 w-4 mr-2 text-bron-accent-blue" />
+        <CardTitle className="flex items-center text-foreground text-lg">
+          <Globe className="h-4 w-4 mr-2 text-blue-500" />
           Subdomains & Paths
         </CardTitle>
       </CardHeader>
       <CardContent className="!p-4 !pt-0">
         {/* Search and Deduplication */}
         <div className="mb-4 space-y-3">
-          <div className="text-sm text-bron-text-muted">
+          <div className="text-sm text-muted-foreground">
             Found {total} entries
             {deduplicate && ` (${filteredData.length} unique subdomains)`}
             {searchQuery && !deduplicate && ` (${filteredData.length} filtered)`}
@@ -258,17 +258,17 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                 placeholder="Search subdomain or path..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+                className="w-full h-9 text-sm glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setDeduplicate(!deduplicate)}
-              className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-bron-border text-bron-text-primary hover:bg-bron-bg-primary ${
+              className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-border/50 text-foreground hover:bg-white/5 ${
                 deduplicate
-                  ? "bg-bron-accent-red/20 border-bron-accent-red text-bron-accent-red"
-                  : "bg-bron-bg-tertiary"
+                  ? "bg-primary/20 border-primary text-primary"
+                  : "glass-card"
               }`}
               title={deduplicate ? "Show all entries" : "Show unique subdomains only"}
             >
@@ -289,16 +289,16 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
           </div>
         ) : filteredData.length === 0 ? (
           <div className="flex items-center justify-center h-64">
-            <p className="text-bron-text-muted">No data available for this search</p>
+            <p className="text-muted-foreground">No data available for this search</p>
           </div>
         ) : (
           <>
-            <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)] pb-4">
+            <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)] pb-4">
               <Table>
                 <TableHeader>
-                  <TableRow className="hover:bg-bron-bg-primary">
+                  <TableRow className="hover:bg-white/5">
                     <TableHead 
-                      className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 cursor-pointer hover:bg-bron-bg-primary transition-colors"
+                      className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 cursor-pointer hover:bg-white/5 transition-colors"
                       onClick={() => handleSort('full_hostname')}
                     >
                       <div className="flex items-center space-x-1">
@@ -308,7 +308,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 cursor-pointer hover:bg-bron-bg-primary transition-colors"
+                      className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 cursor-pointer hover:bg-white/5 transition-colors"
                       onClick={() => handleSort('path')}
                     >
                       <div className="flex items-center space-x-1">
@@ -318,7 +318,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 cursor-pointer hover:bg-bron-bg-primary transition-colors text-center"
+                      className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 cursor-pointer hover:bg-white/5 transition-colors text-center"
                       onClick={() => handleSort('credential_count')}
                     >
                       <div className="flex items-center justify-center space-x-1">
@@ -333,7 +333,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                   {filteredData.map((item, index) => (
                     <TableRow
                       key={index}
-                      className="border-b border-bron-border hover:bg-bron-bg-primary"
+                      className="border-b border-border/50 hover:bg-white/5"
                     >
                       <TableCell className="font-medium text-xs py-2 px-3 font-mono">
                         {item.fullHostname || targetDomain}
@@ -354,13 +354,13 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
             <div className="mt-4">
               <div className="flex items-center w-full">
                 {/* KOLOM KIRI: Page Size Selector */}
-                <div className="flex-1 flex items-center justify-start space-x-2 text-sm text-bron-text-muted">
+                <div className="flex-1 flex items-center justify-start space-x-2 text-sm text-muted-foreground">
                   <span className="text-xs whitespace-nowrap">Show</span>
                   <Select
                     value={limit.toString()}
                     onValueChange={(value) => setLimit(Number(value))}
                   >
-                    <SelectTrigger className="h-8 w-20 text-xs bg-bron-bg-tertiary border-bron-border text-bron-text-primary">
+                    <SelectTrigger className="h-8 w-20 text-xs glass-card border-border/50 text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -386,7 +386,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                           if (pageNum === 'ellipsis-start' || pageNum === 'ellipsis-end') {
                             return (
                               <PaginationItem key={`ellipsis-${index}`}>
-                                <span className="px-2 text-bron-text-muted">
+                                <span className="px-2 text-muted-foreground">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </span>
                               </PaginationItem>
@@ -419,9 +419,9 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                   {totalPages > 1 && (
                     <>
                       {/* Separator */}
-                      <div className="h-5 w-[1px] bg-bron-border" />
+                      <div className="h-5 w-[1px] bg-border/50" />
                       {/* Jump to page */}
-                      <div className="flex items-center space-x-2 text-sm text-bron-text-muted">
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <span className="text-xs whitespace-nowrap">Page</span>
                         <Input
                           type="number"
@@ -435,14 +435,14 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                             }
                           }}
                           placeholder=""
-                          className="w-16 h-8 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary"
+                          className="w-16 h-8 text-sm glass-card border-border/50 text-foreground"
                         />
                         <span className="text-xs whitespace-nowrap">of {totalPages}</span>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handleJumpToPage}
-                          className="h-8 px-2 text-xs bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+                          className="h-8 px-2 text-xs glass-card border-border/50 text-foreground hover:bg-white/5"
                         >
                           Go
                         </Button>

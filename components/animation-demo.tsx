@@ -53,12 +53,12 @@ export function AnimationDemo() {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-bron-bg-tertiary border-bron-border">
+      <Card className="glass-card">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between text-bron-text-primary">
+          <CardTitle className="flex items-center justify-between text-foreground">
             <span>🎬 Animation Demo</span>
             <div className="flex gap-2">
-              <Button onClick={startDemo} size="sm" className="bg-green-600 hover:bg-green-700">
+              <Button onClick={startDemo} size="sm" className="bg-primary hover:bg-primary/90">
                 <Play className="h-4 w-4 mr-2" />
                 Start Demo
               </Button>
@@ -70,7 +70,7 @@ export function AnimationDemo() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-bron-text-muted mb-4">
+          <p className="text-muted-foreground mb-4">
             Click "Start Demo" to see all animations in action with sample data.
           </p>
           
@@ -84,7 +84,7 @@ export function AnimationDemo() {
             >
               {/* Animated Statistics */}
               <div>
-                <h3 className="text-lg font-semibold text-bron-text-primary mb-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
                   📊 Animated Statistics (Count from 0 to target)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -92,14 +92,14 @@ export function AnimationDemo() {
                     icon={HardDrive}
                     value={demoStats.totalDevices}
                     label="Total Devices"
-                    iconColor="text-bron-accent-blue"
+                    iconColor="text-blue-500"
                     delay={0}
                   />
                   <AnimatedStatCard
                     icon={Key}
                     value={demoStats.totalCredentials}
                     label="Total Credentials"
-                    iconColor="text-bron-accent-green"
+                    iconColor="text-emerald-500"
                     delay={0.2}
                   />
                 </div>
@@ -108,21 +108,21 @@ export function AnimationDemo() {
                     icon={Database}
                     value={demoStats.totalFiles}
                     label="Files Extracted"
-                    iconColor="text-bron-accent-green"
+                    iconColor="text-emerald-500"
                     delay={0.4}
                   />
                   <AnimatedStatCard
                     icon={Globe}
                     value={demoStats.totalDomains}
                     label="Total Domains"
-                    iconColor="text-bron-accent-blue"
+                    iconColor="text-blue-500"
                     delay={0.6}
                   />
                   <AnimatedStatCard
                     icon={Link}
                     value={demoStats.totalUrls}
                     label="Total URLs"
-                    iconColor="text-bron-accent-yellow"
+                    iconColor="text-amber-500"
                     delay={0.8}
                   />
                 </div>
@@ -130,13 +130,13 @@ export function AnimationDemo() {
 
               {/* Animated Browser Chart */}
               <div>
-                <h3 className="text-lg font-semibold text-bron-text-primary mb-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
                   📈 Animated Browser Chart (Bars grow from bottom to top)
                 </h3>
-                <Card className="bg-bron-bg-tertiary border-bron-border">
+                <Card className="glass-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center text-bron-text-primary">
-                      <Monitor className="h-5 w-5 mr-2 text-bron-accent-purple" />
+                    <CardTitle className="flex items-center text-foreground">
+                      <Monitor className="h-5 w-5 mr-2 text-violet-500" />
                       Top Browsers Used by Infected Devices
                     </CardTitle>
                   </CardHeader>
@@ -150,13 +150,13 @@ export function AnimationDemo() {
 
               {/* Animated Software List */}
               <div>
-                <h3 className="text-lg font-semibold text-bron-text-primary mb-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
                   📋 Animated Software List (Slide in from left)
                 </h3>
-                <Card className="bg-bron-bg-tertiary border-bron-border">
+                <Card className="glass-card">
                   <CardHeader>
-                    <CardTitle className="flex items-center text-bron-text-primary">
-                      <Package className="h-5 w-5 mr-2 text-bron-accent-green" />
+                    <CardTitle className="flex items-center text-foreground">
+                      <Package className="h-5 w-5 mr-2 text-emerald-500" />
                       Most Common Software Found in Logs
                     </CardTitle>
                   </CardHeader>

@@ -154,9 +154,9 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="bg-bron-bg-tertiary border-bron-border animate-pulse">
+            <Card key={i} className="glass-card animate-pulse">
               <CardContent className="p-4">
-                <div className="h-16 bg-bron-bg-secondary rounded"></div>
+                <div className="h-16 bg-secondary/30 rounded"></div>
               </CardContent>
             </Card>
           ))}
@@ -167,13 +167,13 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
 
   if (error || !overviewData) {
     return (
-      <Card className="bg-bron-bg-tertiary border-bron-border">
+      <Card className="glass-card">
         <CardContent className="p-4">
           <div className="space-y-2">
-            <p className="text-sm font-medium text-bron-text-primary">Error Loading Overview</p>
-            <p className="text-xs text-bron-text-muted">{error || "No overview data available"}</p>
+            <p className="text-sm font-medium text-foreground">Error Loading Overview</p>
+            <p className="text-xs text-muted-foreground">{error || "No overview data available"}</p>
             {error && (
-              <p className="text-xs text-bron-text-muted mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Please check the browser console for more details.
               </p>
             )}
@@ -246,63 +246,63 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-bron-bg-tertiary border-bron-border">
+        <Card className="glass-card hover:border-primary/30 transition-all duration-300">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-bron-text-muted mb-1">Total Credentials</p>
-                <p className="text-2xl font-semibold text-bron-text-primary">
+                <p className="text-xs text-muted-foreground mb-1">Total Credentials</p>
+                <p className="text-2xl font-semibold text-foreground">
                   {summary.totalCredentials.toLocaleString()}
                 </p>
               </div>
-              <div className="h-16 w-16 rounded-lg bg-bron-accent-red/10 flex items-center justify-center">
-                <Key className="h-8 w-8 text-bron-accent-red" />
+              <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-inset ring-primary/20">
+                <Key className="h-8 w-8 text-primary" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-bron-bg-tertiary border-bron-border">
+        <Card className="glass-card hover:border-primary/30 transition-all duration-300">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-bron-text-muted mb-1">Total Software</p>
-                <p className="text-2xl font-semibold text-bron-text-primary">
+                <p className="text-xs text-muted-foreground mb-1">Total Software</p>
+                <p className="text-2xl font-semibold text-foreground">
                   {summary.totalSoftware.toLocaleString()}
                 </p>
               </div>
-              <div className="h-16 w-16 rounded-lg bg-bron-accent-blue/10 flex items-center justify-center">
-                <Package className="h-8 w-8 text-bron-accent-blue" />
+              <div className="h-16 w-16 rounded-lg bg-blue-500/10 flex items-center justify-center ring-1 ring-inset ring-blue-500/20">
+                <Package className="h-8 w-8 text-blue-500" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-bron-bg-tertiary border-bron-border">
+        <Card className="glass-card hover:border-primary/30 transition-all duration-300">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-bron-text-muted mb-1">Total Files</p>
-                <p className="text-2xl font-semibold text-bron-text-primary">
+                <p className="text-xs text-muted-foreground mb-1">Total Files</p>
+                <p className="text-2xl font-semibold text-foreground">
                   {summary.totalFiles.toLocaleString()}
                 </p>
               </div>
-              <div className="h-16 w-16 rounded-lg bg-bron-accent-green/10 flex items-center justify-center">
-                <FileText className="h-8 w-8 text-bron-accent-green" />
+              <div className="h-16 w-16 rounded-lg bg-emerald-500/10 flex items-center justify-center ring-1 ring-inset ring-emerald-500/20">
+                <FileText className="h-8 w-8 text-emerald-500" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-bron-bg-tertiary border-bron-border">
+        <Card className="glass-card hover:border-primary/30 transition-all duration-300">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-bron-text-muted mb-1">Upload Date</p>
-                <p className="text-lg font-semibold text-bron-text-primary">{formattedUploadDate}</p>
+                <p className="text-xs text-muted-foreground mb-1">Upload Date</p>
+                <p className="text-lg font-semibold text-foreground">{formattedUploadDate}</p>
               </div>
-              <div className="h-16 w-16 rounded-lg bg-bron-accent-yellow/10 flex items-center justify-center">
-                <Calendar className="h-8 w-8 text-bron-accent-yellow" />
+              <div className="h-16 w-16 rounded-lg bg-amber-500/10 flex items-center justify-center ring-1 ring-inset ring-amber-500/20">
+                <Calendar className="h-8 w-8 text-amber-500" />
               </div>
             </div>
           </CardContent>
@@ -312,94 +312,94 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
       {/* Charts Row 1: Host Info & Top Passwords */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Device Overview Card */}
-        <Card className="bg-bron-bg-tertiary border-bron-border">
-          <CardHeader className="pb-3 pt-4 px-4">
-            <CardTitle className="text-sm font-semibold text-bron-text-primary flex items-center gap-2">
+        <Card className="glass-card">
+          <CardHeader className="pb-3 pt-4 px-4 border-b border-white/5">
+            <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Info className="h-4 w-4" />
               Device Overview
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-4">
+          <CardContent className="px-4 pb-4 pt-4">
             {hostInfo ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Monitor className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <Monitor className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-bron-text-muted">Operating System</p>
-                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.os || "N/A"}</p>
+                    <p className="text-xs text-muted-foreground">Operating System</p>
+                    <p className="text-xs text-foreground truncate mt-1">{hostInfo.os || "N/A"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Server className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <Server className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-bron-text-muted">Computer Name</p>
-                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.computerName || "N/A"}</p>
+                    <p className="text-xs text-muted-foreground">Computer Name</p>
+                    <p className="text-xs text-foreground truncate mt-1">{hostInfo.computerName || "N/A"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <User className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <User className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-bron-text-muted">Username</p>
-                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.username || "N/A"}</p>
+                    <p className="text-xs text-muted-foreground">Username</p>
+                    <p className="text-xs text-foreground truncate mt-1">{hostInfo.username || "N/A"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <Globe className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-bron-text-muted">IP Address</p>
-                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.ipAddress || "N/A"}</p>
+                    <p className="text-xs text-muted-foreground">IP Address</p>
+                    <p className="text-xs text-foreground truncate mt-1">{hostInfo.ipAddress || "N/A"}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-bron-text-muted">Country</p>
+                    <p className="text-xs text-muted-foreground">Country</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       {hostInfo.country ? (
                         <>
                           <span className="text-base leading-none">{getCountryFlag(hostInfo.country)}</span>
-                          <p className="text-xs text-bron-text-primary truncate">{hostInfo.country}</p>
+                          <p className="text-xs text-foreground truncate">{hostInfo.country}</p>
                         </>
                       ) : (
-                        <p className="text-xs text-bron-text-primary">N/A</p>
+                        <p className="text-xs text-foreground">N/A</p>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-bron-border">
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
                   <div className="flex items-center gap-2">
-                    <Cpu className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                    <Cpu className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">CPU</p>
-                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.cpu || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">CPU</p>
+                      <p className="text-xs text-foreground truncate mt-1">{hostInfo.cpu || "N/A"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <HardDrive className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                    <HardDrive className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-bron-text-muted">RAM</p>
-                      <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.ram || "N/A"}</p>
+                      <p className="text-xs text-muted-foreground">RAM</p>
+                      <p className="text-xs text-foreground truncate mt-1">{hostInfo.ram || "N/A"}</p>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 pt-2 border-t border-bron-border">
-                  <Monitor className="h-3.5 w-3.5 text-bron-text-muted flex-shrink-0" />
+                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                  <Monitor className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-bron-text-muted">GPU</p>
-                    <p className="text-xs text-bron-text-primary truncate mt-1">{hostInfo.gpu || "N/A"}</p>
+                    <p className="text-xs text-muted-foreground">GPU</p>
+                    <p className="text-xs text-foreground truncate mt-1">{hostInfo.gpu || "N/A"}</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-bron-text-muted">No host information available</p>
+              <p className="text-xs text-muted-foreground">No host information available</p>
             )}
           </CardContent>
         </Card>
 
         {/* Top Passwords Polar Area Chart */}
-        <Card className="bg-bron-bg-tertiary border-bron-border">
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-sm font-semibold text-bron-text-primary flex items-center gap-2">
+        <Card className="glass-card">
+          <CardHeader className="pb-4 pt-3 px-4 border-b border-white/5">
+            <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Lock className="h-4 w-4" />
               Top Passwords
             </CardTitle>
@@ -421,7 +421,9 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                       dataKey="value"
                       cornerRadius={6}
                       minPointSize={15}
-                      background={{ fill: "var(--bron-bg-secondary)", opacity: 0.3 }}
+                      background={{ fill: "hsl(var(--secondary))", opacity: 0.3 }}
+                      stroke="hsl(var(--background))"
+                      strokeWidth={2}
                     >
                       {chartPasswords.map((entry, index) => {
                         // Convert HSL to HSLA with opacity for softer appearance
@@ -430,6 +432,8 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                           <Cell 
                             key={`cell-${index}`} 
                             fill={colorWithOpacity}
+                            stroke="hsl(var(--background))"
+                            strokeWidth={2}
                             style={{
                               filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
                               transition: 'all 0.2s ease',
@@ -518,19 +522,20 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                         return (
                           <div
                             style={{
-                              backgroundColor: "var(--bron-bg-tertiary)",
-                              border: "1px solid var(--bron-border)",
+                              backgroundColor: "hsl(var(--card))",
+                              border: "1px solid hsl(var(--border))",
                               borderRadius: "6px",
-                              color: "var(--bron-text-primary)",
+                              color: "hsl(var(--foreground))",
                               fontSize: "12px",
                               padding: "8px 12px",
                               boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                              backdropFilter: "blur(8px)",
                             }}
                           >
-                            <div style={{ color: "var(--bron-text-primary)", fontWeight: "500", marginBottom: "4px" }}>
+                            <div style={{ color: "hsl(var(--foreground))", fontWeight: "500", marginBottom: "4px" }}>
                               #{rank} - {password}
                             </div>
-                            <div style={{ color: "var(--bron-text-secondary)", fontSize: "11px" }}>
+                            <div style={{ color: "hsl(var(--muted-foreground))", fontSize: "11px" }}>
                               {value} occurrence{value > 1 ? "s" : ""}
                             </div>
                           </div>
@@ -538,7 +543,7 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                       }}
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: "11px", color: "var(--bron-text-secondary)", marginTop: "24px", paddingTop: "16px", borderTop: "1px solid var(--bron-border)" }}
+                      wrapperStyle={{ fontSize: "11px", color: "hsl(var(--muted-foreground))", marginTop: "32px", paddingTop: "20px", borderTop: "1px solid hsl(var(--border))" }}
                       formatter={(value, entry: any) => {
                         if (!entry || !entry.payload) {
                           return value || "Unknown"
@@ -556,7 +561,7 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
               </div>
             ) : (
               <div className="h-[300px] flex items-center justify-center">
-                <p className="text-xs text-bron-text-muted">No password data available</p>
+                <p className="text-xs text-muted-foreground">No password data available</p>
               </div>
             )}
           </CardContent>
@@ -566,14 +571,14 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
       {/* Charts Row 2: Top Domains & File Statistics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Domains - Custom Bar Style (matching domain-search) */}
-        <Card className="bg-bron-bg-tertiary border-bron-border h-full flex flex-col">
-          <CardHeader className="!p-4 border-b border-bron-border">
+        <Card className="glass-card h-full flex flex-col">
+          <CardHeader className="!p-4 border-b border-white/5">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <Globe className="h-4 w-4 mr-2 text-bron-text-muted" />
+              <CardTitle className="flex items-center text-foreground text-lg">
+                <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
                 Top Domains
               </CardTitle>
-              <span className="text-xs text-bron-text-muted">Top 7 by Volume</span>
+              <span className="text-xs text-muted-foreground">Top 7 by Volume</span>
             </div>
           </CardHeader>
           <CardContent className="!pl-2 !pr-3 !pb-3 !pt-3 flex-1 overflow-auto">
@@ -588,15 +593,15 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                   return (
                     <div 
                       key={index} 
-                      className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-bron-bg-secondary/50 transition-colors"
+                      className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-white/5 transition-colors"
                     >
                       {/* Rank Number */}
-                      <span className="w-8 text-xs font-mono text-bron-text-muted text-center mr-2">
+                      <span className="w-8 text-xs font-mono text-muted-foreground text-center mr-2">
                         {item.rank}
                       </span>
 
                       {/* Progress Bar Container */}
-                      <div className="flex-1 relative h-8 bg-bron-bg-secondary/50 rounded-md overflow-hidden border border-bron-border group-hover:border-bron-border/70 transition-colors">
+                      <div className="flex-1 relative h-8 bg-secondary/30 rounded-md overflow-hidden border border-border/50 group-hover:border-border/70 transition-colors">
                         {/* Background Progress Bar - Gradient Effect */}
                         <div
                           className="absolute top-0 left-0 h-full bg-red-500 opacity-10 group-hover:opacity-20 transition-all duration-500"
@@ -610,12 +615,12 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                         {/* Content inside the bar */}
                         <div className="absolute inset-0 flex items-center justify-between px-3">
                           <span 
-                            className="font-mono text-xs text-bron-text-secondary truncate z-10 max-w-[70%]"
+                            className="font-mono text-xs text-foreground truncate z-10 max-w-[70%]"
                             title={isTruncated ? displayDomain : undefined}
                           >
                             {displayDomain}
                           </span>
-                          <span className="text-[10px] font-bold text-bron-text-muted bg-bron-bg-tertiary px-1.5 py-0.5 rounded border border-bron-border z-10">
+                          <span className="text-[10px] font-bold text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded border border-white/5 z-10">
                             {item.value.toLocaleString()}
                           </span>
                         </div>
@@ -624,11 +629,11 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                       {/* Tooltip for long domains - appears above */}
                       {isTruncated && (
                         <div className="absolute left-0 bottom-full mb-1 z-50 hidden group-hover:block pointer-events-none">
-                          <div className="bg-bron-bg-tertiary border border-bron-border rounded-md px-3 py-2 shadow-lg max-w-md">
-                            <p className="text-xs text-bron-text-primary font-mono break-all">
+                          <div className="glass-card rounded-md px-3 py-2 shadow-lg max-w-md">
+                            <p className="text-xs text-foreground font-mono break-all">
                               {displayDomain}
                             </p>
-                            <p className="text-[10px] text-bron-text-muted mt-1">
+                            <p className="text-[10px] text-muted-foreground mt-1">
                               {item.value} URL{item.value > 1 ? "s" : ""}
                             </p>
                           </div>
@@ -640,21 +645,21 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
               </div>
             ) : (
               <div className="h-[380px] flex items-center justify-center">
-                <p className="text-xs text-bron-text-muted">No domain data available</p>
+                <p className="text-xs text-muted-foreground">No domain data available</p>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* File Size Distribution - Custom Bar Style (matching domain-search) */}
-        <Card className="bg-bron-bg-tertiary border-bron-border h-full flex flex-col">
-          <CardHeader className="!p-4 border-b border-bron-border">
+        <Card className="glass-card h-full flex flex-col">
+          <CardHeader className="!p-4 border-b border-white/5">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <BarChart3 className="h-4 w-4 mr-2 text-bron-text-muted" />
+              <CardTitle className="flex items-center text-foreground text-lg">
+                <BarChart3 className="h-4 w-4 mr-2 text-muted-foreground" />
                 File Size Distribution
               </CardTitle>
-              <span className="text-xs text-bron-text-muted">By Category</span>
+              <span className="text-xs text-muted-foreground">By Category</span>
             </div>
           </CardHeader>
           <CardContent className="!p-0 flex flex-col flex-1 min-h-0">
@@ -669,15 +674,15 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                     return (
                       <div 
                         key={index} 
-                        className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-bron-bg-secondary/50 transition-colors"
-                      >
+                      className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
                         {/* Rank/Index Number */}
-                        <span className="w-8 text-xs font-mono text-bron-text-muted text-center mr-2">
+                        <span className="w-8 text-xs font-mono text-muted-foreground text-center mr-2">
                           {index + 1}
                         </span>
 
                         {/* Progress Bar Container */}
-                        <div className="flex-1 relative h-8 bg-bron-bg-secondary/50 rounded-md overflow-hidden border border-bron-border group-hover:border-bron-border/70 transition-colors">
+                        <div className="flex-1 relative h-8 bg-secondary/30 rounded-md overflow-hidden border border-border/50 group-hover:border-border/70 transition-colors">
                           {/* Background Progress Bar - Gradient Effect */}
                           <div
                             className="absolute top-0 left-0 h-full bg-red-500 opacity-10 group-hover:opacity-20 transition-all duration-500"
@@ -690,10 +695,10 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                           />
                           {/* Content inside the bar */}
                           <div className="absolute inset-0 flex items-center justify-between px-3">
-                            <span className="font-mono text-xs text-bron-text-secondary truncate z-10 max-w-[70%]">
+                            <span className="font-mono text-xs text-foreground truncate z-10 max-w-[70%]">
                               {displayCategory}
                             </span>
-                            <span className="text-[10px] font-bold text-bron-text-muted bg-bron-bg-tertiary px-1.5 py-0.5 rounded border border-bron-border z-10">
+                            <span className="text-[10px] font-bold text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded border border-white/5 z-10">
                               {item.value.toLocaleString()}
                             </span>
                           </div>
@@ -704,33 +709,33 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                 </div>
               ) : (
                 <div className="h-[320px] flex items-center justify-center">
-                  <p className="text-xs text-bron-text-muted">No file data available</p>
+                  <p className="text-xs text-muted-foreground">No file data available</p>
                 </div>
               )}
             </div>
             {/* Summary info below chart - always visible */}
             {(fileStatistics?.totalDirectories > 0 || fileStatistics?.totalTxtFiles > 0 || fileStatistics?.totalOtherFiles > 0) && (
-              <div className="flex items-center gap-4 px-4 py-3 mt-auto border-t border-bron-border bg-bron-bg-secondary/30">
+              <div className="flex items-center gap-4 px-4 py-3 mt-auto border-t border-border/50 bg-secondary/20">
                 {fileStatistics.totalDirectories > 0 && (
                   <div className="flex items-center gap-2">
-                    <FolderOpen className="h-4 w-4 text-bron-text-muted" />
-                    <span className="text-xs text-bron-text-secondary">
+                    <FolderOpen className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-foreground">
                       {fileStatistics.totalDirectories.toLocaleString()} director{fileStatistics.totalDirectories > 1 ? "ies" : "y"}
                     </span>
                   </div>
                 )}
                 {fileStatistics.totalTxtFiles > 0 && (
                   <div className="flex items-center gap-2">
-                    <FileType className="h-4 w-4 text-bron-text-muted" />
-                    <span className="text-xs text-bron-text-secondary">
+                    <FileType className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-foreground">
                       {fileStatistics.totalTxtFiles.toLocaleString()} .txt file{fileStatistics.totalTxtFiles > 1 ? "s" : ""}
                     </span>
                   </div>
                 )}
                 {fileStatistics.totalOtherFiles > 0 && (
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-bron-text-muted" />
-                    <span className="text-xs text-bron-text-secondary">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-xs text-foreground">
                       {fileStatistics.totalOtherFiles.toLocaleString()} other file{fileStatistics.totalOtherFiles > 1 ? "s" : ""}
                     </span>
                   </div>

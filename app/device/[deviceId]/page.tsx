@@ -171,20 +171,20 @@ export default function DeviceDetailPage() {
 
   if (isLoadingDevice) {
     return (
-      <div className="min-h-screen bg-bron-bg-secondary flex items-center justify-center">
-        <p className="text-xs text-bron-text-primary">Loading device information...</p>
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
+        <p className="text-xs text-foreground">Loading device information...</p>
       </div>
     )
   }
 
   if (deviceError || !deviceInfo) {
     return (
-      <div className="min-h-screen bg-bron-bg-secondary flex items-center justify-center">
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
         <div className="text-center">
-          <p className="text-xs text-bron-text-primary mb-4">{deviceError || "Device not found"}</p>
+          <p className="text-xs text-foreground mb-4">{deviceError || "Device not found"}</p>
           <Button
             onClick={() => router.push("/")}
-            className="bg-bron-accent-red hover:bg-bron-accent-red/90 text-white h-8 text-xs"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground h-8 text-xs"
           >
             Back to Search
           </Button>
@@ -194,8 +194,8 @@ export default function DeviceDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bron-bg-secondary">
-      <div className="border-b border-bron-border bg-bron-bg-primary">
+    <div className="min-h-screen bg-transparent">
+      <div className="border-b border-white/5 bg-background/60 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -203,14 +203,14 @@ export default function DeviceDetailPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => router.push("/")}
-                className="h-9 text-sm text-bron-text-secondary hover:text-bron-text-primary hover:bg-bron-bg-tertiary"
+                className="h-9 text-sm text-muted-foreground hover:text-foreground hover:bg-white/10"
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back to Search
               </Button>
               <div>
-                <h1 className="text-base font-normal text-bron-text-primary">{deviceInfo.deviceName}</h1>
-                <p className="text-xs text-bron-text-muted mt-0.5">Device ID: {deviceInfo.deviceId}</p>
+                <h1 className="text-base font-normal text-foreground">{deviceInfo.deviceName}</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Device ID: {deviceInfo.deviceId}</p>
               </div>
             </div>
           </div>
@@ -219,38 +219,38 @@ export default function DeviceDetailPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-4">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-5 bg-bron-bg-tertiary border border-bron-border h-8">
+          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-5 glass-card h-8">
             <TabsTrigger
               value="overview"
-              className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
             >
               <LayoutDashboard className="h-3 w-3 mr-1" />
               Overview
             </TabsTrigger>
             <TabsTrigger
               value="machine"
-              className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
             >
               <Server className="h-3 w-3 mr-1" />
               Host Information
             </TabsTrigger>
             <TabsTrigger
               value="credentials"
-              className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
             >
               <User className="h-3 w-3 mr-1" />
               User Credentials
             </TabsTrigger>
             <TabsTrigger
               value="software"
-              className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
             >
               <Package className="h-3 w-3 mr-1" />
               Software Installed
             </TabsTrigger>
             <TabsTrigger
               value="files"
-              className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
             >
               <FileText className="h-3 w-3 mr-1" />
               Files

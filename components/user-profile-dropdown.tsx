@@ -70,10 +70,10 @@ export default function UserProfileDropdown() {
   if (!user) {
     return (
       <div className="flex items-center gap-2 px-3 py-2">
-        <div className="w-8 h-8 bg-bron-bg-tertiary rounded-full flex items-center justify-center">
-          <User className="w-4 h-4 text-bron-text-muted" />
+        <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+          <User className="w-4 h-4 text-muted-foreground" />
         </div>
-        <span className="text-sm text-bron-text-muted">Loading...</span>
+        <span className="text-sm text-muted-foreground">Loading...</span>
       </div>
     );
   }
@@ -84,34 +84,34 @@ export default function UserProfileDropdown() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="flex items-center gap-2 px-3 py-2 h-auto bg-transparent hover:bg-bron-bg-tertiary border-none"
+            className="flex items-center gap-2 px-3 py-2 h-auto bg-transparent hover:bg-secondary border-none"
           >
-            <div className="w-8 h-8 bg-bron-bg-tertiary rounded-full flex items-center justify-center">
-              <User className="w-4 h-4 text-bron-text-primary" />
+            <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-foreground" />
             </div>
-            <span className="text-sm text-bron-text-primary font-medium">
+            <span className="text-sm text-foreground font-medium">
               {user.name}
             </span>
-            <ChevronDown className="w-4 h-4 text-bron-text-muted" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 bg-bron-bg-secondary border-bron-border">
-          <div className="px-3 py-2 border-b border-bron-border">
-            <p className="text-sm font-medium text-bron-text-primary">{user.name}</p>
-            <p className="text-xs text-bron-text-muted">{user.email}</p>
+        <DropdownMenuContent align="end" className="w-56 glass-modal">
+          <div className="px-3 py-2 border-b border-border">
+            <p className="text-sm font-medium text-foreground">{user.name}</p>
+            <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
           <DropdownMenuItem 
             onClick={handleChangePasswordClick}
-            className="flex items-center gap-2 cursor-pointer text-bron-text-primary hover:bg-bron-bg-tertiary"
+            className="flex items-center gap-2 cursor-pointer text-foreground hover:bg-secondary"
           >
             <Lock className="w-4 h-4" />
             Change Password
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="bg-bron-border" />
+          <DropdownMenuSeparator className="bg-border" />
           <DropdownMenuItem
             onClick={handleLogout}
             disabled={logoutLoading}
-            className="flex items-center gap-2 cursor-pointer text-bron-text-primary hover:bg-bron-bg-tertiary"
+            className="flex items-center gap-2 cursor-pointer text-foreground hover:bg-secondary"
           >
             <LogOut className="w-4 h-4" />
             {logoutLoading ? "Logging out..." : "Logout"}

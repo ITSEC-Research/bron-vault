@@ -42,16 +42,16 @@ const HoverableCell = ({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="cursor-default hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors">
-            {children || <span className="text-bron-text-primary">{displayContent}</span>}
+          <div className="cursor-default hover:glass-card rounded px-1 py-0.5 transition-colors">
+            {children || <span className="text-foreground">{displayContent}</span>}
           </div>
         </TooltipTrigger>
         <TooltipContent
           side="top"
-          className="max-w-xs break-all bg-bron-bg-tertiary border border-bron-border shadow-lg p-3"
+          className="max-w-xs break-all glass-card shadow-lg p-3"
         >
-          <div className="font-mono text-xs select-text text-bron-text-primary">{content}</div>
-          <div className="text-xs text-bron-text-muted mt-1">Highlight text to copy manually</div>
+          <div className="font-mono text-xs select-text text-foreground">{content}</div>
+          <div className="text-xs text-muted-foreground mt-1">Highlight text to copy manually</div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -103,7 +103,7 @@ export function SoftwareTable({
   if (isLoadingSoftware) {
     return (
       <div className="flex items-center justify-center h-32">
-        <p className="text-bron-text-primary">Loading software...</p>
+        <p className="text-foreground">Loading software...</p>
       </div>
     )
   }
@@ -111,8 +111,8 @@ export function SoftwareTable({
   if (softwareError) {
     return (
       <div className="text-center py-8">
-        <Alert variant="destructive" className="bg-bron-accent-red/20 border-bron-accent-red">
-          <AlertDescription className="text-bron-text-primary">{softwareError}</AlertDescription>
+        <Alert variant="destructive" className="bg-destructive/20 border-destructive">
+          <AlertDescription className="text-foreground">{softwareError}</AlertDescription>
         </Alert>
       </div>
     )
@@ -120,7 +120,7 @@ export function SoftwareTable({
 
   if (deviceSoftware.length === 0) {
     return (
-      <div className="text-center py-8 text-bron-text-muted">
+      <div className="text-center py-8 text-muted-foreground">
         <div className="space-y-2">
           <p>No software found for this device</p>
           <p className="text-xs">Device ID: {deviceId}</p>
@@ -128,7 +128,7 @@ export function SoftwareTable({
             variant="outline"
             size="sm"
             onClick={onRetrySoftware}
-            className="bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+            className="glass-card border-border/50 text-foreground hover:bg-white/5"
           >
             Retry Loading
           </Button>
@@ -139,7 +139,7 @@ export function SoftwareTable({
 
   const searchBarSection = (
     <div className="space-y-3">
-      <div className="text-sm text-bron-text-muted">
+      <div className="text-sm text-muted-foreground">
         Found {deviceSoftware.length} software installed on this device
         {deduplicate && ` (${filteredSoftware.length} unique)`}
         {softwareSearchQuery && !deduplicate && ` (${filteredSoftware.length} filtered)`}
@@ -152,7 +152,7 @@ export function SoftwareTable({
             placeholder="Search software name or version..."
             value={softwareSearchQuery}
             onChange={(e) => setSoftwareSearchQuery(e.target.value)}
-            className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+            className="w-full h-9 text-sm glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <Button
@@ -163,10 +163,10 @@ export function SoftwareTable({
               setInternalDeduplicate(!deduplicate)
             }
           }}
-          className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-bron-border text-bron-text-primary hover:bg-bron-bg-primary ${
+          className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-border/50 text-foreground hover:bg-white/5 ${
             deduplicate 
-              ? "bg-bron-accent-red/20 border-bron-accent-red text-bron-accent-red" 
-              : "bg-bron-bg-tertiary"
+              ? "bg-primary/20 border-primary text-primary" 
+              : "glass-card"
           }`}
           title={deduplicate ? "Show duplicates" : "Hide duplicates"}
         >
@@ -180,17 +180,17 @@ export function SoftwareTable({
   return (
     <div className="space-y-4">
       {!hideSearchBar && searchBarSection}
-      <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-350px)] pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+      <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-350px)] pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-bron-bg-primary">
-              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3">
+            <TableRow className="hover:bg-white/5">
+              <TableHead className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3">
                 <div className="flex items-center space-x-1">
                   <Package className="h-4 w-4" />
                   <span>Software Name</span>
                 </div>
               </TableHead>
-              <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3">
+              <TableHead className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3">
                 <span>Version</span>
               </TableHead>
             </TableRow>
@@ -199,7 +199,7 @@ export function SoftwareTable({
             {filteredSoftware.map((sw, index) => (
               <TableRow
                 key={index}
-                className="border-b border-bron-border hover:bg-bron-bg-primary"
+                className="border-b border-border/50 hover:bg-white/5"
               >
                 <TableCell className="font-medium text-xs py-2 px-3">
                   <HoverableCell content={sw.software_name} maxLength={70} />
@@ -213,13 +213,13 @@ export function SoftwareTable({
         </Table>
       </div>
       {filteredSoftware.length === 0 && softwareSearchQuery && (
-        <div className="text-center py-8 text-bron-text-muted">
+        <div className="text-center py-8 text-muted-foreground">
           <p>No software found matching "{softwareSearchQuery}"</p>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSoftwareSearchQuery("")}
-            className="mt-2 text-bron-text-primary hover:bg-bron-bg-tertiary"
+            className="mt-2 text-foreground hover:glass-card"
           >
             Clear search
           </Button>
@@ -247,7 +247,7 @@ export function SoftwareSearchBar({
 }) {
   return (
     <div className="space-y-3 mb-4">
-      <div className="text-sm text-bron-text-muted">
+      <div className="text-sm text-muted-foreground">
         Found {deviceSoftware.length} software installed on this device
         {deduplicate && ` (${filteredCount} unique)`}
         {softwareSearchQuery && !deduplicate && ` (${filteredCount} filtered)`}
@@ -260,17 +260,17 @@ export function SoftwareSearchBar({
             placeholder="Search software name or version..."
             value={softwareSearchQuery}
             onChange={(e) => setSoftwareSearchQuery(e.target.value)}
-            className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+            className="w-full h-9 text-sm glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => setDeduplicate(!deduplicate)}
-          className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-bron-border text-bron-text-primary hover:bg-bron-bg-primary ${
+          className={`h-9 px-3 flex items-center space-x-2 shrink-0 border-border/50 text-foreground hover:bg-white/5 ${
             deduplicate 
-              ? "bg-bron-accent-red/20 border-bron-accent-red text-bron-accent-red" 
-              : "bg-bron-bg-tertiary"
+              ? "bg-primary/20 border-primary text-primary" 
+              : "glass-card"
           }`}
           title={deduplicate ? "Show duplicates" : "Hide duplicates"}
         >

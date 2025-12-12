@@ -288,15 +288,15 @@ export default function LoginPage() {
                       Full Name
                     </label>
                     <div className="relative group">
-                    <Input
-                      id="name"
-                      type="text"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      className="w-full h-12 px-4 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
-                      placeholder="Administrator"
-                      required
-                    />
+                      <Input
+                        id="name"
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        className="w-full h-12 px-4 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
+                        placeholder="Administrator"
+                        required
+                      />
                       <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/0 via-red-500/5 to-red-500/0 opacity-0 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
                     </div>
                   </div>
@@ -335,7 +335,7 @@ export default function LoginPage() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={e => setPassword(e.target.value)}
-                      className="w-full h-12 px-4 pr-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all selection:bg-red-500/50 selection:text-white"
+                      className="w-full h-12 px-4 pr-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
                       placeholder="••••••••"
                       minLength={isRegisterMode ? 6 : undefined}
                       required
@@ -391,13 +391,16 @@ export default function LoginPage() {
         {/* Bottom Attribution */}
         <div className="mt-8 text-center space-y-1">
           <p className="text-white/30 text-xs">
-            © 2025 Broń Vault. Licensed under the Apache License, Version 2.0.
+            © 2025 Broń Vault. An IntelliBroń.io RnD initiative.
+          </p>
+          <p className="text-white/20 text-[10px]">
+            Licensed under the Apache License, Version 2.0.
           </p>
         </div>
       </div>
 
       {/* Custom Styles */}
-      <style jsx global>{`
+      <style jsx>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) scale(1); }
           50% { transform: translateY(-20px) scale(1.1); }
@@ -419,16 +422,7 @@ export default function LoginPage() {
         .animate-spin-reverse {
           animation: spin-reverse 15s linear infinite;
         }
-        /* Selection highlight for better UX */
-        input::selection {
-          background-color: rgba(239, 68, 68, 0.5) !important;
-          color: white !important;
-        }
-        input::-moz-selection {
-          background-color: rgba(239, 68, 68, 0.5) !important;
-          color: white !important;
-        }
       `}</style>
     </div>
   );
-} 
+}

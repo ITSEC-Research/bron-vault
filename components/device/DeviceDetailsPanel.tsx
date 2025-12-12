@@ -134,15 +134,15 @@ export function DeviceDetailsPanel({
 
   return (
     <Sheet open={!!selectedDevice} onOpenChange={onClose}>
-      <SheetContent className="w-[60%] sm:max-w-none bg-bron-bg-secondary border-l border-bron-border">
+      <SheetContent className="w-[60%] sm:max-w-none glass backdrop-blur-xl border-l border-white/5">
         <SheetHeader>
-          <SheetTitle className="flex items-center justify-between text-bron-text-primary">
+          <SheetTitle className="flex items-center justify-between text-foreground">
             <span>{selectedDevice.deviceName}</span>
             <Button
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="text-bron-text-primary hover:bg-bron-bg-tertiary"
+              className="text-foreground hover:bg-white/5"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -170,7 +170,7 @@ export function DeviceDetailsPanel({
               const deviceDetailsUrl = `/device/${selectedDevice.deviceId}`
               window.open(deviceDetailsUrl, "_blank")
             }}
-            className="w-full flex items-center justify-center space-x-2 bg-gradient-to-r from-bron-accent-red/10 via-bron-accent-red/5 to-bron-bg-tertiary border-2 border-bron-accent-red/60 text-bron-accent-red hover:from-bron-accent-red/20 hover:via-bron-accent-red/10 hover:to-bron-bg-primary hover:border-bron-accent-red hover:text-white transition-all font-semibold shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] [&_svg]:hover:text-white"
+            className="w-full flex items-center justify-center space-x-2 glass-card border-primary/50 text-primary hover:border-primary hover:bg-primary/10 transition-all font-semibold"
           >
             <span>View Full Details</span>
             <ExternalLink className="h-4 w-4" />
@@ -179,27 +179,27 @@ export function DeviceDetailsPanel({
 
         <div className="mt-6">
           <Tabs defaultValue="credentials" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-bron-bg-tertiary border border-bron-border">
+            <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-3 glass-card h-8">
               <TabsTrigger
                 value="credentials"
-                className="flex items-center space-x-2 text-bron-text-secondary data-[state=active]:bg-bron-accent-red data-[state=active]:text-white"
+                className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
               >
-                <User className="h-4 w-4" />
-                <span>User Credentials</span>
+                <User className="h-3 w-3 mr-1" />
+                User Credentials
               </TabsTrigger>
               <TabsTrigger
                 value="software"
-                className="flex items-center space-x-2 text-bron-text-secondary data-[state=active]:bg-bron-accent-red data-[state=active]:text-white"
+                className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
               >
-                <Package className="h-4 w-4" />
-                <span>Software Installed</span>
+                <Package className="h-3 w-3 mr-1" />
+                Software Installed
               </TabsTrigger>
               <TabsTrigger
                 value="files"
-                className="flex items-center space-x-2 text-bron-text-secondary data-[state=active]:bg-bron-accent-red data-[state=active]:text-white"
+                className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
               >
-                <File className="h-4 w-4" />
-                <span>Supporting Files</span>
+                <File className="h-3 w-3 mr-1" />
+                Supporting Files
               </TabsTrigger>
             </TabsList>
 

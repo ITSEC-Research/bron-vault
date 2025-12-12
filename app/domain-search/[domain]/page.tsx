@@ -73,8 +73,8 @@ export default function DomainSearchPage() {
 
   return (
     <AuthGuard>
-      <div className="flex flex-col min-h-screen bg-bron-bg-primary">
-        <main className="flex-1 p-4 bg-bron-bg-primary">
+      <div className="flex flex-col min-h-screen bg-transparent">
+        <main className="flex-1 p-4 bg-transparent">
           <div className="max-w-7xl mx-auto space-y-4">
             <ReconSearchBar
               onSearch={handleSearch}
@@ -152,24 +152,24 @@ function DomainContent({
       ) : null}
       
       <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-        <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-3 bg-bron-bg-tertiary border border-bron-border h-8">
+        <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-3 glass-card h-8">
           <TabsTrigger
             value="overview"
-            className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+            className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
           >
             <LayoutDashboard className="h-3 w-3 mr-1" />
             Overview
           </TabsTrigger>
           <TabsTrigger
             value="subdomains"
-            className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+            className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
           >
             <Globe className="h-3 w-3 mr-1" />
             Subdomains
           </TabsTrigger>
           <TabsTrigger
             value="credentials"
-            className="text-xs font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white px-2 py-1"
+            className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
           >
             <Key className="h-3 w-3 mr-1" />
             Credentials

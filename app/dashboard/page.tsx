@@ -219,8 +219,8 @@ function DashboardContent() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col min-h-screen bg-bron-bg-primary">
-        <main className="flex-1 p-6 bg-bron-bg-primary">
+      <div className="flex flex-col min-h-screen bg-transparent">
+        <main className="flex-1 p-6 bg-transparent">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Loading skeleton for stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -252,8 +252,8 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-bron-bg-primary">
-      <main className="flex-1 p-4 bg-bron-bg-primary">
+    <div className="flex flex-col min-h-screen bg-transparent">
+      <main className="flex-1 p-4 bg-transparent">
         <div className="max-w-7xl mx-auto space-y-4">
           {/* Statistic Boxes - Layer 1 */}
           <ErrorBoundary context="Dashboard Stats Layer 1">
@@ -262,14 +262,14 @@ function DashboardContent() {
                 icon={HardDrive}
                 value={stats.totalDevices}
                 label="Total Devices"
-                iconColor="text-bron-accent-blue"
+                iconColor="text-blue-500"
                 delay={0}
               />
               <AnimatedStatCard
                 icon={Key}
                 value={stats.totalCredentials}
                 label="Total Credentials"
-                iconColor="text-bron-accent-green"
+                iconColor="text-emerald-500"
                 delay={0.2}
               />
             </div>
@@ -281,61 +281,61 @@ function DashboardContent() {
               icon={Database}
               value={stats.totalFiles}
               label="Files Extracted"
-              iconColor="text-bron-accent-green"
+              iconColor="text-emerald-500"
               delay={0.4}
             />
             <AnimatedStatCard
               icon={Globe}
               value={stats.totalDomains}
               label="Total Domains"
-              iconColor="text-bron-accent-blue"
+              iconColor="text-blue-500"
               delay={0.6}
             />
             <AnimatedStatCard
               icon={Link}
               value={stats.totalUrls}
               label="Total URLs"
-              iconColor="text-bron-accent-yellow"
+              iconColor="text-amber-500"
               delay={0.8}
             />
           </div>
 
           {/* Info Alerts */}
           {stats.totalFiles === 0 && (
-            <Alert className="bg-bron-bg-tertiary border-bron-border">
-              <Database className="h-4 w-4 text-bron-accent-blue" />
-              <AlertDescription className="text-bron-text-primary">
+            <Alert className="glass-card border-l-4 border-l-blue-500">
+              <Database className="h-4 w-4 text-blue-500" />
+              <AlertDescription className="text-foreground">
                 No data found. Please upload a .zip file first using the Upload menu to populate the search database.
               </AlertDescription>
             </Alert>
           )}
           {/* Top Passwords */}
-          <Card className="bg-bron-bg-tertiary border-bron-border">
-            <CardHeader className="!p-4">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <Key className="h-4 w-4 mr-2 text-bron-accent-red" />
+          <Card className="glass-card">
+            <CardHeader className="!p-4 border-b border-white/5">
+              <CardTitle className="flex items-center text-foreground text-lg">
+                <Key className="h-4 w-4 mr-2 text-primary" />
                 Top 5 Most Used Passwords
               </CardTitle>
             </CardHeader>
-            <CardContent className="!p-4 !pt-0">
+            <CardContent className="!p-4 pt-6">
               {topPasswords.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   {topPasswords.map((passwordData, index) => (
-                    <div key={index} className="text-center">
-                      <div className="text-base font-bold text-bron-accent-red font-mono bg-bron-bg-secondary p-2 rounded border border-bron-border">
+                    <div key={index} className="text-center group">
+                      <div className="glass text-base font-bold text-primary font-mono p-3 rounded-lg border border-white/5 group-hover:border-primary/50 group-hover:bg-primary/10 transition-all duration-300">
                         {passwordData.password.length > 15
                           ? passwordData.password.substring(0, 15) + "..."
                           : passwordData.password}
                       </div>
-                      <div className="text-xs text-bron-text-muted mt-1">
+                      <div className="text-xs text-muted-foreground mt-2 font-medium">
                         {Number(passwordData.total_count).toLocaleString()} times
                       </div>
                       <Badge
                         variant={index === 0 ? "default" : "secondary"}
                         className={
                           index === 0
-                            ? "bg-bron-accent-red text-white mt-1"
-                            : "bg-bron-bg-secondary text-bron-text-secondary border-bron-border mt-1"
+                            ? "bg-primary text-primary-foreground mt-2"
+                            : "bg-secondary text-secondary-foreground mt-2"
                         }
                       >
                         #{index + 1}
@@ -344,7 +344,7 @@ function DashboardContent() {
                   ))}
                 </div>
               ) : (
-                <p className="text-bron-text-muted">No password data available</p>
+                <p className="text-muted-foreground">No password data available</p>
               )}
             </CardContent>
           </Card>
@@ -352,28 +352,28 @@ function DashboardContent() {
           {/* Top TLDs, Malware Traffic Analysis, and Ransomware Live - Responsive Flex Layout */}
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Top TLDs */}
-            <Card className="flex-1 lg:basis-[2.5/12] bg-bron-bg-tertiary border-bron-border">
-              <CardHeader className="!p-4">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <Globe className="h-4 w-4 mr-2 text-bron-accent-blue" />
-                Top 10 TLDs
-              </CardTitle>
+            <Card className="flex-1 lg:basis-[2.5/12] glass-card">
+              <CardHeader className="!p-4 border-b border-white/5">
+                <CardTitle className="flex items-center text-foreground text-lg">
+                  <Globe className="h-4 w-4 mr-2 text-blue-500" />
+                  Top 10 TLDs
+                </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 !pt-0 h-[420px] pr-2 flex flex-col"> {/* Updated height and added flex-col */}
+              <CardContent className="!p-4 pt-4 h-[490px] pr-2 flex flex-col"> {/* Updated height and added flex-col */}
                 {topTLDs.length > 0 ? (
                   <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
-                    <div className="space-y-1.5"> {/* Changed to space-y for vertical layout */}
+                    <div className="space-y-2"> {/* Changed to space-y for vertical layout */}
                       {topTLDs.slice(0, 10).map((tldData, index) => (
-                        <div key={index} className="flex items-center justify-between p-1.5 rounded bg-bron-bg-secondary border border-bron-border">
-                          <span className="text-sm font-bold text-bron-accent-blue">
+                        <div key={index} className="flex items-center justify-between p-2 rounded-lg glass hover:border-primary/50 hover:bg-primary/10 transition-all duration-300">
+                          <span className="text-sm font-bold text-blue-500">
                             #{index + 1}
                           </span>
-                          <span className="text-sm font-mono text-bron-text-primary">
+                          <span className="text-sm font-mono text-foreground">
                             .{tldData.tld}
                           </span>
                           {/* Added pr-2 to balance spacing on the right */}
-                          <span className="text-xs text-bron-text-muted pr-2">
-                            ({tldData.count.toLocaleString()} domains)
+                          <span className="text-xs text-muted-foreground pr-2">
+                            ({Number(tldData.count).toLocaleString()} domains)
                           </span>
                         </div>
                       ))}
@@ -381,30 +381,30 @@ function DashboardContent() {
                   </ScrollArea>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-bron-text-muted">No TLD data available</p>
-                    <p className="text-xs text-bron-text-muted mt-2">Upload some stealer logs to see domain statistics</p>
+                    <p className="text-muted-foreground">No TLD data available</p>
+                    <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see domain statistics</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Malware Traffic Analysis */}
-            <Card className="flex-1 lg:basis-[4.75/12] bg-bron-bg-tertiary border-bron-border">
-              <CardHeader className="!p-4">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <TrendingUp className="h-4 w-4 mr-2 text-bron-accent-green" />
-                Malware Traffic Analysis
-              </CardTitle>
+            <Card className="flex-1 lg:basis-[4.75/12] glass-card">
+              <CardHeader className="!p-4 border-b border-white/5">
+                <CardTitle className="flex items-center text-foreground text-lg">
+                  <TrendingUp className="h-4 w-4 mr-2 text-emerald-500" />
+                  Malware Traffic Analysis
+                </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 !pt-0 h-[420px] flex flex-col"> {/* Updated height and added flex-col */}
+              <CardContent className="!p-4 pt-4 h-[490px] flex flex-col"> {/* Updated height and added flex-col */}
                 {rssItems.length > 0 ? (
                   <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
                     <div className="space-y-3">
                       {rssItems.map((item, index) => (
-                        <div key={index} className="border-b border-bron-border pb-3 last:border-b-0">
+                        <div key={index} className="border-b border-border/40 pb-3 last:border-b-0">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="text-sm font-medium text-bron-text-primary hover:text-bron-accent-blue">
+                              <h3 className="text-sm font-medium text-foreground hover:text-blue-500 transition-colors">
                                 <a
                                   href={item.link}
                                   target="_blank"
@@ -415,8 +415,8 @@ function DashboardContent() {
                                   <ExternalLink className="h-3 w-3 ml-1" />
                                 </a>
                               </h3>
-                              <p className="text-xs text-bron-text-muted mt-1">{item.description}</p>
-                              <p className="text-[10px] text-bron-text-muted mt-1">{formatDate(item.pubDate)}</p>
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                              <p className="text-[10px] text-muted-foreground/70 mt-1">{formatDate(item.pubDate)}</p>
                             </div>
                           </div>
                         </div>
@@ -425,30 +425,30 @@ function DashboardContent() {
                   </ScrollArea>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-bron-text-muted">No RSS feed data available</p>
-                    <p className="text-xs text-bron-text-muted mt-2">Unable to fetch malware traffic analysis news</p>
+                    <p className="text-muted-foreground">No RSS feed data available</p>
+                    <p className="text-xs text-muted-foreground mt-2">Unable to fetch malware traffic analysis news</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Recent Ransomware Cases */}
-            <Card className="flex-1 lg:basis-[4.75/12] bg-bron-bg-tertiary border-bron-border">
-              <CardHeader className="!p-4">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <TrendingUp className="h-4 w-4 mr-2 text-bron-accent-red" />
-                Recent Ransomware Cases
-              </CardTitle>
+            <Card className="flex-1 lg:basis-[4.75/12] glass-card">
+              <CardHeader className="!p-4 border-b border-white/5">
+                <CardTitle className="flex items-center text-foreground text-lg">
+                  <TrendingUp className="h-4 w-4 mr-2 text-primary" />
+                  Recent Ransomware Cases
+                </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 !pt-0 h-[420px] flex flex-col"> {/* Updated height and added flex-col */}
+              <CardContent className="!p-4 pt-4 h-[490px] flex flex-col"> {/* Updated height and added flex-col */}
                 {ransomwareItems.length > 0 ? (
                   <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-3">
                       {ransomwareItems.map((item, index) => (
-                        <div key={index} className="border-b border-bron-border pb-2.5 last:border-b-0">
+                        <div key={index} className="border-b border-border/40 pb-3 last:border-b-0">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
-                              <h3 className="text-sm font-medium text-bron-text-primary hover:text-bron-accent-red">
+                              <h3 className="text-sm font-medium text-foreground hover:text-primary transition-colors">
                                 <a
                                   href={item.link}
                                   target="_blank"
@@ -459,8 +459,8 @@ function DashboardContent() {
                                   <ExternalLink className="h-3 w-3 ml-1" />
                                 </a>
                               </h3>
-                              <p className="text-xs text-bron-text-muted mt-1">{item.description}</p>
-                              <p className="text-[10px] text-bron-text-muted mt-1">{formatDate(item.pubDate)}</p>
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
+                              <p className="text-[10px] text-muted-foreground/70 mt-1">{formatDate(item.pubDate)}</p>
                             </div>
                           </div>
                         </div>
@@ -469,8 +469,8 @@ function DashboardContent() {
                   </ScrollArea>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-bron-text-muted">No RSS feed data available</p>
-                    <p className="text-xs text-bron-text-muted mt-2">Unable to fetch ransomware live news</p>
+                    <p className="text-muted-foreground">No RSS feed data available</p>
+                    <p className="text-xs text-muted-foreground mt-2">Unable to fetch ransomware live news</p>
                   </div>
                 )}
               </CardContent>
@@ -480,22 +480,22 @@ function DashboardContent() {
           {/* Browser Analysis and Software Analysis - Side by Side */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Browser Analysis */}
-            <Card className="col-span-1 lg:col-span-2 bg-bron-bg-tertiary border-bron-border">
-              <CardHeader className="!p-4">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <Monitor className="h-4 w-4 mr-2 text-bron-accent-purple" />
-                Top Browsers Used by Infected Devices
-              </CardTitle>
+            <Card className="col-span-1 lg:col-span-2 glass-card">
+              <CardHeader className="!p-4 border-b border-white/5">
+                <CardTitle className="flex items-center text-foreground text-lg">
+                  <Monitor className="h-4 w-4 mr-2 text-violet-500" />
+                  Top Browsers Used by Infected Devices
+                </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 !pt-0">
-                <div className="w-full h-[500px] flex items-end justify-center mt-10">
+              <CardContent className="!p-4 pt-6">
+                <div className="w-full h-[500px] flex items-end justify-center mt-4">
                   <ErrorBoundary
                     context="Browser Chart"
                     fallback={
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center">
                           <p className="text-red-500 text-sm">Failed to load browser chart</p>
-                          <p className="text-xs text-gray-500 mt-1">Please try refreshing the page</p>
+                          <p className="text-xs text-muted-foreground mt-1">Please try refreshing the page</p>
                         </div>
                       </div>
                     }
@@ -507,14 +507,14 @@ function DashboardContent() {
             </Card>
 
             {/* Software Analysis */}
-            <Card className="col-span-1 lg:col-span-2 bg-bron-bg-tertiary border-bron-border">
-              <CardHeader className="!p-4">
-              <CardTitle className="flex items-center text-bron-text-primary text-lg">
-                <Package className="h-4 w-4 mr-2 text-bron-accent-green" />
-                Most Common Software Found in Logs
-              </CardTitle>
+            <Card className="col-span-1 lg:col-span-2 glass-card">
+              <CardHeader className="!p-4 border-b border-white/5">
+                <CardTitle className="flex items-center text-foreground text-lg">
+                  <Package className="h-4 w-4 mr-2 text-emerald-500" />
+                  Most Common Software Found in Logs
+                </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 !pt-0">
+              <CardContent className="!p-4 pt-6">
                 <ErrorBoundary fallback={<div className="text-red-500 text-sm">Software list error</div>}>
                   <AnimatedSoftwareList softwareData={softwareData} />
                 </ErrorBoundary>

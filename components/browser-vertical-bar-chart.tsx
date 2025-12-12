@@ -46,7 +46,7 @@ export default function BrowserVerticalBarChart({
   if (safeBrowserData.length === 0) {
     return (
       <div className="flex items-center justify-center h-[200px]">
-        <span className="text-bron-text-muted">No browser data available</span>
+        <span className="text-muted-foreground">No browser data available</span>
       </div>
     );
   }
@@ -162,9 +162,9 @@ export default function BrowserVerticalBarChart({
                   damping: 15
                 }}
                 style={{
-                  background: "linear-gradient(to top, rgba(199, 0, 0, 0.8), rgba(255, 0, 0, 0.3))",
-                  border: "2px solid rgba(255, 99, 99, 0.7)",
-                  boxShadow: "0 0 12px rgba(255, 0, 0, 0.5)",
+                  background: "linear-gradient(to top, rgba(255, 51, 51, 0.5), rgba(255, 51, 51, 0.1))",
+                  border: "1px solid rgba(255, 51, 51, 0.3)",
+                  boxShadow: "0 0 20px rgba(255, 51, 51, 0.15)",
                 }}
               >
                 {/* Tooltip */}

@@ -23,8 +23,8 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
   if (safeSoftwareData.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-bron-text-muted">No software data available</p>
-        <p className="text-xs text-bron-text-muted mt-2">Upload some stealer logs to see software statistics</p>
+        <p className="text-muted-foreground">No software data available</p>
+        <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see software statistics</p>
       </div>
     )
   }
@@ -43,29 +43,29 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 min-w-0 flex-1">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-bron-accent-green text-white text-xs font-bold flex-shrink-0">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 ring-1 ring-emerald-500/50 text-xs font-bold flex-shrink-0">
                   #{index + 1}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-bron-text-primary truncate">
+                    <span className="text-sm font-medium text-foreground truncate">
                       {item?.software_name || 'Unknown Software'}
                     </span>
                     {item?.version && (
-                      <span className="text-[10px] text-bron-text-muted bg-bron-bg-secondary px-1.5 py-0.5 rounded border border-bron-border flex-shrink-0">
+                      <span className="text-[10px] text-muted-foreground bg-secondary/50 px-1.5 py-0.5 rounded border border-white/5 flex-shrink-0">
                         {item.version}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
-              <span className="text-sm text-bron-text-muted font-mono ml-2 flex-shrink-0">
+              <span className="text-sm text-muted-foreground font-mono ml-2 flex-shrink-0">
                 {item?.count || 0}
               </span>
             </div>
-            <div className="w-full bg-bron-bg-secondary rounded-full h-2 border border-bron-border overflow-hidden">
+            <div className="w-full bg-secondary/30 rounded-full h-2 overflow-hidden">
               <motion.div
-                className="bg-red-800 h-2 rounded-full"
+                className="bg-primary/60 h-2 rounded-full shadow-[0_0_15px_rgba(255,51,51,0.25)]"
                 initial={{ width: 0 }}
                 animate={isInView ? { width: `${percentage}%` } : { width: 0 }}
                 transition={{

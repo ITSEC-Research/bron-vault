@@ -168,34 +168,34 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
         !node.name.includes(".")
 
       // Icon based on file type
-      let icon: React.ReactNode = <Folder className="inline h-4 w-4 text-bron-accent-blue" />
+      let icon: React.ReactNode = <Folder className="inline h-4 w-4 text-blue-500" />
       let actionIcon: React.ReactNode = ""
       let actionText = ""
       let isClickable = false
 
       if (!node.isDirectory) {
         if (isViewable && node.hasContent) {
-          icon = <FileText className="inline h-4 w-4 text-bron-accent-green" />
-          actionIcon = <Eye className="inline h-4 w-4 text-bron-accent-blue ml-1" />
+          icon = <FileText className="inline h-4 w-4 text-emerald-500" />
+          actionIcon = <Eye className="inline h-4 w-4 text-blue-500 ml-1" />
           actionText = "Click to view content"
           isClickable = true
         } else if (["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(fileExtension) && node.hasContent) {
-          icon = <Image className="inline h-4 w-4 text-bron-accent-purple" />
-          actionIcon = <Eye className="inline h-4 w-4 text-bron-accent-blue ml-1" />
+          icon = <Image className="inline h-4 w-4 text-violet-500" />
+          actionIcon = <Eye className="inline h-4 w-4 text-blue-500 ml-1" />
           actionText = "Click to preview image"
           isClickable = true
         } else if (["pdf"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-red" />
+          icon = <Book className="inline h-4 w-4 text-primary" />
         } else if (["doc", "docx"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-blue" />
+          icon = <Book className="inline h-4 w-4 text-blue-500" />
         } else if (["xls", "xlsx"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-green" />
+          icon = <Book className="inline h-4 w-4 text-emerald-500" />
         } else if (["ppt", "pptx"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-yellow" />
+          icon = <Book className="inline h-4 w-4 text-amber-500" />
         } else if (["zip", "rar", "7z"].includes(fileExtension)) {
-          icon = <Package className="inline h-4 w-4 text-bron-accent-orange" />
+          icon = <Package className="inline h-4 w-4 text-orange-500" />
         } else {
-          icon = <FileText className="inline h-4 w-4 text-bron-accent-gray" />
+          icon = <FileText className="inline h-4 w-4 text-muted-foreground" />
         }
       }
 
@@ -210,26 +210,26 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
                 <div
                   className={`font-mono text-xs py-1 px-2 rounded transition-colors ${
                     node.hasMatch
-                      ? "bg-bron-accent-yellow/20 text-bron-accent-yellow font-medium"
-                      : "text-bron-text-secondary"
-                  } ${isClickable ? "hover:bg-bron-accent-blue/20 cursor-pointer" : "cursor-default"}`}
+                      ? "bg-amber-500/20 text-amber-500 font-medium"
+                      : "text-foreground"
+                  } ${isClickable ? "hover:bg-white/5 cursor-pointer" : "cursor-default"}`}
                   onClick={() => {
                     if (isClickable) {
                       onFileClick(selectedDevice.deviceId, node.path, node.name, node.hasContent)
                     }
                   }}
                 >
-                  <span className="text-bron-text-muted">{prefix}</span>
+                  <span className="text-muted-foreground">{prefix}</span>
                   <span className="mr-1">{icon}</span>
                   <span className={node.hasMatch ? "font-semibold" : ""}>{node.name}</span>
-                  {matchBadge && <span className="text-bron-accent-yellow font-bold">{matchBadge}</span>}
-                  {actionIcon && <span className="text-bron-accent-blue">{actionIcon}</span>}
-                  {sizeBadge && <span className="text-bron-text-muted text-xs ml-1">{sizeBadge}</span>}
+                  {matchBadge && <span className="text-amber-500 font-bold">{matchBadge}</span>}
+                  {actionIcon && <span className="text-blue-500">{actionIcon}</span>}
+                  {sizeBadge && <span className="text-muted-foreground text-xs ml-1">{sizeBadge}</span>}
                 </div>
               </TooltipTrigger>
               {!node.isDirectory && (
-                <TooltipContent side="right" className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-2">
-                  <div className="text-xs text-bron-text-primary">{actionText}</div>
+                <TooltipContent side="right" className="glass-card shadow-lg p-2">
+                  <div className="text-xs text-foreground">{actionText}</div>
                 </TooltipContent>
               )}
             </Tooltip>
@@ -243,36 +243,36 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
   }
 
   return (
-    <div className="bg-bron-bg-tertiary p-4 rounded-lg border border-bron-border">
+    <div className="glass-card p-4 rounded-lg">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-sm text-bron-text-muted">
+        <div className="text-sm text-muted-foreground">
           Stolen File Structure ({selectedDevice.totalFiles} files total)
         </div>
         <Button
           variant="outline"
           size="sm"
           onClick={() => onDownloadAllData(selectedDevice.deviceId, selectedDevice.deviceName)}
-          className="flex items-center space-x-2 bg-bron-bg-secondary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+          className="flex items-center space-x-2 glass-card hover:border-primary/30 text-foreground"
         >
           <Download className="h-4 w-4" />
           <span>Download All Data</span>
         </Button>
       </div>
-      <div className="bg-bron-bg-secondary p-3 rounded border border-bron-border overflow-x-auto">
+      <div className="glass p-3 rounded border border-white/5 overflow-x-auto">
         <div className="min-w-max">
           {renderASCIITree(buildASCIITree(selectedDevice.files, selectedDevice.matchingFiles))}
         </div>
       </div>
-      <div className="mt-3 mb-2 text-xs text-bron-text-muted">
+      <div className="mt-3 mb-2 text-xs text-muted-foreground">
         <div className="flex items-center space-x-4">
-          <span className="flex items-center"><Eye className="inline h-4 w-4 text-bron-accent-blue mr-1" /> = Viewable text file</span>
-          <span className="flex items-center"><Image className="inline h-4 w-4 text-bron-accent-purple mr-1" /> = Image</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-red mr-1" /> = PDF</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-blue mr-1" /> = Document</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-green mr-1" /> = Spreadsheet</span>
-          <span className="flex items-center"><Book className="inline h-4 w-4 text-bron-accent-yellow mr-1" /> = Presentation</span>
+          <span className="flex items-center"><Eye className="inline h-4 w-4 text-blue-500 mr-1" /> = Viewable text file</span>
+          <span className="flex items-center"><Image className="inline h-4 w-4 text-violet-500 mr-1" /> = Image</span>
+          <span className="flex items-center"><Book className="inline h-4 w-4 text-primary mr-1" /> = PDF</span>
+          <span className="flex items-center"><Book className="inline h-4 w-4 text-blue-500 mr-1" /> = Document</span>
+          <span className="flex items-center"><Book className="inline h-4 w-4 text-emerald-500 mr-1" /> = Spreadsheet</span>
+          <span className="flex items-center"><Book className="inline h-4 w-4 text-amber-500 mr-1" /> = Presentation</span>
         </div>
-        <div className="mt-1 text-xs text-bron-accent-yellow">
+        <div className="mt-1 text-xs text-amber-500">
           Note: Binary files are available via "Download All Data" button above
         </div>
       </div>

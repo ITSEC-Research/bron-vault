@@ -5,160 +5,138 @@
 @layer base {
   /* Default to dark theme */
   :root {
-    /* Dark Theme Variables */
-    --background: 210 11% 8%; /* #141414 */
-    --foreground: 0 0% 100%; /* #ffffff */
-    --card: 210 11% 12%; /* #1f1f1f */
-    --card-foreground: 0 0% 100%; /* #ffffff */
-    --popover: 210 11% 12%; /* #1f1f1f */
-    --popover-foreground: 0 0% 100%; /* #ffffff */
-    --primary: 4 100% 45%; /* #E61B00 */
-    --primary-foreground: 0 0% 100%; /* #ffffff */
-    --secondary: 210 11% 16%; /* #2a2a2a */
-    --secondary-foreground: 0 0% 100%; /* #ffffff */
-    --muted: 210 11% 16%; /* #2a2a2a */
-    --muted-foreground: 0 0% 70%; /* #b3b3b3 */
-    --accent: 4 100% 45%; /* #E61B00 */
-    --accent-foreground: 0 0% 100%; /* #ffffff */
-    --destructive: 4 100% 45%; /* #E61B00 */
-    --destructive-foreground: 0 0% 100%; /* #ffffff */
-    --border: 210 11% 25%; /* #404040 */
-    --input: 210 11% 25%; /* #404040 */
-    --ring: 4 100% 45%; /* #E61B00 */
-    --chart-1: 4 100% 45%; /* #E61B00 */
-    --chart-2: 221 83% 53%; /* #2563EB */
-    --chart-3: 158 64% 52%; /* #059669 */
-    --chart-4: 32 95% 44%; /* #D97706 */
-    --chart-5: 340 75% 55%; /* #EC4899 */
-    --radius: 0.5rem;
+    /* Premium Dark Theme Variables (Deep Black & Neon Accents) */
+    --background: 0 0% 4%; /* #0a0a0a - Deeper Black */
+    --foreground: 0 0% 98%; /* #fafafa */
+    
+    /* Cards with subtle transparency/glass feel */
+    --card: 0 0% 7%; /* #121212 */
+    --card-foreground: 0 0% 98%;
+    
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    
+    /* Vibrant Primary - Neon Red/Orange */
+    --primary: 3 100% 60%; /* #FF3333 - Brighter, modern red */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 0 0% 12%; /* #1f1f1f */
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 60%;
+    
+    --accent: 3 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    /* Sidebar Colors for Dark Theme */
-    --sidebar-background: 210 11% 12%; /* #1f1f1f */
-    --sidebar-foreground: 0 0% 100%; /* #ffffff */
-    --sidebar-primary: 4 100% 45%; /* #E61B00 */
-    --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
-    --sidebar-accent: 210 11% 16%; /* #2a2a2a */
-    --sidebar-accent-foreground: 0 0% 100%; /* #ffffff */
-    --sidebar-border: 210 11% 25%; /* #404040 */
-    --sidebar-ring: 4 100% 45%; /* #E61B00 */
+    --border: 0 0% 16%; /* #292929 - Subtle border */
+    --input: 0 0% 16%;
+    --ring: 3 100% 60%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar Colors - Translucent Dark */
+    --sidebar-background: 0 0% 5%; /* Very dark, almost black */
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 3 100% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 12%;
+    --sidebar-ring: 3 100% 60%;
+
+    /* Bron Custom Variables - Updated for Premium Look */
+    --bron-bg-primary: #0a0a0a;
+    --bron-bg-secondary: rgba(20, 20, 20, 0.7); /* Glassy Secondary */
+    --bron-bg-tertiary: #1f1f1f;
+    --bron-border: #292929;
+    --bron-text-primary: #ffffff;
+    --bron-text-secondary: #a1a1aa;
+    --bron-text-muted: #71717a;
+    
+    /* Premium Accents */
+    --bron-accent-red: #FF3333; /* Neon Red */
+    --bron-accent-red-hover: #D61F1F;
+    --bron-accent-blue: #3B82F6; /* Bright Blue */
+    --bron-accent-blue-hover: #2563EB;
+    --bron-accent-green: #10B981; /* Emerald */
+    --bron-accent-green-hover: #059669;
+    --bron-accent-yellow: #F59E0B; /* Amber */
+    --bron-accent-yellow-hover: #D97706;
+
+    /* Chart Colors */
+    --chart-1: 3 100% 60%;
+    --chart-2: 217 91% 60%;
+    --chart-3: 151 55% 42%;
+    --chart-4: 38 92% 50%;
+    --chart-5: 280 85% 60%;
   }
 }
 
 
 
+/* Light Theme overrides - Clean & Crisp */
 html[data-theme='light'],
 html[data-theme='light'] *,
 [data-theme='light'],
 [data-theme='light'] * {
-  /* Light Theme Variables */
-  --background: 0 0% 97% !important; /* #f7f7f9 */
-  --foreground: 0 0% 13% !important; /* #222222 */
-  --card: 0 0% 95%; /* #f3f4f6 */
-  --card-foreground: 0 0% 13%; /* #222222 */
-  --popover: 0 0% 95%; /* #f3f4f6 */
-  --popover-foreground: 0 0% 13%; /* #222222 */
-  --primary: 4 100% 45%; /* #E61B00 */
-  --primary-foreground: 0 0% 100%; /* #ffffff */
-  --secondary: 0 0% 93%; /* #ececf0 */
-  --secondary-foreground: 0 0% 13%; /* #222222 */
-  --muted: 0 0% 93%; /* #ececf0 */
-  --muted-foreground: 0 0% 60%; /* #999999 */
-  --accent: 4 100% 45%; /* #E61B00 */
-  --accent-foreground: 0 0% 100%; /* #ffffff */
-  --destructive: 4 100% 45%; /* #E61B00 */
-  --destructive-foreground: 0 0% 100%; /* #ffffff */
-  --border: 0 0% 90%; /* #e5e7eb */
-  --input: 0 0% 90%; /* #e5e7eb */
-  --ring: 4 100% 45%; /* #E61B00 */
-  --chart-1: 4 100% 45%; /* #E61B00 */
-  --chart-2: 221 83% 53%; /* #2563EB */
-  --chart-3: 158 64% 52%; /* #059669 */
-  --chart-4: 32 95% 44%; /* #D97706 */
-  --chart-5: 340 75% 55%; /* #EC4899 */
-  --radius: 0.5rem;
+  --background: 0 0% 99%; /* #fcfcfc */
+  --foreground: 0 0% 10%; /* #1a1a1a */
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+  --primary: 3 100% 55%; /* #ff2222 */
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 95%;
+  --secondary-foreground: 0 0% 10%;
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 3 100% 55%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 3 100% 55%;
+  --sidebar-background: 0 0% 98%;
+  --sidebar-foreground: 0 0% 10%;
+  --sidebar-primary: 3 100% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 0 0% 94%;
+  --sidebar-accent-foreground: 0 0% 10%;
+  --sidebar-border: 0 0% 90%;
+  --sidebar-ring: 3 100% 55%;
 
-  /* Sidebar Colors for Light Theme */
-  --sidebar-background: 0 0% 95%; /* #f3f4f6 */
-  --sidebar-foreground: 0 0% 13%; /* #222222 */
-  --sidebar-primary: 4 100% 45%; /* #E61B00 */
-  --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
-  --sidebar-accent: 0 0% 93%; /* #ececf0 */
-  --sidebar-accent-foreground: 0 0% 13%; /* #222222 */
-  --sidebar-border: 0 0% 90%; /* #e5e7eb */
-  --sidebar-ring: 4 100% 45%; /* #E61B00 */
-
-  /* Bron Custom Variables */
-  --bron-bg-primary: #f7f7f9;
-  --bron-bg-secondary: #f3f4f6;
-  --bron-bg-tertiary: #ececf0;
-  --bron-border: #e5e7eb;
-  --bron-text-primary: #222222;
-  --bron-text-secondary: #666666;
-  --bron-text-muted: #999999;
-  --bron-accent-red: #ff4d4f;
-  --bron-accent-red-hover: #d9363e;
-  --bron-accent-blue: #1890ff;
-  --bron-accent-blue-hover: #1765ad;
-  --bron-accent-green: #52c41a;
-  --bron-accent-green-hover: #389e0d;
-  --bron-accent-yellow: #faad14;
-  --bron-accent-yellow-hover: #d48806;
+  /* Bron Custom Variables - Light */
+  --bron-bg-primary: #fcfcfc;
+  --bron-bg-secondary: rgba(255, 255, 255, 0.8);
+  --bron-bg-tertiary: #f4f4f5;
+  --bron-border: #e4e4e7;
+  --bron-text-primary: #18181b;
+  --bron-text-secondary: #52525b;
+  --bron-text-muted: #a1a1aa;
 }
 
 [data-theme='dark'] {
-  /* Dark Theme Variables */
-  --background: 210 11% 8% !important; /* #141414 */
-  --foreground: 0 0% 100% !important; /* #ffffff */
-  --card: 210 11% 12%; /* #1f1f1f */
-  --card-foreground: 0 0% 100%; /* #ffffff */
-  --popover: 210 11% 12%; /* #1f1f1f */
-  --popover-foreground: 0 0% 100%; /* #ffffff */
-  --primary: 4 100% 45%; /* #E61B00 */
-  --primary-foreground: 0 0% 100%; /* #ffffff */
-  --secondary: 210 11% 16%; /* #2a2a2a */
-  --secondary-foreground: 0 0% 100%; /* #ffffff */
-  --muted: 210 11% 16%; /* #2a2a2a */
-  --muted-foreground: 0 0% 70%; /* #b3b3b3 */
-  --accent: 4 100% 45%; /* #E61B00 */
-  --accent-foreground: 0 0% 100%; /* #ffffff */
-  --destructive: 4 100% 45%; /* #E61B00 */
-  --destructive-foreground: 0 0% 100%; /* #ffffff */
-  --border: 210 11% 25%; /* #404040 */
-  --input: 210 11% 25%; /* #404040 */
-  --ring: 4 100% 45%; /* #E61B00 */
-  --chart-1: 4 100% 45%; /* #E61B00 */
-  --chart-2: 221 83% 53%; /* #2563EB */
-  --chart-3: 158 64% 52%; /* #059669 */
-  --chart-4: 32 95% 44%; /* #D97706 */
-  --chart-5: 340 75% 55%; /* #EC4899 */
-  --radius: 0.5rem;
-
-  /* Sidebar Colors for Dark Theme */
-  --sidebar-background: 210 11% 12%; /* #1f1f1f */
-  --sidebar-foreground: 0 0% 100%; /* #ffffff */
-  --sidebar-primary: 4 100% 45%; /* #E61B00 */
-  --sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
-  --sidebar-accent: 210 11% 16%; /* #2a2a2a */
-  --sidebar-accent-foreground: 0 0% 100%; /* #ffffff */
-  --sidebar-border: 210 11% 25%; /* #404040 */
-  --sidebar-ring: 4 100% 45%; /* #E61B00 */
-
-  /* Bron Custom Variables */
-  --bron-bg-primary: #141414;
-  --bron-bg-secondary: #1f1f1f;
-  --bron-bg-tertiary: #2a2a2a;
-  --bron-border: #404040;
-  --bron-text-primary: #ffffff;
-  --bron-text-secondary: #b3b3b3;
-  --bron-text-muted: #808080;
-  --bron-accent-red: #E61B00;
-  --bron-accent-red-hover: #CC1700;
-  --bron-accent-blue: #2563EB;
-  --bron-accent-blue-hover: #1D4ED8;
-  --bron-accent-green: #059669;
-  --bron-accent-green-hover: #047857;
-  --bron-accent-yellow: #D97706;
-  --bron-accent-yellow-hover: #B45309;
+  --background: 0 0% 4% !important;
+  --foreground: 0 0% 98% !important;
+  --card: 0 0% 7%;
+  --card-foreground: 0 0% 98%;
+  --popover: 0 0% 7%;
+  --primary: 3 100% 60%;
+  --secondary: 0 0% 12%; 
+  --muted: 0 0% 12%;
+  --border: 0 0% 16%;
+  --input: 0 0% 16%;
+  
+  --bron-bg-primary: #0a0a0a;
+  --bron-bg-secondary: rgba(20, 20, 20, 0.7);
+  --bron-bg-tertiary: #1f1f1f;
+  --bron-border: #292929;
 }
 
 @layer base {
@@ -168,35 +146,56 @@ html[data-theme='light'] *,
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image: radial-gradient(circle at top center, rgba(255, 51, 51, 0.08), transparent 40%);
+    background-attachment: fixed;
   }
 }
 
-/* Custom scrollbar for dark theme */
+/* Glassmorphism Utilities - Global Theming System */
+@layer utilities {
+  /* Base glass effect for small elements (badges, chips, etc) */
+  .glass {
+    @apply bg-card/40 backdrop-blur-md border border-border/50 shadow-sm;
+  }
+  
+  /* Glass card effect - main container cards */
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-sm border border-border shadow-sm transition-all duration-300 hover:bg-card/80;
+  }
+  
+  /* Glass input/field effect */
+  .glass-input {
+    @apply bg-card/50 backdrop-blur-sm border border-border/50 text-foreground placeholder:text-muted-foreground;
+  }
+  
+  /* Glass modal/dialog effect */
+  .glass-modal {
+    @apply bg-card/80 backdrop-blur-xl border border-border shadow-xl;
+  }
+  
+  /* Glass sidebar effect */
+  .glass-sidebar {
+    @apply bg-sidebar/80 backdrop-blur-xl border-r border-sidebar-border;
+  }
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #1f1f1f;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #404040;
-  border-radius: 4px;
+  background: var(--border);
+  border-radius: 6px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #555555;
+  background: var(--bron-text-muted);
 }
 
-/* Custom selection colors */
 ::selection {
-  background: #e61b00;
-  color: white;
-}
-
-::-moz-selection {
-  background: #e61b00;
+  background: var(--primary);
   color: white;
 }
