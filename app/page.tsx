@@ -577,34 +577,34 @@ export default function SearchPage() {
         !node.name.includes(".")
 
       // Icon based on file type
-      let icon: React.ReactNode = <Folder className="inline h-4 w-4 text-bron-accent-blue" />
+      let icon: React.ReactNode = <Folder className="inline h-4 w-4 text-blue" />
       let actionIcon: React.ReactNode = ""
       let actionText = ""
       let isClickable = false
 
       if (!node.isDirectory) {
         if (isViewable && node.hasContent) {
-          icon = <FileText className="inline h-4 w-4 text-bron-accent-green" />
-          actionIcon = <Eye className="inline h-4 w-4 text-bron-accent-blue ml-1" />
+          icon = <FileText className="inline h-4 w-4 text-green" />
+          actionIcon = <Eye className="inline h-4 w-4 text-blue ml-1" />
           actionText = "Click to view content"
           isClickable = true
         } else if (["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(fileExtension) && node.hasContent) {
-          icon = <ImageIcon className="inline h-4 w-4 text-bron-accent-purple" />
-          actionIcon = <Eye className="inline h-4 w-4 text-bron-accent-blue ml-1" />
+          icon = <ImageIcon className="inline h-4 w-4 text-purple" />
+          actionIcon = <Eye className="inline h-4 w-4 text-blue ml-1" />
           actionText = "Click to preview image"
           isClickable = true
         } else if (["pdf"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-red" />
+          icon = <Book className="inline h-4 w-4 text-red" />
         } else if (["doc", "docx"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-blue" />
+          icon = <Book className="inline h-4 w-4 text-blue" />
         } else if (["xls", "xlsx"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-green" />
+          icon = <Book className="inline h-4 w-4 text-green" />
         } else if (["ppt", "pptx"].includes(fileExtension)) {
-          icon = <Book className="inline h-4 w-4 text-bron-accent-yellow" />
+          icon = <Book className="inline h-4 w-4 text-yellow" />
         } else if (["zip", "rar", "7z"].includes(fileExtension)) {
-          icon = <Package className="inline h-4 w-4 text-bron-accent-orange" />
+          icon = <Package className="inline h-4 w-4 text-orange" />
         } else {
-          icon = <FileText className="inline h-4 w-4 text-bron-accent-gray" />
+          icon = <FileText className="inline h-4 w-4 text-gray" />
         }
       }
 
@@ -618,26 +618,26 @@ export default function SearchPage() {
               <div
                 className={`font-mono text-sm py-1 px-2 rounded transition-colors ${
                   node.hasMatch
-                    ? "bg-bron-accent-yellow/20 text-bron-accent-yellow font-medium"
-                    : "text-bron-text-secondary"
-                } ${isClickable ? "hover:bg-bron-accent-blue/20 cursor-pointer" : "cursor-default"}`}
+                    ? "bg-yellow/20 text-yellow font-medium"
+                    : "text-muted-foreground"
+                } ${isClickable ? "hover:bg-blue/20 cursor-pointer" : "cursor-default"}`}
                 onClick={() => {
                   if (isClickable) {
                     handleFileClick(selectedDevice!.deviceId, node.path, node.name, node.hasContent || false)
                   }
                 }}
               >
-                <span className="text-bron-text-muted">{prefix}</span>
+                <span className="text-muted-foreground">{prefix}</span>
                 <span className="mr-1">{icon}</span>
                 <span className={node.hasMatch ? "font-semibold" : ""}>{node.name}</span>
-                {matchBadge && <span className="text-bron-accent-yellow font-bold">{matchBadge}</span>}
-                {actionIcon && <span className="text-bron-accent-blue">{actionIcon}</span>}
-                {sizeBadge && <span className="text-bron-text-muted text-xs ml-1">{sizeBadge}</span>}
+                {matchBadge && <span className="text-yellow font-bold">{matchBadge}</span>}
+                {actionIcon && <span className="text-blue">{actionIcon}</span>}
+                {sizeBadge && <span className="text-muted-foreground text-xs ml-1">{sizeBadge}</span>}
               </div>
             </TooltipTrigger>
             {!node.isDirectory && (
-              <TooltipContent side="right" className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-2">
-                <div className="text-xs text-bron-text-primary">{actionText}</div>
+              <TooltipContent side="right" className="bg-card/50 border border-border shadow-lg p-2">
+                <div className="text-xs text-foreground">{actionText}</div>
               </TooltipContent>
             )}
           </Tooltip>
@@ -671,8 +671,8 @@ export default function SearchPage() {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col min-h-screen bg-bron-bg-primary">
-        <main className="flex-1 p-6 bg-bron-bg-primary">
+      <div className="flex flex-col min-h-screen bg-background">
+        <main className="flex-1 p-6 bg-background">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Typing effect above search card */}
             <TypingEffect
@@ -694,9 +694,9 @@ export default function SearchPage() {
             {/* Error stats alert */}
             {statsError && (
               <div className="text-center py-8">
-                <Alert className="bg-bron-bg-tertiary border-bron-border">
-                  <Database className="h-4 w-4 text-bron-accent-blue" />
-                  <AlertDescription className="text-bron-text-primary">
+                <Alert className="bg-card/50 border-border">
+                  <Database className="h-4 w-4 text-blue" />
+                  <AlertDescription className="text-foreground">
                     {statsError}
                   </AlertDescription>
                 </Alert>
@@ -720,8 +720,8 @@ export default function SearchPage() {
             {/* No results message - only show if search has been executed */}
             {hasSearched && searchResults.length === 0 && searchQuery && !isLoading && stats.totalFiles > 0 && (
               <div className="text-center py-8">
-                <p className="text-bron-text-muted">No devices found containing "{searchQuery}"</p>
-                <p className="text-sm text-bron-text-muted mt-2">
+                <p className="text-muted-foreground">No devices found containing "{searchQuery}"</p>
+                <p className="text-sm text-muted-foreground mt-2">
                   Try searching with a different email or domain name.
                 </p>
               </div>
@@ -730,8 +730,8 @@ export default function SearchPage() {
             {/* Prompt to search - show when user has typed but hasn't searched yet */}
             {!hasSearched && searchQuery && !isLoading && (
               <div className="text-center py-8">
-                <p className="text-bron-text-muted">Press Enter or click Search to find devices</p>
-                <p className="text-sm text-bron-text-muted mt-2">
+                <p className="text-muted-foreground">Press Enter or click Search to find devices</p>
+                <p className="text-sm text-muted-foreground mt-2">
                   Search by email address or domain name.
                 </p>
               </div>

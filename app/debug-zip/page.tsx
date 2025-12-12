@@ -127,19 +127,19 @@ export default function DebugZipPage() {
   }
 
   return (
-    <main className="flex-1 p-6 bg-bron-bg-primary">
+    <main className="flex-1 p-6 bg-background">
       <div className="max-w-7xl mx-auto space-y-6">
-        <Alert className="bg-bron-accent-yellow/10 border-bron-accent-yellow/30">
-          <AlertCircle className="h-4 w-4 text-bron-accent-yellow" />
-          <AlertDescription className="text-bron-text-primary">
+        <Alert className="glass-card border-primary/30">
+          <AlertCircle className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-foreground">
             This tool analyzes ZIP file structure without uploading to database. Use this to debug issues with large
             ZIP files.
           </AlertDescription>
         </Alert>
 
-        <Card className="bg-bron-bg-tertiary border-bron-border">
+        <Card className="glass-card">
           <CardHeader>
-            <CardTitle className="text-bron-text-primary">Analyze ZIP File</CardTitle>
+            <CardTitle className="text-foreground">Analyze ZIP File</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -148,22 +148,22 @@ export default function DebugZipPage() {
                 <div
                   className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                     dragActive
-                      ? "border-bron-accent-blue bg-bron-accent-blue/10"
-                      : "border-bron-border hover:border-bron-accent-blue/50"
+                      ? "border-primary bg-primary/10"
+                      : "border-border hover:border-primary/50"
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
                 >
-                <FileArchive className="mx-auto h-12 w-12 text-bron-text-muted mb-4" />
+                <FileArchive className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <div className="space-y-2">
-                    <p className="text-lg font-medium text-bron-text-primary">Drop your .zip file here to analyze</p>
-                    <p className="text-sm text-bron-text-muted">or click to browse</p>
+                    <p className="text-lg font-medium text-foreground">Drop your .zip file here to analyze</p>
+                    <p className="text-sm text-muted-foreground">or click to browse</p>
                 </div>
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="mt-4 bg-bron-accent-red hover:bg-bron-accent-red-hover text-white"
+                    className="mt-4 bg-primary hover:bg-primary/90 text-primary-foreground"
                   >
                     <Upload className="mr-2 h-4 w-4" />
                     Select File
@@ -183,10 +183,10 @@ export default function DebugZipPage() {
                 <div className="space-y-4 mt-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Upload className="h-4 w-4 animate-pulse text-bron-accent-blue" />
-                      <span className="text-bron-text-primary">Uploading file...</span>
+                      <Upload className="h-4 w-4 animate-pulse text-primary" />
+                      <span className="text-foreground">Uploading file...</span>
                     </div>
-                    <div className="text-sm font-medium text-bron-accent-blue">{uploadStatus.progress}%</div>
+                    <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
                   </div>
                   <Progress value={uploadStatus.progress} className="w-full" />
                 </div>
@@ -197,10 +197,10 @@ export default function DebugZipPage() {
                 <div className="space-y-4 mt-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Upload className="h-4 w-4 animate-pulse text-bron-accent-blue" />
-                      <span className="text-bron-text-primary">Processing data...</span>
+                      <Upload className="h-4 w-4 animate-pulse text-primary" />
+                      <span className="text-foreground">Processing data...</span>
                     </div>
-                    <div className="text-sm font-medium text-bron-accent-blue">{uploadStatus.progress}%</div>
+                    <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
                   </div>
                   <Progress value={uploadStatus.progress} className="w-full" />
                 </div>
@@ -208,54 +208,54 @@ export default function DebugZipPage() {
 
               {isLoading && (
                 <div className="text-center py-8">
-                  <p className="text-bron-text-primary">Analyzing ZIP file structure...</p>
+                  <p className="text-foreground">Analyzing ZIP file structure...</p>
                 </div>
               )}
 
               {error && (
-                <Alert className="bg-bron-accent-red/10 border-bron-accent-red/30">
-                  <AlertCircle className="h-4 w-4 text-bron-accent-red" />
-                  <AlertDescription className="text-bron-text-primary">{error}</AlertDescription>
+                <Alert className="glass-card border-destructive/30">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-foreground">{error}</AlertDescription>
                 </Alert>
               )}
 
               {analysis && (
                 <div className="space-y-6">
-                  <Alert className="bg-bron-accent-green/10 border-bron-accent-green/30">
-                    <CheckCircle className="h-4 w-4 text-bron-accent-green" />
-                    <AlertDescription className="text-bron-text-primary">
+                  <Alert className="glass-card border-primary/30">
+                    <CheckCircle className="h-4 w-4 text-primary" />
+                    <AlertDescription className="text-foreground">
                       Analysis complete! Found {analysis.uniqueDevices} devices in {analysis.fileName}
                     </AlertDescription>
                   </Alert>
 
                   {/* File Overview */}
-                  <Card className="bg-bron-bg-secondary border-bron-border">
+                  <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle className="text-bron-text-primary">File Overview</CardTitle>
+                      <CardTitle className="text-foreground">File Overview</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
-                          <p className="text-2xl font-bold text-bron-accent-blue">
+                          <p className="text-2xl font-bold text-primary">
                             {formatFileSize(analysis.fileSize)}
                           </p>
-                          <p className="text-sm text-bron-text-muted">File Size</p>
+                          <p className="text-sm text-muted-foreground">File Size</p>
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-bron-accent-green">
+                          <p className="text-2xl font-bold text-primary">
                             {analysis.totalEntries.toLocaleString()}
                           </p>
-                          <p className="text-sm text-bron-text-muted">Total Entries</p>
+                          <p className="text-sm text-muted-foreground">Total Entries</p>
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-bron-text-primary">
+                          <p className="text-2xl font-bold text-foreground">
                             {analysis.totalFiles.toLocaleString()}
                           </p>
-                          <p className="text-sm text-bron-text-muted">Files</p>
+                          <p className="text-sm text-muted-foreground">Files</p>
                         </div>
                         <div>
-                          <p className="text-2xl font-bold text-bron-accent-yellow">{analysis.uniqueDevices}</p>
-                          <p className="text-sm text-bron-text-muted">Devices</p>
+                          <p className="text-2xl font-bold text-primary">{analysis.uniqueDevices}</p>
+                          <p className="text-sm text-muted-foreground">Devices</p>
                         </div>
                       </div>
                     </CardContent>
@@ -263,16 +263,16 @@ export default function DebugZipPage() {
 
                   {/* Issues */}
                   {analysis.issues.length > 0 && (
-                    <Card className="bg-bron-bg-secondary border-bron-border">
+                    <Card className="glass-card">
                       <CardHeader>
-                        <CardTitle className="text-bron-accent-red">Potential Issues</CardTitle>
+                        <CardTitle className="text-destructive">Potential Issues</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
                           {analysis.issues.map((issue, index) => (
-                            <Alert key={index} className="bg-bron-accent-red/10 border-bron-accent-red/30">
-                              <AlertCircle className="h-4 w-4 text-bron-accent-red" />
-                              <AlertDescription className="text-bron-text-primary">{issue}</AlertDescription>
+                            <Alert key={index} className="glass-card border-destructive/30">
+                              <AlertCircle className="h-4 w-4 text-destructive" />
+                              <AlertDescription className="text-foreground">{issue}</AlertDescription>
                             </Alert>
                           ))}
                         </div>
@@ -281,9 +281,9 @@ export default function DebugZipPage() {
                   )}
 
                   {/* Sample Device Names */}
-                  <Card className="bg-bron-bg-secondary border-bron-border">
+                  <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle className="text-bron-text-primary">Sample Device Names</CardTitle>
+                      <CardTitle className="text-foreground">Sample Device Names</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
@@ -291,7 +291,7 @@ export default function DebugZipPage() {
                           <Badge
                             key={index}
                             variant="outline"
-                            className="font-mono text-xs bg-bron-bg-tertiary text-bron-text-primary border-bron-border"
+                            className="font-mono text-xs glass border-white/5"
                           >
                             {name.length > 50 ? name.substring(0, 50) + "..." : name}
                           </Badge>
@@ -301,35 +301,35 @@ export default function DebugZipPage() {
                   </Card>
 
                   {/* Device Details */}
-                  <Card className="bg-bron-bg-secondary border-bron-border">
+                  <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle className="text-bron-text-primary">Top 20 Devices by File Count</CardTitle>
+                      <CardTitle className="text-foreground">Top 20 Devices by File Count</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ScrollArea className="h-96">
                         <div className="space-y-3">
                           {analysis.deviceDetails.map((device, index) => (
-                            <div key={index} className="border border-bron-border rounded p-3 bg-bron-bg-tertiary">
+                            <div key={index} className="border border-border rounded p-3 glass">
                               <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-medium text-bron-text-primary">
+                                <h4 className="font-medium text-foreground">
                                   #{index + 1} {device.deviceName}
                                 </h4>
                                 <div className="flex space-x-2">
-                                  <Badge className="bg-bron-accent-blue/20 text-bron-accent-blue border-bron-accent-blue/40">
+                                  <Badge className="glass border-primary/30 text-primary">
                                     {device.totalFiles} files
                                   </Badge>
                                   <Badge
                                     className={
                                       device.passwordFiles > 0
-                                        ? "bg-bron-accent-green/20 text-bron-accent-green border-bron-accent-green/40"
-                                        : "bg-bron-accent-red/20 text-bron-accent-red border-bron-accent-red/40"
+                                        ? "glass border-primary/30 text-primary"
+                                        : "glass border-destructive/30 text-destructive"
                                     }
                                   >
                                     {device.passwordFiles} passwords
                                   </Badge>
                                 </div>
                               </div>
-                              <div className="text-sm text-bron-text-muted">
+                              <div className="text-sm text-muted-foreground">
                                 <p>Sample paths:</p>
                                 <ul className="list-disc list-inside ml-2">
                                   {device.samplePaths.slice(0, 3).map((path, idx) => (
@@ -352,7 +352,7 @@ export default function DebugZipPage() {
                   <Button
                     onClick={resetDebug}
                     variant="outline"
-                    className="bg-bron-bg-secondary border-bron-border text-bron-text-primary hover:bg-bron-bg-tertiary"
+                    className="glass-card border-border hover:border-primary/50"
                   >
                     Upload New Data
                   </Button>

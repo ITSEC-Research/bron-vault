@@ -73,15 +73,15 @@ export function ReconSearchBar({
     return (
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-bron-text-muted">Target:</span>
-          <span className="text-sm font-medium text-bron-text-primary">{targetDomain}</span>
+          <span className="text-sm text-muted-foreground">Target:</span>
+          <span className="text-sm font-medium text-foreground">{targetDomain}</span>
         </div>
         {onClear && (
           <Button
             onClick={onClear}
             variant="outline"
             size="sm"
-            className="bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-secondary"
+            className="glass-card border-border/50 text-foreground hover:bg-white/5"
           >
             Clear
           </Button>
@@ -93,28 +93,28 @@ export function ReconSearchBar({
   // Initial state - centered search
   return (
     <div className="flex flex-col items-center space-y-4">
-      <Card className="bg-bron-bg-tertiary border-bron-border w-full max-w-3xl mx-auto">
+      <Card className="glass-card border-border/50 w-full max-w-3xl mx-auto">
         <CardContent className="p-6">
           <div className="flex flex-col items-center space-y-6">
             <div className="text-center">
-              <h1 className="text-2xl font-semibold text-bron-text-primary mb-2">
+              <h1 className="text-2xl font-semibold text-foreground mb-2">
                 Discover Subdomains and Paths Across Logs
               </h1>
-              <p className="text-sm text-bron-text-muted">
-                Enter a <span className="text-bron-accent-blue font-medium">domain</span> or <span className="text-bron-accent-red font-medium">keyword</span> to explore its footprint
+              <p className="text-sm text-muted-foreground">
+                Enter a <span className="text-blue-500 font-medium">domain</span> or <span className="text-primary font-medium">keyword</span> to explore its footprint
               </p>
             </div>
             {/* Main Search Component with Enhanced UI */}
             <div className="relative group w-full">
               <div
-                className="flex items-center w-full rounded-lg border border-bron-border bg-bron-bg-tertiary transition-all duration-200 shadow-sm"
+                className="flex items-center w-full rounded-lg border border-border/50 glass-card transition-all duration-200 shadow-sm"
               >
                 {/* Left Icon - Auto-detect Indicator */}
                 <div className="pl-4 pr-3 flex items-center justify-center pointer-events-none">
                   {searchType === 'domain' ? (
-                    <Globe className="w-5 h-5 text-bron-accent-blue transition-all duration-300" />
+                    <Globe className="w-5 h-5 text-blue-500 transition-all duration-300" />
                   ) : (
-                    <Key className="w-5 h-5 text-bron-accent-red transition-all duration-300" />
+                    <Key className="w-5 h-5 text-primary transition-all duration-300" />
                   )}
                 </div>
 
@@ -129,12 +129,12 @@ export function ReconSearchBar({
                   }}
                   onKeyPress={handleKeyPress}
                   placeholder="example.com or keyword..."
-                  className="flex-1 bg-transparent border-none outline-none h-14 text-lg text-bron-text-primary placeholder:text-bron-text-muted min-w-0"
+                  className="flex-1 bg-transparent border-none outline-none h-14 text-lg text-foreground placeholder:text-muted-foreground min-w-0"
                 />
 
                 {/* Scope Selector - Segmented Control (only when keyword mode) */}
                 {searchType === 'keyword' && (
-                  <div className="flex items-center bg-bron-bg-primary rounded-md p-1 border border-bron-border mr-1">
+                  <div className="flex items-center bg-white/5 rounded-md p-1 border border-border/50 mr-1">
                     <button
                       type="button"
                       onClick={() => handleModeChange('domain-only')}
@@ -142,8 +142,8 @@ export function ReconSearchBar({
                         flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all duration-200
                         ${
                           keywordMode === 'domain-only'
-                            ? 'bg-bron-bg-secondary text-bron-text-primary shadow-sm border border-bron-border/50'
-                            : 'text-bron-text-muted hover:text-bron-text-secondary hover:bg-bron-bg-secondary/50'
+                            ? 'glass-card text-foreground shadow-sm border border-border/50'
+                            : 'text-muted-foreground hover:text-muted-foreground hover:glass-card/50'
                         }
                       `}
                     >
@@ -158,8 +158,8 @@ export function ReconSearchBar({
                         flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all duration-200
                         ${
                           keywordMode === 'full-url'
-                            ? 'bg-bron-accent-red text-white shadow-sm'
-                            : 'text-bron-text-muted hover:text-bron-text-secondary hover:bg-bron-bg-secondary/50'
+                            ? 'bg-primary text-white shadow-sm'
+                            : 'text-muted-foreground hover:text-muted-foreground hover:glass-card/50'
                         }
                       `}
                     >
@@ -171,7 +171,7 @@ export function ReconSearchBar({
 
                 {/* Domain Mode Badge (only when domain mode) */}
                 {searchType === 'domain' && (
-                  <span className="mr-3 text-xs font-medium text-bron-accent-blue bg-bron-accent-blue/10 px-3 py-1.5 rounded-md border border-bron-accent-blue/20">
+                  <span className="mr-3 text-xs font-medium text-blue-500 bg-blue-500/10 px-3 py-1.5 rounded-md border border-blue-500/20">
                     Domain Mode
                   </span>
                 )}
@@ -180,7 +180,7 @@ export function ReconSearchBar({
                 <Button
                   onClick={handleSearch}
                   disabled={isLoading || !query.trim()}
-                  className="h-11 px-6 bg-bron-accent-red hover:bg-red-700 text-white rounded-md font-medium transition-colors text-sm shadow-md mr-1.5"
+                  className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-md font-medium transition-colors text-sm shadow-md mr-1.5"
                 >
                   {isLoading ? "Searching..." : "Search"}
                 </Button>
@@ -190,21 +190,21 @@ export function ReconSearchBar({
             {/* Helper Text - Dynamic based on mode (only show when there's input) */}
             {query.trim().length > 0 && (
               <div className="text-center w-full">
-                <p className="text-xs text-bron-text-muted transition-all duration-300">
+                <p className="text-xs text-muted-foreground transition-all duration-300">
                   {searchType === 'domain' ? (
                     <span>
                       Searching for subdomains related to{' '}
-                      <span className="text-bron-accent-blue font-medium">this domain</span>.
+                      <span className="text-blue-500 font-medium">this domain</span>.
                     </span>
                   ) : keywordMode === 'domain-only' ? (
                     <span>
                       Searching keyword inside{' '}
-                      <span className="text-bron-text-primary font-medium">domain & subdomains</span> only.
+                      <span className="text-foreground font-medium">domain & subdomains</span> only.
                     </span>
                   ) : (
                     <span>
                       Searching keyword inside{' '}
-                      <span className="text-bron-accent-red font-medium">full URL paths</span> & parameters.
+                      <span className="text-primary font-medium">full URL paths</span> & parameters.
                     </span>
                   )}
                 </p>

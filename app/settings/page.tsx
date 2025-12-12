@@ -62,30 +62,30 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="flex-1 p-6 bg-bron-bg-primary">
+    <main className="flex-1 p-6 bg-transparent">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-bron-text-primary flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Settings className="h-8 w-8" />
             Settings
           </h1>
-          <p className="text-bron-text-muted mt-2">Configure application settings</p>
+          <p className="text-muted-foreground mt-2">Configure application settings</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="inline-flex w-full bg-bron-bg-tertiary border border-bron-border">
+          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-2 glass-card h-8">
             <TabsTrigger
               value="upload"
-              className="text-sm font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white flex-1"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
             >
-              <Upload className="h-4 w-4 mr-2" />
+              <Upload className="h-3 w-3 mr-1" />
               Upload Configuration
             </TabsTrigger>
             <TabsTrigger
               value="batch"
-              className="text-sm font-normal data-[state=active]:bg-bron-accent-red data-[state=active]:text-white flex-1"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
             >
-              <Database className="h-4 w-4 mr-2" />
+              <Database className="h-3 w-3 mr-1" />
               Database Batch
             </TabsTrigger>
           </TabsList>
@@ -257,19 +257,19 @@ function UploadConfigurationTab() {
 
   if (loading) {
     return (
-      <Card className="bg-bron-bg-tertiary border-bron-border">
+      <Card className="glass-card">
         <CardContent className="p-6">
-          <div className="text-center text-bron-text-muted">Loading settings...</div>
+          <div className="text-center text-muted-foreground">Loading settings...</div>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border">
+    <Card className="glass-card">
       <CardHeader>
-        <CardTitle className="text-bron-text-primary">Upload Configuration</CardTitle>
-        <CardDescription className="text-bron-text-muted">
+        <CardTitle className="text-foreground">Upload Configuration</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Configure file upload limits and chunking behavior for large file uploads
         </CardDescription>
       </CardHeader>
@@ -277,7 +277,7 @@ function UploadConfigurationTab() {
             <div className="rounded-lg border-2 border-blue-500/50 bg-blue-500/10 p-4">
               <div className="flex items-start gap-3">
                 <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-bron-text-primary font-medium leading-relaxed">
+                <p className="text-sm text-foreground font-medium leading-relaxed">
                   These settings control how large files are uploaded. Files larger than 100MB will be automatically
                   split into chunks for efficient upload.
                 </p>
@@ -286,7 +286,7 @@ function UploadConfigurationTab() {
 
             {/* Max File Size */}
             <div className="space-y-2">
-              <Label htmlFor="maxFileSize" className="text-bron-text-primary">
+              <Label htmlFor="maxFileSize" className="text-foreground">
                 Maximum File Size (GB)
               </Label>
               <Input
@@ -303,21 +303,21 @@ function UploadConfigurationTab() {
                     setErrors({ ...errors, maxFileSizeGB: undefined })
                   }
                 }}
-                className={`bg-bron-bg-secondary border-bron-border text-bron-text-primary ${
-                  errors.maxFileSizeGB ? "border-bron-accent-red" : ""
+                className={`glass-card border-border/50 text-foreground ${
+                  errors.maxFileSizeGB ? "border-destructive" : ""
                 }`}
               />
               {errors.maxFileSizeGB && (
-                <p className="text-sm text-bron-accent-red flex items-center gap-1">
+                <p className="text-sm text-destructive flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" />
                   {errors.maxFileSizeGB}
                 </p>
               )}
-              <p className="text-xs text-bron-text-muted">
+              <p className="text-xs text-muted-foreground">
                 Maximum size for a single file upload. Range: 0.1 GB - 100 GB
               </p>
               {settings && (
-                <p className="text-xs text-bron-text-muted">
+                <p className="text-xs text-muted-foreground">
                   Current: {formatBytes(settings.maxFileSize)}
                 </p>
               )}
@@ -325,7 +325,7 @@ function UploadConfigurationTab() {
 
             {/* Chunk Size */}
             <div className="space-y-2">
-              <Label htmlFor="chunkSize" className="text-bron-text-primary">
+              <Label htmlFor="chunkSize" className="text-foreground">
                 Chunk Size (MB)
               </Label>
               <Input
@@ -342,22 +342,22 @@ function UploadConfigurationTab() {
                     setErrors({ ...errors, chunkSizeMB: undefined })
                   }
                 }}
-                className={`bg-bron-bg-secondary border-bron-border text-bron-text-primary ${
-                  errors.chunkSizeMB ? "border-bron-accent-red" : ""
+                className={`glass-card border-border/50 text-foreground ${
+                  errors.chunkSizeMB ? "border-destructive" : ""
                 }`}
               />
               {errors.chunkSizeMB && (
-                <p className="text-sm text-bron-accent-red flex items-center gap-1">
+                <p className="text-sm text-destructive flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" />
                   {errors.chunkSizeMB}
                 </p>
               )}
-              <p className="text-xs text-bron-text-muted">
+              <p className="text-xs text-muted-foreground">
                 Size of each chunk for large file uploads. Range: 1 MB - 100 MB. Should be at most 10% of max file
                 size.
               </p>
               {settings && (
-                <p className="text-xs text-bron-text-muted">
+                <p className="text-xs text-muted-foreground">
                   Current: {formatBytes(settings.chunkSize)}
                 </p>
               )}
@@ -365,7 +365,7 @@ function UploadConfigurationTab() {
 
             {/* Max Concurrent Chunks */}
             <div className="space-y-2">
-              <Label htmlFor="maxConcurrentChunks" className="text-bron-text-primary">
+              <Label htmlFor="maxConcurrentChunks" className="text-foreground">
                 Max Concurrent Chunks
               </Label>
               <Input
@@ -382,22 +382,22 @@ function UploadConfigurationTab() {
                     setErrors({ ...errors, maxConcurrentChunks: undefined })
                   }
                 }}
-                className={`bg-bron-bg-secondary border-bron-border text-bron-text-primary ${
-                  errors.maxConcurrentChunks ? "border-bron-accent-red" : ""
+                className={`glass-card border-border/50 text-foreground ${
+                  errors.maxConcurrentChunks ? "border-destructive" : ""
                 }`}
               />
               {errors.maxConcurrentChunks && (
-                <p className="text-sm text-bron-accent-red flex items-center gap-1">
+                <p className="text-sm text-destructive flex items-center gap-1">
                   <AlertCircle className="h-4 w-4" />
                   {errors.maxConcurrentChunks}
                 </p>
               )}
-              <p className="text-xs text-bron-text-muted">
+              <p className="text-xs text-muted-foreground">
                 Number of chunks uploaded simultaneously. Range: 1 - 10. Higher values may increase upload speed but
                 also network load.
               </p>
               {settings && (
-                <p className="text-xs text-bron-text-muted">
+                <p className="text-xs text-muted-foreground">
                   Current: {settings.maxConcurrentChunks}
                 </p>
               )}
@@ -408,7 +408,7 @@ function UploadConfigurationTab() {
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-bron-accent-red hover:bg-bron-accent-red-hover text-white"
+                className="bg-primary hover:bg-primary/90 text-white"
               >
                 <Save className="mr-2 h-4 w-4" />
                 {saving ? "Saving..." : "Save Changes"}
@@ -417,7 +417,7 @@ function UploadConfigurationTab() {
                 onClick={handleReset}
                 disabled={saving}
                 variant="outline"
-                className="bg-bron-bg-secondary border-bron-border text-bron-text-primary hover:bg-bron-bg-tertiary"
+                className="glass-card border-border/50 text-foreground hover:bg-white/5"
               >
                 Reset
               </Button>
@@ -579,19 +579,19 @@ function BatchConfigurationTab() {
 
   if (loading) {
     return (
-      <Card className="bg-bron-bg-tertiary border-bron-border">
+      <Card className="glass-card border-border/50">
         <CardContent className="p-6">
-          <div className="text-center text-bron-text-muted">Loading batch settings...</div>
+          <div className="text-center text-muted-foreground">Loading batch settings...</div>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border">
+    <Card className="glass-card border-border/50">
       <CardHeader>
-        <CardTitle className="text-bron-text-primary">Database Batch Configuration</CardTitle>
-        <CardDescription className="text-bron-text-muted">
+        <CardTitle className="text-foreground">Database Batch Configuration</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Configure batch sizes for bulk database operations to optimize performance
         </CardDescription>
       </CardHeader>
@@ -599,7 +599,7 @@ function BatchConfigurationTab() {
         <div className="rounded-lg border-2 border-blue-500/50 bg-blue-500/10 p-4">
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-bron-text-primary font-medium leading-relaxed">
+            <p className="text-sm text-foreground font-medium leading-relaxed">
               These settings control how data is inserted into the database in batches. Larger batch sizes
               improve performance but use more memory. Adjust based on your system resources.
             </p>
@@ -608,7 +608,7 @@ function BatchConfigurationTab() {
 
         {/* Credentials Batch Size */}
         <div className="space-y-2">
-          <Label htmlFor="credentialsBatchSize" className="text-bron-text-primary">
+          <Label htmlFor="credentialsBatchSize" className="text-foreground">
             Credentials Batch Size
           </Label>
           <Input
@@ -625,21 +625,21 @@ function BatchConfigurationTab() {
                 setErrors({ ...errors, credentialsBatchSize: undefined })
               }
             }}
-            className={`bg-bron-bg-secondary border-bron-border text-bron-text-primary ${
-              errors.credentialsBatchSize ? "border-bron-accent-red" : ""
+            className={`glass-card border-border/50 text-foreground ${
+              errors.credentialsBatchSize ? "border-destructive" : ""
             }`}
           />
           {errors.credentialsBatchSize && (
-            <p className="text-sm text-bron-accent-red flex items-center gap-1">
+            <p className="text-sm text-destructive flex items-center gap-1">
               <AlertCircle className="h-4 w-4" />
               {errors.credentialsBatchSize}
             </p>
           )}
-          <p className="text-xs text-bron-text-muted">
+          <p className="text-xs text-muted-foreground">
             Number of credentials inserted per batch. Range: 10 - 10000. Default: 1000
           </p>
           {settings && (
-            <p className="text-xs text-bron-text-muted">
+            <p className="text-xs text-muted-foreground">
               Current: {settings.credentialsBatchSize}
             </p>
           )}
@@ -647,7 +647,7 @@ function BatchConfigurationTab() {
 
         {/* Password Stats Batch Size */}
         <div className="space-y-2">
-          <Label htmlFor="passwordStatsBatchSize" className="text-bron-text-primary">
+          <Label htmlFor="passwordStatsBatchSize" className="text-foreground">
             Password Stats Batch Size
           </Label>
           <Input
@@ -664,21 +664,21 @@ function BatchConfigurationTab() {
                 setErrors({ ...errors, passwordStatsBatchSize: undefined })
               }
             }}
-            className={`bg-bron-bg-secondary border-bron-border text-bron-text-primary ${
-              errors.passwordStatsBatchSize ? "border-bron-accent-red" : ""
+            className={`glass-card border-border/50 text-foreground ${
+              errors.passwordStatsBatchSize ? "border-destructive" : ""
             }`}
           />
           {errors.passwordStatsBatchSize && (
-            <p className="text-sm text-bron-accent-red flex items-center gap-1">
+            <p className="text-sm text-destructive flex items-center gap-1">
               <AlertCircle className="h-4 w-4" />
               {errors.passwordStatsBatchSize}
             </p>
           )}
-          <p className="text-xs text-bron-text-muted">
+          <p className="text-xs text-muted-foreground">
             Number of password stats inserted per batch. Range: 10 - 10000. Default: 500
           </p>
           {settings && (
-            <p className="text-xs text-bron-text-muted">
+            <p className="text-xs text-muted-foreground">
               Current: {settings.passwordStatsBatchSize}
             </p>
           )}
@@ -686,7 +686,7 @@ function BatchConfigurationTab() {
 
         {/* Files Batch Size */}
         <div className="space-y-2">
-          <Label htmlFor="filesBatchSize" className="text-bron-text-primary">
+          <Label htmlFor="filesBatchSize" className="text-foreground">
             Files Batch Size
           </Label>
           <Input
@@ -703,21 +703,21 @@ function BatchConfigurationTab() {
                 setErrors({ ...errors, filesBatchSize: undefined })
               }
             }}
-            className={`bg-bron-bg-secondary border-bron-border text-bron-text-primary ${
-              errors.filesBatchSize ? "border-bron-accent-red" : ""
+            className={`glass-card border-border/50 text-foreground ${
+              errors.filesBatchSize ? "border-destructive" : ""
             }`}
           />
           {errors.filesBatchSize && (
-            <p className="text-sm text-bron-accent-red flex items-center gap-1">
+            <p className="text-sm text-destructive flex items-center gap-1">
               <AlertCircle className="h-4 w-4" />
               {errors.filesBatchSize}
             </p>
           )}
-          <p className="text-xs text-bron-text-muted">
+          <p className="text-xs text-muted-foreground">
             Number of file records inserted per batch. Range: 10 - 10000. Default: 500
           </p>
           {settings && (
-            <p className="text-xs text-bron-text-muted">
+            <p className="text-xs text-muted-foreground">
               Current: {settings.filesBatchSize}
             </p>
           )}
@@ -725,7 +725,7 @@ function BatchConfigurationTab() {
 
         {/* File Write Parallel Limit */}
         <div className="space-y-2">
-          <Label htmlFor="fileWriteParallelLimit" className="text-bron-text-primary">
+          <Label htmlFor="fileWriteParallelLimit" className="text-foreground">
             File Write Parallel Limit
           </Label>
           <Input
@@ -742,22 +742,22 @@ function BatchConfigurationTab() {
                 setErrors({ ...errors, fileWriteParallelLimit: undefined })
               }
             }}
-            className={`bg-bron-bg-secondary border-bron-border text-bron-text-primary ${
-              errors.fileWriteParallelLimit ? "border-bron-accent-red" : ""
+            className={`glass-card border-border/50 text-foreground ${
+              errors.fileWriteParallelLimit ? "border-destructive" : ""
             }`}
           />
           {errors.fileWriteParallelLimit && (
-            <p className="text-sm text-bron-accent-red flex items-center gap-1">
+            <p className="text-sm text-destructive flex items-center gap-1">
               <AlertCircle className="h-4 w-4" />
               {errors.fileWriteParallelLimit}
             </p>
           )}
-          <p className="text-xs text-bron-text-muted">
+          <p className="text-xs text-muted-foreground">
             Maximum number of files written to disk simultaneously. Range: 1 - 50. Default: 10.
             Higher values may increase speed but also system load.
           </p>
           {settings && (
-            <p className="text-xs text-bron-text-muted">
+            <p className="text-xs text-muted-foreground">
               Current: {settings.fileWriteParallelLimit}
             </p>
           )}
@@ -768,7 +768,7 @@ function BatchConfigurationTab() {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-bron-accent-red hover:bg-bron-accent-red-hover text-white"
+            className="bg-primary hover:bg-primary/90 text-white"
           >
             <Save className="mr-2 h-4 w-4" />
             {saving ? "Saving..." : "Save Changes"}
@@ -777,7 +777,7 @@ function BatchConfigurationTab() {
             onClick={handleReset}
             disabled={saving}
             variant="outline"
-            className="bg-bron-bg-secondary border-bron-border text-bron-text-primary hover:bg-bron-bg-tertiary"
+            className="glass-card border-border/50 text-foreground hover:bg-white/5"
           >
             Reset
           </Button>

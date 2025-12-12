@@ -81,33 +81,33 @@ const CopyableCell = ({
     <TooltipProvider key={tooltipKey} delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors w-full block truncate min-w-0">
+          <div className="cursor-pointer hover:glass-card rounded px-1 py-0.5 transition-colors w-full block truncate min-w-0">
             {isPassword ? (
-              <span className="font-mono text-bron-text-primary">{displayContent}</span>
+              <span className="font-mono text-foreground">{displayContent}</span>
             ) : (
-              <span className="text-bron-text-primary">{displayContent}</span>
+              <span className="text-foreground">{displayContent}</span>
             )}
           </div>
         </TooltipTrigger>
         <TooltipContent 
           side="top" 
-          className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
+          className="glass-card border border-border/50 shadow-lg p-3 max-w-md z-50"
         >
           <div className="space-y-2">
             <div key={`${tooltipKey}-header`} className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-bron-text-secondary">{label}</span>
+              <span className="text-xs font-semibold text-muted-foreground">{label}</span>
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   navigator.clipboard.writeText(content || "")
                 }}
-                className="p-1 hover:bg-bron-bg-primary rounded transition-colors"
+                className="p-1 hover:bg-white/5 rounded transition-colors"
                 title={`Copy ${label}`}
               >
-                <Copy className="h-3 w-3 text-bron-text-muted hover:text-bron-accent-blue" />
+                <Copy className="h-3 w-3 text-muted-foreground hover:text-blue-500" />
               </button>
             </div>
-            <div key={`${tooltipKey}-content`} className={`text-xs ${isPassword ? 'font-mono' : ''} text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border`}>
+            <div key={`${tooltipKey}-content`} className={`text-xs ${isPassword ? 'font-mono' : ''} text-foreground break-all bg-white/5 p-2 rounded border border-border/50`}>
               {content || "-"}
             </div>
           </div>
@@ -258,12 +258,12 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
 
   const getSortIcon = (column: 'created_at' | 'url' | 'username' | 'log_date' | 'device_id') => {
     if (sortBy !== column) {
-      return <ArrowUpDown className="h-3 w-3 ml-1 text-bron-text-muted" />
+      return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground" />
     }
     if (sortOrder === 'asc') {
-      return <ArrowUp className="h-3 w-3 ml-1 text-bron-accent-red" />
+      return <ArrowUp className="h-3 w-3 ml-1 text-primary" />
     }
-    return <ArrowDown className="h-3 w-3 ml-1 text-bron-accent-red" />
+    return <ArrowDown className="h-3 w-3 ml-1 text-primary" />
   }
 
   const formatLogDate = (logDate: string | null): string => {
@@ -405,17 +405,17 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
   }
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border">
+    <Card className="glass-card border-border/50">
       <CardHeader className="!p-4">
-        <CardTitle className="flex items-center text-bron-text-primary text-lg">
-          <Key className="h-4 w-4 mr-2 text-bron-accent-green" />
+        <CardTitle className="flex items-center text-foreground text-lg">
+          <Key className="h-4 w-4 mr-2 text-emerald-500" />
           Credentials
         </CardTitle>
       </CardHeader>
       <CardContent className="!p-4 !pt-0">
         {/* Search and Actions */}
         <div className="mb-4 space-y-3">
-          <div className="text-sm text-bron-text-muted">
+          <div className="text-sm text-muted-foreground">
             Found {total} credentials{searchQuery && ` matching "${searchQuery}"`}
           </div>
           <div className="flex items-center space-x-3">
@@ -425,14 +425,14 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                 placeholder="Search URL, username..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+                className="w-full h-9 text-sm glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowPasswords(!showPasswords)}
-              className="h-9 px-3 flex items-center space-x-2 shrink-0 bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+              className="h-9 px-3 flex items-center space-x-2 shrink-0 glass-card border-border/50 text-foreground hover:bg-white/5"
             >
               {showPasswords ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               <span className="text-xs">{showPasswords ? "Hide" : "Show"}</span>
@@ -451,18 +451,18 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
           </div>
         ) : data.length === 0 ? (
           <div className="flex items-center justify-center h-64">
-            <p className="text-bron-text-muted">
+            <p className="text-muted-foreground">
               {searchQuery ? `No credentials found matching "${searchQuery}"` : "No credentials found for this search"}
             </p>
           </div>
         ) : (
           <>
-            <div className="bg-bron-bg-tertiary border border-bron-border rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)] pb-4">
+            <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)] pb-4">
               <Table className="table-fixed w-full">
                 <TableHeader>
-                  <TableRow className="hover:bg-bron-bg-primary">
+                  <TableRow className="hover:bg-white/5">
                     <TableHead 
-                      className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 cursor-pointer hover:bg-bron-bg-primary transition-colors w-[35%]"
+                      className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 cursor-pointer hover:bg-white/5 transition-colors w-[35%]"
                       onClick={() => handleSort('url')}
                     >
                       <div className="flex items-center space-x-1">
@@ -472,7 +472,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 cursor-pointer hover:bg-bron-bg-primary transition-colors w-[16%]"
+                      className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 cursor-pointer hover:bg-white/5 transition-colors w-[16%]"
                       onClick={() => handleSort('username')}
                     >
                       <div className="flex items-center space-x-1">
@@ -481,14 +481,14 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                         {getSortIcon('username')}
                       </div>
                     </TableHead>
-                    <TableHead className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 w-[16%]">
+                    <TableHead className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 w-[16%]">
                       <div className="flex items-center space-x-1">
                         <Lock className="h-4 w-4 shrink-0" />
                         <span>Password</span>
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 cursor-pointer hover:bg-bron-bg-primary transition-colors w-[13%]"
+                      className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 cursor-pointer hover:bg-white/5 transition-colors w-[13%]"
                       onClick={() => handleSort('log_date')}
                     >
                       <div className="flex items-center space-x-1">
@@ -498,7 +498,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                       </div>
                     </TableHead>
                     <TableHead 
-                      className="sticky top-0 z-20 bg-bron-bg-tertiary text-bron-text-secondary border-b border-bron-border text-xs h-9 py-2 px-3 cursor-pointer hover:bg-bron-bg-primary transition-colors text-left w-[18%]"
+                      className="sticky top-0 z-20 glass-card backdrop-blur-sm text-muted-foreground border-b border-border/50 text-xs h-9 py-2 px-3 cursor-pointer hover:bg-white/5 transition-colors text-left w-[18%]"
                       onClick={() => handleSort('device_id')}
                     >
                       <div className="flex items-center space-x-1">
@@ -513,35 +513,35 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                   {data.map((item) => (
                     <TableRow
                       key={item.id}
-                      className="border-b border-bron-border hover:bg-bron-bg-primary"
+                      className="border-b border-border/50 hover:bg-white/5"
                     >
                       <TableCell className="text-xs py-2 px-3 font-mono w-[35%]">
                         <TooltipProvider key={`url-tooltip-${item.id}`} delayDuration={200}>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="truncate max-w-[350px] cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors">
+                              <div className="truncate max-w-[350px] cursor-pointer hover:glass-card rounded px-1 py-0.5 transition-colors">
                                 {item.url}
                               </div>
                             </TooltipTrigger>
                             <TooltipContent 
                               side="top" 
-                              className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
+                              className="glass-card border border-border/50 shadow-lg p-3 max-w-md z-50"
                             >
                               <div className="space-y-2">
                                 <div key={`url-header-${item.id}`} className="flex items-center justify-between gap-2">
-                                  <span className="text-xs font-semibold text-bron-text-secondary">Full URL</span>
+                                  <span className="text-xs font-semibold text-muted-foreground">Full URL</span>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       navigator.clipboard.writeText(item.url)
                                     }}
-                                    className="p-1 hover:bg-bron-bg-primary rounded transition-colors"
+                                    className="p-1 hover:bg-white/5 rounded transition-colors"
                                     title="Copy URL"
                                   >
-                                    <Copy className="h-3 w-3 text-bron-text-muted hover:text-bron-accent-blue" />
+                                    <Copy className="h-3 w-3 text-muted-foreground hover:text-blue-500" />
                                   </button>
                                 </div>
-                                <div key={`url-content-${item.id}`} className="text-xs font-mono text-bron-text-primary break-all bg-bron-bg-primary p-2 rounded border border-bron-border">
+                                <div key={`url-content-${item.id}`} className="text-xs font-mono text-foreground break-all bg-white/5 p-2 rounded border border-border/50">
                                   {item.url}
                                 </div>
                               </div>
@@ -585,16 +585,16 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                             <TooltipTrigger asChild>
                               <button
                                 onClick={() => router.push(`/device/${item.deviceId}`)}
-                                className="text-bron-accent-blue hover:underline text-left truncate block w-full cursor-pointer hover:bg-bron-bg-tertiary rounded px-1 py-0.5 transition-colors"
+                                className="text-blue-500 hover:underline text-left truncate block w-full cursor-pointer hover:glass-card rounded px-1 py-0.5 transition-colors"
                               >
                                 {item.deviceName || item.deviceId}
                               </button>
                             </TooltipTrigger>
                             <TooltipContent 
                               side="top" 
-                              className="bg-bron-bg-tertiary border border-bron-border shadow-lg p-3 max-w-md z-50"
+                              className="glass-card border border-border/50 shadow-lg p-3 max-w-md z-50"
                             >
-                              <div className="text-xs font-mono text-bron-text-primary break-all">
+                              <div className="text-xs font-mono text-foreground break-all">
                                 {item.deviceName || item.deviceId}
                               </div>
                             </TooltipContent>
@@ -611,13 +611,13 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
             <div className="mt-4">
               <div className="flex items-center w-full">
                 {/* LEFT COLUMN: Page Size Selector */}
-                <div className="flex-1 flex items-center justify-start space-x-2 text-sm text-bron-text-muted">
+                <div className="flex-1 flex items-center justify-start space-x-2 text-sm text-muted-foreground">
                   <span className="text-xs whitespace-nowrap">Show</span>
                   <Select
                     value={limit.toString()}
                     onValueChange={(value) => setLimit(Number(value))}
                   >
-                    <SelectTrigger className="h-8 w-20 text-xs bg-bron-bg-tertiary border-bron-border text-bron-text-primary">
+                    <SelectTrigger className="h-8 w-20 text-xs glass-card border-border/50 text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -643,7 +643,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                           if (pageNum === 'ellipsis-start' || pageNum === 'ellipsis-end') {
                             return (
                               <PaginationItem key={`ellipsis-${index}`}>
-                                <span className="px-2 text-bron-text-muted">
+                                <span className="px-2 text-muted-foreground">
                                   <MoreHorizontal className="h-4 w-4" />
                                 </span>
                               </PaginationItem>
@@ -676,9 +676,9 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                   {totalPages > 1 && (
                     <>
                       {/* Separator */}
-                      <div className="h-5 w-[1px] bg-bron-border" />
+                      <div className="h-5 w-[1px] bg-border/50" />
                       {/* Jump to page */}
-                      <div className="flex items-center space-x-2 text-sm text-bron-text-muted">
+                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                         <span className="text-xs whitespace-nowrap">Page</span>
                         <Input
                           type="number"
@@ -692,14 +692,14 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
                             }
                           }}
                           placeholder=""
-                          className="w-16 h-8 text-sm bg-bron-bg-tertiary border-bron-border text-bron-text-primary"
+                          className="w-16 h-8 text-sm glass-card border-border/50 text-foreground"
                         />
                         <span className="text-xs whitespace-nowrap">of {totalPages}</span>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handleJumpToPage}
-                          className="h-8 px-2 text-xs bg-bron-bg-tertiary border-bron-border text-bron-text-primary hover:bg-bron-bg-primary"
+                          className="h-8 px-2 text-xs glass-card border-border/50 text-foreground hover:bg-white/5"
                         >
                           Go
                         </Button>

@@ -29,11 +29,11 @@ export function SearchInterface({
 }: SearchInterfaceProps) {
   return (
     <div className="flex flex-col items-center space-y-4">
-      <Card className="bg-bron-bg-tertiary border-bron-border w-full max-w-3xl mx-auto">
+      <Card className="glass-card border-border w-full max-w-3xl mx-auto">
         <CardContent className="p-6">
           <div className="flex items-center space-x-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-bron-text-muted h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
                 type="text"
                 placeholder="Search by email or domain..."
@@ -43,13 +43,13 @@ export function SearchInterface({
                   onDetectSearchType(e.target.value)
                 }}
                 onKeyPress={(e) => e.key === "Enter" && onSearch()}
-                className="pl-10 h-12 text-lg bg-bron-bg-tertiary border-bron-border text-bron-text-primary placeholder:text-bron-text-muted"
+                className="pl-10 h-12 text-lg glass border-border/50 text-foreground placeholder:text-muted-foreground"
               />
             </div>
             <Button
               onClick={onSearch}
               disabled={isLoading || !searchQuery.trim()}
-              className="h-12 px-6 bg-bron-accent-red hover:bg-bron-accent-red-hover text-white"
+              className="h-12 px-6 bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isLoading ? "Searching..." : "Search"}
             </Button>
@@ -59,8 +59,8 @@ export function SearchInterface({
               variant={searchType === "email" ? "default" : "secondary"}
               className={
                 (searchType === "email"
-                  ? "bg-bron-accent-red text-white"
-                  : "bg-bron-bg-secondary text-bron-text-secondary border-bron-border") +
+                  ? "bg-primary text-primary-foreground"
+                  : "glass border-white/5") +
                 " rounded-none px-3 py-1 border-r-0"
               }
               style={{ borderTopLeftRadius: 4, borderBottomLeftRadius: 4 }}
@@ -72,8 +72,8 @@ export function SearchInterface({
               variant={searchType === "domain" ? "default" : "secondary"}
               className={
                 (searchType === "domain"
-                  ? "bg-bron-accent-red text-white"
-                  : "bg-bron-bg-secondary text-bron-text-secondary border-bron-border") +
+                  ? "bg-primary text-primary-foreground"
+                  : "glass border-white/5") +
                 " rounded-none px-3 py-1 border-l-0"
               }
               style={{ borderTopRightRadius: 4, borderBottomRightRadius: 4 }}

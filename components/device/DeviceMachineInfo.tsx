@@ -164,27 +164,27 @@ export function DeviceMachineInfo({ deviceId }: DeviceMachineInfoProps) {
       <div
         className={`flex items-center space-x-2 px-3 py-2.5 rounded-md transition-colors ${
           isPrimary
-            ? "bg-gradient-to-r from-bron-accent-red/10 via-bron-accent-red/5 to-bron-bg-tertiary border border-bron-accent-red/30"
-            : "bg-bron-bg-primary border border-bron-border hover:bg-bron-bg-tertiary"
+            ? "bg-gradient-to-r from-primary/10 via-primary/5 to-secondary/30 border border-primary/30"
+            : "glass border border-border/50 hover:bg-card/80"
         }`}
       >
         <Icon
           className={`h-4 w-4 shrink-0 ${
-            isPrimary ? "text-bron-accent-red" : "text-bron-text-secondary"
+            isPrimary ? "text-primary" : "text-muted-foreground"
           }`}
         />
         <div className="flex-1 min-w-0">
           <div
             className={`text-xs font-medium mb-0.5 ${
-              isPrimary ? "text-bron-accent-red" : "text-bron-text-secondary"
+              isPrimary ? "text-primary" : "text-muted-foreground"
             }`}
           >
             {label}
           </div>
           <div
             className={`text-xs truncate ${
-              isPrimary ? "text-bron-text-primary font-semibold" : "text-bron-text-primary"
-            } ${isEmpty ? "text-bron-text-muted italic" : ""}`}
+              isPrimary ? "text-foreground font-semibold" : "text-foreground"
+            } ${isEmpty ? "text-muted-foreground italic" : ""}`}
           >
             {showFlag && flag ? (
               <span className="flex items-center space-x-1.5">
@@ -209,9 +209,9 @@ export function DeviceMachineInfo({ deviceId }: DeviceMachineInfoProps) {
             </TooltipTrigger>
             <TooltipContent
               side="top"
-              className="max-w-md break-words bg-bron-bg-tertiary border border-bron-border shadow-lg p-3"
+              className="max-w-md break-words glass-card shadow-lg p-3"
             >
-              <div className="font-mono text-xs select-text text-bron-text-primary">{value}</div>
+              <div className="font-mono text-xs select-text text-foreground">{value}</div>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -223,9 +223,9 @@ export function DeviceMachineInfo({ deviceId }: DeviceMachineInfoProps) {
 
   if (isLoading) {
     return (
-      <Card className="bg-bron-bg-tertiary border-bron-border">
-        <CardHeader className="pb-2 pt-3 px-4">
-          <CardTitle className="text-sm font-normal text-bron-text-primary">
+      <Card className="glass-card">
+        <CardHeader className="pb-2 pt-3 px-4 border-b border-white/5">
+          <CardTitle className="text-sm font-normal text-foreground">
             Host Information
           </CardTitle>
         </CardHeader>
@@ -242,23 +242,23 @@ export function DeviceMachineInfo({ deviceId }: DeviceMachineInfoProps) {
 
   if (error || !machineInfo) {
     return (
-      <Card className="bg-bron-bg-tertiary border-bron-border">
-        <CardHeader className="pb-2 pt-3 px-4">
-          <CardTitle className="text-sm font-normal text-bron-text-primary">
+      <Card className="glass-card">
+        <CardHeader className="pb-2 pt-3 px-4 border-b border-white/5">
+          <CardTitle className="text-sm font-normal text-foreground">
             Host Information
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4">
-          <p className="text-xs text-bron-text-muted">{error || "Host information not found"}</p>
+          <p className="text-xs text-muted-foreground">{error || "Host information not found"}</p>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border">
-      <CardHeader className="pb-2 pt-3 px-4">
-        <CardTitle className="text-sm font-normal text-bron-text-primary">Host Information</CardTitle>
+    <Card className="glass-card">
+      <CardHeader className="pb-2 pt-3 px-4 border-b border-white/5">
+        <CardTitle className="text-sm font-normal text-foreground">Host Information</CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

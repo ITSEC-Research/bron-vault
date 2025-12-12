@@ -18,7 +18,7 @@ export default function LogoutButton() {
   };
 
   return (
-    <Button onClick={handleLogout} disabled={loading} className="w-full bg-bron-accent-red hover:bg-bron-accent-red-hover text-white">
+    <Button onClick={handleLogout} disabled={loading} className="w-full bg-primary hover:bg-primary/90 text-white">
       {loading ? "Logging out..." : "Logout"}
     </Button>
   );

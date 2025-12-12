@@ -44,7 +44,7 @@ const menuGroups = [
         icon: Search,
       },
       {
-        title: "Domain Search",
+        title: "Asset Discovery",
         description: "Explore Footprint",
         url: "/domain-search",
         icon: Globe,
@@ -96,7 +96,7 @@ export function AppSidebar() {
     if (url === "/domain-search") {
       return pathname.startsWith("/domain-search/");
     }
-    
+
     return false;
   };
 
@@ -113,47 +113,53 @@ export function AppSidebar() {
   }, [mounted, resolvedTheme]);
 
   return (
-    <Sidebar className="bg-bron-bg-secondary border-r border-bron-border">
-      <SidebarHeader className="bg-bron-bg-secondary border-b border-bron-border !p-6">
+    <Sidebar className="border-r border-white/5 bg-sidebar/80 backdrop-blur-xl transition-all duration-300">
+      <SidebarHeader className="border-b border-white/5 p-6 pb-8">
         <div className="flex flex-col items-center">
-          <img
-            src={logoSrc}
-            alt="broń Vault Logo"
-            className="h-10 w-auto mb-2"
-          />
-          <p className="text-xs text-bron-text-muted leading-tight text-center">
+          <div className="relative mb-2">
+            <div className="absolute -inset-1 rounded-full bg-primary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+            <img
+              src={logoSrc}
+              alt="broń Vault Logo"
+              className="relative h-10 w-auto"
+            />
+          </div>
+          <p className="text-[11px] tracking-widest text-muted-foreground leading-tight text-center font-medium mt-2">
             Where stolen data meets structured investigation.
           </p>
         </div>
       </SidebarHeader>
-      <SidebarContent className="bg-bron-bg-secondary flex flex-col h-full">
-        <div className="flex-1 overflow-auto space-y-0 p-4">
+      <SidebarContent className="flex flex-col h-full px-2 py-4">
+        <div className="flex-1 overflow-auto space-y-4">
           {menuGroups.map((group) => (
-            <SidebarGroup key={group.title} className="mb-[2px]">
-              <SidebarGroupLabel className="px-3 py-1 text-xs font-semibold uppercase tracking-wide text-bron-text-muted">
+            <SidebarGroup key={group.title} className="bg-transparent p-0">
+              <SidebarGroupLabel className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
                 {group.title}
               </SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu className="gap-0 space-y-[2px]">
+                <SidebarMenu className="space-y-1">
                   {group.items.map((item) => (
                     <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton
                         asChild
                         isActive={isMenuItemActive(item.url)}
                         className={`
-                          h-auto flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors
+                          group relative w-full overflow-hidden rounded-xl px-4 py-2.5 transition-all duration-300
                           ${isMenuItemActive(item.url)
-                            ? "!bg-red-500/10 dark:!bg-red-500/20 !text-bron-text-primary" 
-                            : "text-bron-text-secondary hover:text-bron-text-primary hover:bg-bron-bg-tertiary"
+                            ? "bg-primary/10 text-primary shadow-[0_0_20px_-5px_rgba(230,27,0,0.3)]"
+                            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                           }
                         `}
                       >
-                        <Link href={item.url} className="flex items-center space-x-2 w-full">
-                          <item.icon className="w-5 h-5 flex-shrink-0" />
+                        <Link href={item.url} className="flex items-center space-x-3 w-full relative z-10">
+                          <item.icon className={`h-5 w-5 transition-transform duration-300 ${isMenuItemActive(item.url) ? 'scale-110' : 'group-hover:scale-110'}`} />
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-bron-text-secondary">{item.title}</div>
-                            <div className="text-[10px] text-bron-text-muted">{item.description}</div>
+                            <div className={`font-medium tracking-wide ${isMenuItemActive(item.url) ? 'font-semibold' : ''}`}>{item.title}</div>
+                            {/* <div className="text-[10px] opacity-70 truncate">{item.description}</div> */}
                           </div>
+                          {isMenuItemActive(item.url) && (
+                            <div className="absolute right-0 h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_2px_rgba(230,27,0,0.5)] animate-pulse" />
+                          )}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -163,24 +169,24 @@ export function AppSidebar() {
             </SidebarGroup>
           ))}
         </div>
-        <div className="p-4 border-t border-bron-border flex items-center justify-between">
-          <span className="text-xs flex items-center gap-2" style={{ color: 'var(--bron-text-muted)' }}>
-            <Sun className="h-4 w-4" style={{ color: 'var(--bron-accent-yellow)' }} />
-            Light
-          </span>
-          {mounted && (
-            <Switch
-              checked={resolvedTheme === 'dark'}
-              onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-              aria-label="Toggle theme"
-              className="data-[state=checked]:bg-[var(--bron-accent-red)] bg-[var(--bron-bg-tertiary)] border-[var(--bron-border)]
-                [&>span]:bg-[var(--bron-text-primary)]"
-            />
-          )}
-          <span className="text-xs flex items-center gap-2" style={{ color: 'var(--bron-text-muted)' }}>
-            <Moon className="h-4 w-4" style={{ color: 'var(--bron-accent-blue)' }} />
-            Dark
-          </span>
+
+        <div className="mt-auto px-4 py-4 border-t border-white/5">
+          <div className="flex items-center justify-between rounded-xl bg-white/5 p-1 backdrop-blur-sm border border-white/5">
+            <div className="flex items-center gap-2 px-2">
+              <Sun className="h-3 w-3 text-amber-500" />
+            </div>
+            {mounted && (
+              <Switch
+                checked={resolvedTheme === 'dark'}
+                onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                aria-label="Toggle theme"
+                className="scale-75 data-[state=checked]:bg-primary bg-muted"
+              />
+            )}
+            <div className="flex items-center gap-2 px-2">
+              <Moon className="h-3 w-3 text-blue-500" />
+            </div>
+          </div>
         </div>
 
       </SidebarContent>

@@ -22,28 +22,28 @@ export function ReconSummaryCards({ stats }: ReconSummaryCardsProps) {
         icon={Globe}
         value={stats.totalSubdomains}
         label="Subdomains"
-        iconColor="text-bron-accent-blue"
+        iconColor="text-blue-500"
         delay={0}
       />
       <AnimatedStatCard
         icon={Link}
         value={stats.totalPaths}
         label="Paths"
-        iconColor="text-bron-accent-yellow"
+        iconColor="text-amber-500"
         delay={0.2}
       />
       <AnimatedStatCard
         icon={Key}
         value={stats.totalCredentials}
         label="Credentials"
-        iconColor="text-bron-accent-green"
+        iconColor="text-emerald-500"
         delay={0.4}
       />
       <AnimatedStatCard
         icon={HardDrive}
         value={stats.totalDevices}
         label="Devices"
-        iconColor="text-bron-accent-blue"
+        iconColor="text-blue-500"
         delay={0.6}
       />
     </div>

@@ -442,20 +442,20 @@ export default function UploadPage() {
   }
 
   return (
-    <main className="flex-1 p-6 bg-bron-bg-primary">
+    <main className="flex-1 p-6 bg-background">
       <div className="max-w-7xl mx-auto space-y-6">
-        <Alert className="bg-bron-accent-blue/10 border-bron-accent-blue/30">
-          <Info className="h-4 w-4 text-bron-accent-blue" />
-          <AlertDescription className="text-bron-text-primary">
+        <Alert className="glass-card border-primary/30 backdrop-blur-sm">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-foreground">
             Enhanced upload with binary file support! Text files are stored in database, binary files are saved to
             local storage with automatic duplicate detection.
           </AlertDescription>
         </Alert>
 
-        <Card className="bg-bron-bg-tertiary border-bron-border">
+        <Card className="glass-card border-border/50">
           <CardHeader>
-            <CardTitle className="text-bron-text-primary">Upload ZIP File</CardTitle>
-            <CardDescription className="text-bron-text-muted">
+            <CardTitle className="text-foreground">Upload ZIP File</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Upload a .zip file containing stealer logs data. The system will automatically extract both text and
               binary files, with duplicate device detection.
             </CardDescription>
@@ -463,24 +463,24 @@ export default function UploadPage() {
           <CardContent className="space-y-4">
             {uploadStatus.status === "idle" && (
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 backdrop-blur-sm ${
                   dragActive
-                    ? "border-bron-accent-blue bg-bron-accent-blue/10"
-                    : "border-bron-border hover:border-bron-accent-blue/50"
+                    ? "border-primary bg-primary/20 backdrop-blur-md shadow-lg"
+                    : "border-border/50 bg-card/30 hover:border-primary/50 hover:bg-card/40 hover:backdrop-blur-md"
                 }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
-                <FileArchive className="mx-auto h-12 w-12 text-bron-text-muted mb-4" />
+                <FileArchive className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                 <div className="space-y-2">
-                  <p className="text-lg font-medium text-bron-text-primary">Drop your .zip file here</p>
-                  <p className="text-sm text-bron-text-muted">or click to browse</p>
+                  <p className="text-lg font-medium text-foreground">Drop your .zip file here</p>
+                  <p className="text-sm text-muted-foreground">or click to browse</p>
                 </div>
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-4 bg-bron-accent-red hover:bg-bron-accent-red-hover text-white"
+                  className="mt-4 bg-primary hover:bg-primary-hover text-white"
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Select File
@@ -494,16 +494,16 @@ export default function UploadPage() {
               <div className="space-y-4 mt-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Upload className="h-4 w-4 animate-pulse text-bron-accent-blue" />
-                    <span className="text-bron-text-primary">{uploadStatus.message || "Uploading file..."}</span>
+                    <Upload className="h-4 w-4 animate-pulse text-primary" />
+                    <span className="text-foreground">{uploadStatus.message || "Uploading file..."}</span>
                   </div>
                   <div className="flex items-center space-x-3">
-                  <div className="text-sm font-medium text-bron-accent-blue">{uploadStatus.progress}%</div>
+                  <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
                     <Button
                       onClick={cancelUpload}
                       variant="outline"
                       size="sm"
-                      className="bg-bron-accent-red/10 border-bron-accent-red/30 text-bron-accent-red hover:bg-bron-accent-red/20"
+                      className="bg-primary/10 border-destructive/30 text-destructive hover:bg-primary/20"
                     >
                       <X className="h-4 w-4 mr-1" />
                       Cancel
@@ -518,23 +518,23 @@ export default function UploadPage() {
                 <div className="space-y-4 mt-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Upload className="h-4 w-4 animate-pulse text-bron-accent-blue" />
-                      <span className="text-bron-text-primary">Processing data...</span>
+                      <Upload className="h-4 w-4 animate-pulse text-primary" />
+                      <span className="text-foreground">Processing data...</span>
                     </div>
-                    <div className="text-sm font-medium text-bron-accent-blue">{uploadStatus.progress}%</div>
+                    <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
                   </div>
                   <Progress value={uploadStatus.progress} className="w-full" />
                   {/* Realtime Logs Window */}
                   {(logs.length > 0) &&
-                    <Card className="bg-bron-bg-tertiary border-bron-border">
+                    <Card className="glass-card border-border/50">
                       <CardHeader>
-                        <CardTitle className="flex items-center text-bron-text-primary">
-                          <Monitor className="h-4 w-4 mr-2 text-bron-accent-blue" />
+                        <CardTitle className="flex items-center text-foreground">
+                          <Monitor className="h-4 w-4 mr-2 text-primary" />
                           Processing Logs
                           {logs.length > 0 && (
                             <Badge
                               variant="secondary"
-                              className="ml-2 bg-bron-bg-secondary text-bron-text-muted border-bron-border"
+                              className="ml-2 glass text-muted-foreground border-border"
                             >
                               {logs.length} entries
                             </Badge>
@@ -549,16 +549,16 @@ export default function UploadPage() {
                                 key={index}
                                 className={`p-2 rounded border-l-2 ${
                                   log.type === "error"
-                                    ? "bg-bron-accent-red/10 border-l-bron-accent-red text-bron-accent-red"
+                                    ? "bg-primary/10 border-l-bron-accent-red text-destructive"
                                     : log.type === "success"
-                                      ? "bg-bron-accent-green/10 border-l-bron-accent-green text-bron-accent-green"
+                                      ? "bg-emerald-500/10 border-l-bron-accent-green text-emerald-500"
                                       : log.type === "warning"
-                                        ? "bg-bron-accent-yellow/10 border-l-bron-accent-yellow text-bron-accent-yellow"
-                                        : "bg-bron-bg-secondary border-l-bron-accent-blue text-bron-text-primary"
+                                        ? "bg-amber-500/10 border-l-bron-accent-yellow text-amber-500"
+                                        : "glass border-l-bron-accent-blue text-foreground"
                                 }`}
                               >
                                 <div className="flex items-start space-x-2">
-                                  <span className="text-bron-text-muted text-xs shrink-0">
+                                  <span className="text-muted-foreground text-xs shrink-0">
                                     {new Date(log.timestamp).toLocaleTimeString()}
                                   </span>
                                   <span className="break-all">{log.message}</span>
@@ -566,7 +566,7 @@ export default function UploadPage() {
                               </div>
                             ))}
                             {logs.length === 0 && (
-                                <div className="text-center py-4 text-bron-text-muted">
+                                <div className="text-center py-4 text-muted-foreground">
                                   <p>Waiting for processing logs...</p>
                                 </div>
                               )}
@@ -575,7 +575,7 @@ export default function UploadPage() {
                       </CardContent>
                     </Card>
                   }
-                  <div className="text-xs text-bron-text-muted text-center">
+                  <div className="text-xs text-muted-foreground text-center">
                     {uploadStatus.status === "processing" && "Extracting ZIP contents and saving binary files..."}
                   </div>
                 </div>
@@ -583,37 +583,37 @@ export default function UploadPage() {
 
             {uploadStatus.status === "success" && (
               <div className="space-y-4">
-                <div className="flex items-center space-x-2 text-bron-accent-green">
+                <div className="flex items-center space-x-2 text-emerald-500">
                   <CheckCircle className="h-5 w-5" />
                   <span className="font-medium">{uploadStatus.message}</span>
                 </div>
                 {uploadStatus.details && (
                   <div className="space-y-4">
-                    <div className="bg-bron-accent-green/10 border border-bron-accent-green/30 rounded-lg p-4">
-                      <h4 className="font-medium text-bron-accent-green mb-2">Processing Results:</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm text-bron-text-primary">
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 backdrop-blur-sm glass-card">
+                      <h4 className="font-medium text-emerald-500 mb-2">Processing Results:</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm text-foreground">
                         <div>
                           <p>
                             • Devices found:{" "}
-                            <span className="font-mono text-bron-accent-blue">
+                            <span className="font-mono text-primary">
                               {uploadStatus.details.devicesFound}
                             </span>
                           </p>
                           <p>
                             • Devices processed:{" "}
-                            <span className="font-mono text-bron-accent-green">
+                            <span className="font-mono text-emerald-500">
                               {uploadStatus.details.devicesProcessed}
                             </span>
                           </p>
                           <p>
                             • Files extracted:{" "}
-                            <span className="font-mono text-bron-text-primary">
+                            <span className="font-mono text-foreground">
                               {uploadStatus.details.totalFiles.toLocaleString()}
                             </span>
                           </p>
                           <p>
                             • Credentials found:{" "}
-                            <span className="font-mono text-bron-accent-green">
+                            <span className="font-mono text-emerald-500">
                               {uploadStatus.details.totalCredentials.toLocaleString()}
                             </span>
                           </p>
@@ -621,25 +621,25 @@ export default function UploadPage() {
                         <div>
                           <p>
                             • Binary files saved:{" "}
-                            <span className="font-mono text-bron-accent-blue">
+                            <span className="font-mono text-primary">
                               {uploadStatus.details.totalBinaryFiles?.toLocaleString() || 0}
                             </span>
                           </p>
                           <p>
                             • Unique domains:{" "}
-                            <span className="font-mono text-bron-accent-blue">
+                            <span className="font-mono text-primary">
                               {uploadStatus.details.totalDomains.toLocaleString()}
                             </span>
                           </p>
                           <p>
                             • Total URLs:{" "}
-                            <span className="font-mono text-bron-text-primary">
+                            <span className="font-mono text-foreground">
                               {uploadStatus.details.totalUrls.toLocaleString()}
                             </span>
                           </p>
                           <p>
                             • Upload batch:{" "}
-                            <span className="font-mono text-bron-text-muted text-xs">
+                            <span className="font-mono text-muted-foreground text-xs">
                               {uploadStatus.details.uploadBatch}
                             </span>
                           </p>
@@ -648,19 +648,19 @@ export default function UploadPage() {
                     </div>
 
                     {uploadStatus.details.devicesSkipped > 0 && uploadStatus.details.skippedDevices.length > 0 && (
-                      <div className="bg-bron-accent-yellow/10 border border-bron-accent-yellow/30 rounded-lg p-4">
-                        <h4 className="font-medium text-bron-accent-yellow mb-2 flex items-center">
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 backdrop-blur-sm glass-card">
+                        <h4 className="font-medium text-amber-500 mb-2 flex items-center">
                           <SkipForward className="h-4 w-4 mr-2" />
                           Duplicate Detection Results:
                         </h4>
-                        <p className="text-sm text-bron-text-primary mb-2">
+                        <p className="text-sm text-foreground mb-2">
                           {uploadStatus.details.devicesSkipped} devices were skipped as duplicates:
                         </p>
-                        <div className="text-xs text-bron-text-primary max-h-32 overflow-y-auto">
+                        <div className="text-xs text-foreground max-h-32 overflow-y-auto">
                           {uploadStatus.details.skippedDevices.map((device, index) => (
                             <span
                               key={index}
-                              className="inline-block bg-bron-accent-yellow/20 border border-bron-accent-yellow/40 rounded px-2 py-1 mr-1 mb-1 font-mono"
+                              className="inline-block bg-amber-500/20 border border-amber-500/40 rounded px-2 py-1 mr-1 mb-1 font-mono"
                             >
                               {device}
                             </span>
@@ -670,13 +670,13 @@ export default function UploadPage() {
                     )}
 
                     {uploadStatus.details.processedDevices.length > 0 && (
-                      <div className="bg-bron-accent-blue/10 border border-bron-accent-blue/30 rounded-lg p-4">
-                        <h4 className="font-medium text-bron-accent-blue mb-2">New Devices Processed:</h4>
-                        <div className="text-xs text-bron-text-primary max-h-32 overflow-y-auto">
+                      <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 backdrop-blur-sm glass-card">
+                        <h4 className="font-medium text-primary mb-2">New Devices Processed:</h4>
+                        <div className="text-xs text-foreground max-h-32 overflow-y-auto">
                           {uploadStatus.details.processedDevices.map((device, index) => (
                             <span
                               key={index}
-                              className="inline-block bg-bron-accent-blue/20 border border-bron-accent-blue/40 rounded px-2 py-1 mr-1 mb-1 font-mono"
+                              className="inline-block bg-primary/20 border border-primary/40 rounded px-2 py-1 mr-1 mb-1 font-mono"
                             >
                               {device}
                             </span>
@@ -686,12 +686,12 @@ export default function UploadPage() {
                     )}
 
                     {uploadStatus.details.totalBinaryFiles && uploadStatus.details.totalBinaryFiles > 0 && (
-                      <div className="bg-bron-accent-green/10 border border-bron-accent-green/30 rounded-lg p-4">
-                        <h4 className="font-medium text-bron-accent-green mb-2 flex items-center">
+                      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 backdrop-blur-sm glass-card">
+                        <h4 className="font-medium text-emerald-500 mb-2 flex items-center">
                           <HardDrive className="h-4 w-4 mr-2" />
                           Binary Files Extracted:
                         </h4>
-                        <p className="text-sm text-bron-text-primary">
+                        <p className="text-sm text-foreground">
                           {uploadStatus.details.totalBinaryFiles.toLocaleString()} binary files (images, documents,
                           etc.) have been saved to local storage and will be included in downloads.
                         </p>
@@ -702,7 +702,7 @@ export default function UploadPage() {
                 <Button
                   onClick={resetUpload}
                   variant="outline"
-                  className="bg-bron-bg-secondary border-bron-border text-bron-text-primary hover:bg-bron-bg-tertiary"
+                  className="glass border-border text-foreground hover:bg-secondary"
                 >
                   Upload Another File
                 </Button>
@@ -711,14 +711,14 @@ export default function UploadPage() {
 
             {uploadStatus.status === "error" && (
               <div className="space-y-4">
-                <div className="bg-bron-accent-red/10 border border-bron-accent-red/30 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 text-bron-accent-red mb-2">
+                <div className="bg-primary/10 border border-destructive/30 rounded-lg p-4 backdrop-blur-sm glass-card">
+                  <div className="flex items-center space-x-2 text-destructive mb-2">
                     <AlertCircle className="h-5 w-5" />
                     <span className="font-medium">Upload Failed</span>
                   </div>
-                  <p className="text-sm text-bron-text-primary mb-2">{uploadStatus.message}</p>
+                  <p className="text-sm text-foreground mb-2">{uploadStatus.message}</p>
                   {uploadStatus.errorDetails && (
-                    <div className="bg-bron-accent-red/20 rounded p-3 text-xs text-bron-text-primary">
+                    <div className="bg-primary/20 rounded p-3 text-xs text-foreground">
                       <strong>Error Details:</strong>
                       <br />
                       {uploadStatus.errorDetails}
@@ -728,7 +728,7 @@ export default function UploadPage() {
                 <Button
                   onClick={resetUpload}
                   variant="outline"
-                  className="bg-bron-bg-secondary border-bron-border text-bron-text-primary hover:bg-bron-bg-tertiary"
+                  className="glass border-border text-foreground hover:bg-secondary"
                 >
                   Try Again
                 </Button>
@@ -737,18 +737,18 @@ export default function UploadPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-bron-bg-tertiary border-bron-border">
+        <Card className="glass-card border-border/50">
           <CardHeader>
-            <CardTitle className="text-bron-text-primary">Enhanced Features</CardTitle>
+            <CardTitle className="text-foreground">Enhanced Features</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="text-sm text-bron-text-muted grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-              <li><CheckCircle className="inline h-4 w-4 text-bron-accent-green mr-1" /> Complete binary file extraction and storage</li>
-              <li><CheckCircle className="inline h-4 w-4 text-bron-accent-green mr-1" /> Automatic duplicate detection based on device names</li>
-              <li><CheckCircle className="inline h-4 w-4 text-bron-accent-green mr-1" /> Advanced analytics: Top TLDs, domain/URL extraction</li>
-              <li><CheckCircle className="inline h-4 w-4 text-bron-accent-green mr-1" /> Local storage for binary files (images, documents, etc.)</li>
-              <li><CheckCircle className="inline h-4 w-4 text-bron-accent-green mr-1" /> Comprehensive download with both text and binary files</li>
-              <li><CheckCircle className="inline h-4 w-4 text-bron-accent-green mr-1" /> JSON format credentials export for tool integration</li>
+            <ul className="text-sm text-muted-foreground grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+              <li><CheckCircle className="inline h-4 w-4 text-emerald-500 mr-1" /> Complete binary file extraction and storage</li>
+              <li><CheckCircle className="inline h-4 w-4 text-emerald-500 mr-1" /> Automatic duplicate detection based on device names</li>
+              <li><CheckCircle className="inline h-4 w-4 text-emerald-500 mr-1" /> Advanced analytics: Top TLDs, domain/URL extraction</li>
+              <li><CheckCircle className="inline h-4 w-4 text-emerald-500 mr-1" /> Local storage for binary files (images, documents, etc.)</li>
+              <li><CheckCircle className="inline h-4 w-4 text-emerald-500 mr-1" /> Comprehensive download with both text and binary files</li>
+              <li><CheckCircle className="inline h-4 w-4 text-emerald-500 mr-1" /> JSON format credentials export for tool integration</li>
             </ul>
           </CardContent>
         </Card>

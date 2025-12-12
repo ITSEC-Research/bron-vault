@@ -45,7 +45,7 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
   const [topSubdomains, setTopSubdomains] = useState<TopItem[]>([])
   const [topPaths, setTopPaths] = useState<TopItem[]>([])
   const [topPasswords, setTopPasswords] = useState<TopPassword[]>([])
-  const [isPasswordsLoading, setIsPasswordsLoading] = useState(false)
+  const [isPasswordsLoading, setIsPasswordsLoading] = useState(true) // Start with true to show loading state initially
   const [timeline, setTimeline] = useState<any[]>([])
   // Separate loading states for progressive rendering
   const [loadingStates, setLoadingStates] = useState({
@@ -53,6 +53,7 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
     timeline: true,   // Timeline (slow data)
   })
   const [timelineGranularity, setTimelineGranularity] = useState<"auto" | "weekly" | "monthly">("auto")
+  const passwordsRequestRef = useRef<AbortController | null>(null)
 
   // ============================================
   // SPLIT REQUESTS STRATEGY - Progressive Loading
@@ -64,6 +65,13 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
 
     // Reset loading states
     setLoadingStates({ stats: true, timeline: true })
+    setIsPasswordsLoading(true) // Reset passwords loading state
+    
+    // Cancel any previous passwords request
+    if (passwordsRequestRef.current) {
+      passwordsRequestRef.current.abort()
+    }
+    passwordsRequestRef.current = abortController
 
     // 1. Fast Request: Stats (Subdomains + Paths) - ~200ms
     const loadStats = async () => {
@@ -162,7 +170,9 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
 
     // 3. Passwords Request - ~200ms (parallel with stats and timeline)
     const loadPasswordsParallel = async () => {
+      // Ensure loading state is set before making request
       setIsPasswordsLoading(true)
+      console.log("🔑 Starting to load passwords, isLoading set to true")
       try {
         const body: any = {
           targetDomain,
@@ -181,24 +191,44 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
           signal: abortController.signal,
         })
 
+        // Check if request was aborted before processing response
+        if (abortController.signal.aborted) {
+          console.log("🔑 Passwords request aborted before processing response")
+          return
+        }
+
         if (response.ok) {
           const data = await response.json()
           console.log("🔑 Passwords data received:", {
             topPasswords: data.topPasswords?.length || 0,
           })
-          setTopPasswords(data.topPasswords || [])
+          // Check again if request was aborted before setting state
+          if (!abortController.signal.aborted) {
+            setTopPasswords(data.topPasswords || [])
+            setIsPasswordsLoading(false)
+            console.log("🔑 Passwords loading complete, setting isLoading to false")
+          }
         } else {
           const errorData = await response.json().catch(() => ({}))
           console.error("❌ Passwords API error:", response.status, errorData)
-          setTopPasswords([])
+          if (!abortController.signal.aborted) {
+            setTopPasswords([])
+            setIsPasswordsLoading(false)
+            console.log("🔑 Passwords loading complete (error), setting isLoading to false")
+          }
         }
       } catch (error: any) {
         if (error.name !== 'AbortError') {
           console.error("Error loading passwords data:", error)
-          setTopPasswords([])
+          if (!abortController.signal.aborted) {
+            setTopPasswords([])
+            setIsPasswordsLoading(false)
+            console.log("🔑 Passwords loading complete (exception), setting isLoading to false")
+          }
+        } else {
+          // AbortError - don't update state, component is unmounting or new request started
+          console.log("🔑 Passwords request aborted")
         }
-      } finally {
-        setIsPasswordsLoading(false)
       }
     }
 
@@ -218,18 +248,18 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
       {/* Timeline Chart and Top 10 Passwords - Side by Side */}
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Timeline Chart - Larger width for better time visibility */}
-        <Card className="bg-bron-bg-tertiary border-bron-border flex-[2] min-w-[60%]">
+        <Card className="glass-card border-border/50 flex-[2] min-w-[60%]">
         <CardHeader className="!p-4">
           <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center text-bron-text-primary text-lg">
-              <LayoutDashboard className="h-4 w-4 mr-2 text-bron-text-muted" />
+          <CardTitle className="flex items-center text-foreground text-lg">
+              <LayoutDashboard className="h-4 w-4 mr-2 text-muted-foreground" />
               Credentials Exposure Over Time
           </CardTitle>
             <Select 
               value={timelineGranularity} 
               onValueChange={(value: "auto" | "weekly" | "monthly") => setTimelineGranularity(value)}
             >
-              <SelectTrigger className="w-32 h-8 text-xs bg-bron-bg-secondary border-bron-border text-bron-text-muted">
+              <SelectTrigger className="w-32 h-8 text-xs bg-background/60 border-border/50 text-muted-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -242,7 +272,9 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
         </CardHeader>
         <CardContent className="!p-4 !pt-0">
           {loadingStates.timeline ? (
-            <LoadingChart height={300} />
+            <div className="flex items-center justify-center h-[300px]">
+              <LoadingState type="chart" message="Loading timeline data..." size="md" />
+            </div>
           ) : (
             <TimelineChart 
               data={timeline} 
@@ -269,9 +301,9 @@ export function OverviewTab({ targetDomain, searchType = 'domain', keywordMode }
           title="Top 10 Subdomains"
           icon={Globe}
           data={topSubdomains}
-          colorClass="text-bron-accent-red"
+          colorClass="text-primary"
           barColorClass="bg-blue-500"
-          textColorClass="text-bron-text-secondary"
+          textColorClass="text-muted-foreground"
           isLoading={loadingStates.stats}
           targetDomain={targetDomain}
         />
@@ -298,14 +330,14 @@ function RankingList({ title, icon: Icon, data, colorClass, barColorClass, textC
   const finalTextColorClass = textColorClass || colorClass
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border h-full flex flex-col">
-      <CardHeader className="!p-4 border-b border-bron-border">
+    <Card className="glass-card border-border/50 h-full flex flex-col">
+      <CardHeader className="!p-4 border-b border-border/50">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center text-bron-text-primary text-lg">
-            <Icon className="h-4 w-4 mr-2 text-bron-text-muted" />
+          <CardTitle className="flex items-center text-foreground text-lg">
+            <Icon className="h-4 w-4 mr-2 text-muted-foreground" />
             {title}
           </CardTitle>
-          <span className="text-xs text-bron-text-muted">Top 10 by Volume</span>
+          <span className="text-xs text-muted-foreground">Top 10 by Volume</span>
         </div>
       </CardHeader>
       <CardContent className="!pl-2 !pr-3 !pb-3 !pt-3 flex-1 overflow-auto">
@@ -320,14 +352,14 @@ function RankingList({ title, icon: Icon, data, colorClass, barColorClass, textC
               const displayName = item.fullHostname || item.path || targetDomain || "/"
 
               return (
-                <div key={index} className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-bron-bg-secondary/50 transition-colors">
+                <div key={index} className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg hover:bg-white/5 transition-colors">
                   {/* Rank Number */}
-                  <span className="w-8 text-xs font-mono text-bron-text-muted text-center mr-2">
+                  <span className="w-8 text-xs font-mono text-muted-foreground text-center mr-2">
                     {index + 1}
                   </span>
 
                   {/* Progress Bar Container */}
-                  <div className="flex-1 relative h-8 bg-bron-bg-secondary/50 rounded-md overflow-hidden border border-bron-border group-hover:border-bron-border/70 transition-colors">
+                  <div className="flex-1 relative h-8 bg-background/60 rounded-md overflow-hidden border border-border/50 group-hover:border-border/70 transition-colors">
                     {/* Background Progress Bar */}
                     <div
                       className={`absolute top-0 left-0 h-full ${barColorClass} opacity-10 group-hover:opacity-20 transition-all duration-500`}
@@ -340,10 +372,10 @@ function RankingList({ title, icon: Icon, data, colorClass, barColorClass, textC
                     />
                     {/* Content inside the bar */}
                     <div className="absolute inset-0 flex items-center justify-between px-3">
-                      <span className={`font-mono text-xs text-bron-text-secondary truncate z-10 max-w-[70%]`}>
+                      <span className={`font-mono text-xs text-muted-foreground truncate z-10 max-w-[70%]`}>
                         {displayName}
                       </span>
-                      <span className="text-[10px] font-bold text-bron-text-muted bg-bron-bg-tertiary px-1.5 py-0.5 rounded border border-bron-border z-10">
+                      <span className="text-[10px] font-bold text-muted-foreground glass px-1.5 py-0.5 rounded border border-white/5 z-10">
                         {item.credentialCount.toLocaleString()}
                       </span>
                     </div>
@@ -353,7 +385,7 @@ function RankingList({ title, icon: Icon, data, colorClass, barColorClass, textC
             })}
           </div>
         ) : (
-          <p className="text-bron-text-muted text-sm">
+          <p className="text-muted-foreground text-sm">
             {title.includes("Subdomains") ? "No subdomain data available" : "No path data available"}
           </p>
         )}
@@ -369,7 +401,8 @@ interface TopPasswordsListProps {
 }
 
 function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
-  const displayData = data.slice(0, 10)
+  // Only calculate displayData if not loading to avoid unnecessary calculations
+  const displayData = isLoading ? [] : data.slice(0, 10)
   const maxVal = displayData.length > 0 ? Math.max(...displayData.map(d => d.total_count)) : 0
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -441,14 +474,14 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
 
 
   return (
-    <Card className="bg-bron-bg-tertiary border-bron-border w-full flex flex-col h-full">
-      <CardHeader className="!p-3 border-b border-bron-border">
+    <Card className="glass-card border-border/50 w-full flex flex-col h-full">
+      <CardHeader className="!p-3 border-b border-border/50">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center text-bron-text-primary text-base">
-            <Key className="h-4 w-4 mr-2 text-bron-text-muted" />
+          <CardTitle className="flex items-center text-foreground text-base">
+            <Key className="h-4 w-4 mr-2 text-muted-foreground" />
             Top 10 Most Used Passwords
           </CardTitle>
-          <span className="text-xs text-bron-text-muted">By Device Count</span>
+          <span className="text-xs text-muted-foreground">By Device Count</span>
         </div>
       </CardHeader>
       <CardContent 
@@ -456,7 +489,9 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
         className="!pl-2 !pr-3 !pb-3 !pt-3 overflow-y-auto h-[300px] relative"
       >
         {isLoading ? (
-          <p className="text-bron-text-muted text-sm">Loading...</p>
+          <div className="flex items-center justify-center py-8 h-full">
+            <LoadingState type="data" message="Loading passwords..." size="sm" />
+          </div>
         ) : displayData.length > 0 ? (
           <div className="space-y-0.5">
             {displayData.map((item, index) => {
@@ -466,20 +501,19 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
                 ? item.password.substring(0, 30) + "..."
                 : item.password
               const colorBase = isTopOne ? 'bg-red-500' : 'bg-orange-500'
-              const isActive = index === currentIndex
 
               return (
                 <div 
                   key={index} 
                   ref={(el) => { itemRefs.current[index] = el }}
-                  className={`group relative flex items-center py-1 pl-0 pr-2 rounded-lg transition-colors duration-500 ${isActive ? 'bg-bron-bg-secondary/40' : 'hover:bg-bron-bg-secondary/50'}`}>
+                  className="group relative flex items-center py-1 pl-0 pr-2 rounded-lg transition-colors duration-500 hover:bg-white/5">
                   {/* Rank Number */}
-                  <span className="w-8 text-xs font-mono text-bron-text-muted text-center mr-2">
+                  <span className="w-8 text-xs font-mono text-muted-foreground text-center mr-2">
                     {index + 1}
                   </span>
 
                   {/* Progress Bar Container */}
-                  <div className="flex-1 relative h-8 bg-bron-bg-secondary/50 rounded-md overflow-hidden border border-bron-border group-hover:border-bron-border/70 transition-colors">
+                  <div className="flex-1 relative h-8 bg-background/60 rounded-md overflow-hidden border border-border/50 group-hover:border-border/70 transition-colors">
                     {/* Background Progress Bar */}
                     <div
                       className={`absolute top-0 left-0 h-full ${colorBase} opacity-10 group-hover:opacity-20 transition-all duration-500`}
@@ -492,10 +526,10 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
                     />
                     {/* Content inside the bar */}
                     <div className="absolute inset-0 flex items-center justify-between px-3">
-                      <span className="font-mono text-xs text-bron-text-secondary truncate z-10 max-w-[70%]">
+                      <span className="font-mono text-xs text-muted-foreground truncate z-10 max-w-[70%]">
                         {displayPassword}
                       </span>
-                      <span className="text-[10px] font-bold text-bron-text-muted bg-bron-bg-tertiary px-1.5 py-0.5 rounded border border-bron-border z-10">
+                      <span className="text-[10px] font-bold text-muted-foreground glass px-1.5 py-0.5 rounded border border-white/5 z-10">
                         {item.total_count.toLocaleString()}
                       </span>
                     </div>
@@ -505,7 +539,7 @@ function TopPasswordsList({ data, isLoading }: TopPasswordsListProps) {
             })}
           </div>
         ) : (
-          <p className="text-bron-text-muted text-sm">No password data available</p>
+          <p className="text-muted-foreground text-sm">No password data available</p>
         )}
       </CardContent>
     </Card>

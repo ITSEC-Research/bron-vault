@@ -11,11 +11,14 @@ interface AppHeaderProps {
 
 export default function AppHeader({ title }: AppHeaderProps) {
   return (
-    <header className="border-b border-bron-border bg-bron-bg-secondary">
-      <div className="flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-10 border-b border-white/5 backdrop-blur-xl transition-all duration-300 relative overflow-hidden">
+      {/* Gradient Background - Subtle */}
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/8 via-primary/5 to-background/60 dark:from-primary/10 dark:via-primary/6 dark:to-background/60" />
+      
+      <div className="relative flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
-          <SidebarTrigger className="text-bron-text-primary hover:bg-bron-bg-tertiary mr-4" />
-          <h1 className="text-xl font-semibold text-bron-text-primary">{title || 'broń Vault'}</h1>
+          <SidebarTrigger className="text-muted-foreground hover:text-foreground hover:bg-white/10 mr-4" />
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">{title || 'broń Vault'}</h1>
         </div>
         <div className="flex items-center">
           <ForceRefreshWrapper refreshKey={title}>

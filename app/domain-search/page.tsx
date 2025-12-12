@@ -35,8 +35,8 @@ export default function DomainSearchPage() {
 
   return (
     <AuthGuard>
-      <div className="flex flex-col min-h-screen bg-bron-bg-primary">
-        <main className="flex-1 p-6 bg-bron-bg-primary">
+      <div className="flex flex-col min-h-screen bg-transparent">
+        <main className="flex-1 p-6 bg-transparent">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Spacer to match TypingEffect height + spacing */}
             <div className="mt-8 h-8"></div>

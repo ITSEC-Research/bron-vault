@@ -7,6 +7,11 @@ import AppHeader from "@/components/app-header";
 export default function ClientLayoutWithSidebar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [pathname]);
+
   // Determine page title based on pathname
   let title = "broń Vault";
   if (pathname === "/dashboard") title = "broń Vault - Dashboard";

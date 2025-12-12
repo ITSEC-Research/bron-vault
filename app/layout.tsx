@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Outfit } from "next/font/google"
 import "./globals.css"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -10,7 +10,13 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  fallback: ["system-ui", "arial"],
+  variable: "--font-inter",
+})
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-outfit",
 })
 
 export const metadata: Metadata = {
@@ -37,70 +43,70 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/images/favicon.png" />
       </head>
-      <body className={`${inter.className} bg-background text-foreground`}>
+      <body className={`${inter.variable} ${outfit.variable} font-sans bg-background text-foreground antialiased`}>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 function applyThemeVariables(theme) {
                   const lightThemeVars = {
-                    '--background': '0 0% 97%',
-                    '--foreground': '0 0% 13%',
-                    '--card': '0 0% 95%',
-                    '--card-foreground': '0 0% 13%',
-                    '--popover': '0 0% 95%',
-                    '--popover-foreground': '0 0% 13%',
-                    '--primary': '4 100% 45%',
+                    '--background': '0 0% 99%',
+                    '--foreground': '0 0% 10%',
+                    '--card': '0 0% 100%',
+                    '--card-foreground': '0 0% 10%',
+                    '--popover': '0 0% 100%',
+                    '--popover-foreground': '0 0% 10%',
+                    '--primary': '3 100% 55%',
                     '--primary-foreground': '0 0% 100%',
-                    '--secondary': '0 0% 93%',
-                    '--secondary-foreground': '0 0% 13%',
-                    '--muted': '0 0% 93%',
-                    '--muted-foreground': '0 0% 60%',
-                    '--accent': '4 100% 45%',
+                    '--secondary': '0 0% 95%',
+                    '--secondary-foreground': '0 0% 10%',
+                    '--muted': '0 0% 95%',
+                    '--muted-foreground': '0 0% 45%',
+                    '--accent': '3 100% 55%',
                     '--accent-foreground': '0 0% 100%',
-                    '--destructive': '4 100% 45%',
-                    '--destructive-foreground': '0 0% 100%',
+                    '--destructive': '0 84% 60%',
+                    '--destructive-foreground': '0 0% 98%',
                     '--border': '0 0% 90%',
                     '--input': '0 0% 90%',
-                    '--ring': '4 100% 45%',
-                    '--sidebar-background': '0 0% 95%',
-                    '--sidebar-foreground': '0 0% 13%',
-                    '--sidebar-primary': '4 100% 45%',
+                    '--ring': '3 100% 55%',
+                    '--sidebar-background': '0 0% 98%',
+                    '--sidebar-foreground': '0 0% 10%',
+                    '--sidebar-primary': '3 100% 55%',
                     '--sidebar-primary-foreground': '0 0% 100%',
-                    '--sidebar-accent': '0 0% 93%',
-                    '--sidebar-accent-foreground': '0 0% 13%',
+                    '--sidebar-accent': '0 0% 94%',
+                    '--sidebar-accent-foreground': '0 0% 10%',
                     '--sidebar-border': '0 0% 90%',
-                    '--sidebar-ring': '4 100% 45%'
+                    '--sidebar-ring': '3 100% 55%'
                   };
 
                   const darkThemeVars = {
-                    '--background': '210 11% 8%',
-                    '--foreground': '0 0% 100%',
-                    '--card': '210 11% 12%',
-                    '--card-foreground': '0 0% 100%',
-                    '--popover': '210 11% 12%',
-                    '--popover-foreground': '0 0% 100%',
-                    '--primary': '4 100% 45%',
+                    '--background': '0 0% 4%',
+                    '--foreground': '0 0% 98%',
+                    '--card': '0 0% 7%',
+                    '--card-foreground': '0 0% 98%',
+                    '--popover': '0 0% 7%',
+                    '--popover-foreground': '0 0% 98%',
+                    '--primary': '3 100% 60%',
                     '--primary-foreground': '0 0% 100%',
-                    '--secondary': '210 11% 16%',
-                    '--secondary-foreground': '0 0% 100%',
-                    '--muted': '210 11% 16%',
-                    '--muted-foreground': '0 0% 70%',
-                    '--accent': '4 100% 45%',
+                    '--secondary': '0 0% 12%',
+                    '--secondary-foreground': '0 0% 98%',
+                    '--muted': '0 0% 12%',
+                    '--muted-foreground': '0 0% 60%',
+                    '--accent': '3 100% 60%',
                     '--accent-foreground': '0 0% 100%',
-                    '--destructive': '4 100% 45%',
-                    '--destructive-foreground': '0 0% 100%',
-                    '--border': '210 11% 25%',
-                    '--input': '210 11% 25%',
-                    '--ring': '4 100% 45%',
-                    '--sidebar-background': '210 11% 12%',
-                    '--sidebar-foreground': '0 0% 100%',
-                    '--sidebar-primary': '4 100% 45%',
+                    '--destructive': '0 84% 60%',
+                    '--destructive-foreground': '0 0% 98%',
+                    '--border': '0 0% 16%',
+                    '--input': '0 0% 16%',
+                    '--ring': '3 100% 60%',
+                    '--sidebar-background': '0 0% 5%',
+                    '--sidebar-foreground': '0 0% 98%',
+                    '--sidebar-primary': '3 100% 60%',
                     '--sidebar-primary-foreground': '0 0% 100%',
-                    '--sidebar-accent': '210 11% 16%',
-                    '--sidebar-accent-foreground': '0 0% 100%',
-                    '--sidebar-border': '210 11% 25%',
-                    '--sidebar-ring': '4 100% 45%'
+                    '--sidebar-accent': '0 0% 12%',
+                    '--sidebar-accent-foreground': '0 0% 98%',
+                    '--sidebar-border': '0 0% 12%',
+                    '--sidebar-ring': '3 100% 60%'
                   };
 
                   const vars = theme === 'light' ? lightThemeVars : darkThemeVars;
