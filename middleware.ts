@@ -4,6 +4,7 @@ import { validateRequest } from "@/lib/auth"
 const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
+  "/api/auth/verify-totp",
   "/api/auth/check-users",
   "/api/auth/register-first-user",
   "/_next",

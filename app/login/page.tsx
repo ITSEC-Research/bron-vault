@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Mail, User, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { Lock, Mail, User, ArrowRight, Loader2, Eye, EyeOff, Shield, KeyRound } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -15,6 +15,13 @@ export default function LoginPage() {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [checkingUsers, setCheckingUsers] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // 2FA states
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState<number | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
@@ -92,6 +99,14 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (data.success) {
+        // Check if 2FA is required
+        if (data.requires2FA) {
+          setPendingUserId(data.userId);
+          setRequires2FA(true);
+          setLoading(false);
+          return;
+        }
+        
         console.log("Login successful, showing toast...");
 
         // Show success toast
@@ -131,6 +146,61 @@ export default function LoginPage() {
     }
   };
 
+  const handle2FAVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingUserId || !totpCode) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-totp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          userId: pendingUserId, 
+          code: totpCode,
+          isBackupCode: useBackupCode 
+        }),
+        credentials: "include",
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        toast({
+          title: "Login Success! 🎉",
+          description: `Welcome, ${data.user?.name || data.user?.email || 'User'}!`,
+          variant: "default",
+        });
+        
+        const redirect = searchParams.get("redirect") || "/dashboard";
+        setTimeout(() => {
+          window.location.replace(redirect);
+        }, 2000);
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: data.error || "Invalid code. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Network Error",
+        description: "A network error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    setRequires2FA(false);
+    setPendingUserId(null);
+    setTotpCode("");
+    setUseBackupCode(false);
+  };
+
   // Show loading while checking user count
   if (checkingUsers) {
     return (
@@ -151,6 +221,98 @@ export default function LoginPage() {
               </div>
             </div>
             <p className="text-white/60 font-medium">Checking system status...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show 2FA verification form
+  if (requires2FA) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#0a0a0a] relative overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-red-500/20 via-orange-500/10 to-transparent rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 -right-1/4 w-[500px] h-[500px] bg-gradient-to-tl from-red-500/15 via-orange-500/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="relative z-10 w-full max-w-md mx-4">
+          {/* Card Glow */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-red-500/20 via-orange-500/10 to-red-500/20 rounded-3xl blur-xl opacity-75" />
+          
+          {/* Glass Card */}
+          <div className="relative bg-[#0f0f0f]/80 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-orange-500 to-red-400" />
+            
+            <div className="p-8 sm:p-10">
+              {/* Header */}
+              <div className="text-center mb-8">
+                <div className="mx-auto w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                  <Shield className="w-8 h-8 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Two-Factor Authentication</h2>
+                <p className="text-white/50 text-sm">
+                  {useBackupCode 
+                    ? "Enter one of your backup codes" 
+                    : "Enter the 6-digit code from your authenticator app"}
+                </p>
+              </div>
+
+              <form onSubmit={handle2FAVerify} className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-white/70 text-sm font-medium flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-red-500/70" />
+                    {useBackupCode ? "Backup Code" : "Verification Code"}
+                  </label>
+                  <Input
+                    type="text"
+                    value={totpCode}
+                    onChange={e => setTotpCode(e.target.value.replace(/\s/g, ''))}
+                    className="w-full h-12 px-4 bg-white/5 border-white/10 text-white text-center text-2xl tracking-[0.5em] placeholder:text-white/30 placeholder:tracking-normal placeholder:text-base rounded-xl focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all font-mono"
+                    placeholder={useBackupCode ? "XXXX-XXXX" : "000000"}
+                    maxLength={useBackupCode ? 9 : 6}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gradient-to-r from-red-600 via-red-500 to-orange-500 hover:from-red-500 hover:via-red-400 hover:to-orange-400 text-white font-semibold rounded-xl shadow-lg shadow-red-500/25"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      Verify
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </>
+                  )}
+                </Button>
+
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setUseBackupCode(!useBackupCode)}
+                    className="text-white/50 hover:text-white/70 text-sm transition-colors"
+                  >
+                    {useBackupCode ? "Use authenticator app instead" : "Use a backup code"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    className="text-white/50 hover:text-white/70 text-sm transition-colors"
+                  >
+                    ← Back to login
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, LogOut, Lock, ChevronDown, Shield, Eye } from "lucide-react";
+import { User, LogOut, ChevronDown, Shield, Eye, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,8 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import ChangePasswordModal from "./change-password-modal";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 type UserRole = 'admin' | 'analyst'
 
@@ -26,16 +26,10 @@ interface UserData {
 export default function UserProfileDropdown() {
   const [user, setUser] = useState<UserData | null>(null);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     fetchUserData();
-  }, []);
-
-  // Simple component without HMR issues
-  useEffect(() => {
-    // No special HMR handling needed
   }, []);
 
   const fetchUserData = async () => {
@@ -47,7 +41,7 @@ export default function UserProfileDropdown() {
       if (data.success) {
         setUser({
           ...data.user,
-          role: data.user.role || 'admin' // Fallback for backwards compatibility
+          role: data.user.role || 'admin'
         });
       }
     } catch (error) {
@@ -68,10 +62,6 @@ export default function UserProfileDropdown() {
     } finally {
       setLogoutLoading(false);
     }
-  };
-
-  const handleChangePasswordClick = () => {
-    setChangePasswordOpen(true);
   };
 
   if (!user) {
@@ -123,12 +113,14 @@ export default function UserProfileDropdown() {
             </div>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
-          <DropdownMenuItem 
-            onClick={handleChangePasswordClick}
-            className="flex items-center gap-2 cursor-pointer text-foreground hover:bg-secondary"
-          >
-            <Lock className="w-4 h-4" />
-            Change Password
+          <DropdownMenuItem asChild>
+            <Link 
+              href="/user-settings"
+              className="flex items-center gap-2 cursor-pointer text-foreground hover:bg-secondary"
+            >
+              <Settings className="w-4 h-4" />
+              User Settings
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator className="bg-border" />
           <DropdownMenuItem
@@ -141,11 +133,6 @@ export default function UserProfileDropdown() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <ChangePasswordModal
-        open={changePasswordOpen}
-        onOpenChange={setChangePasswordOpen}
-      />
     </div>
   );
 } 

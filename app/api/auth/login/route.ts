@@ -8,9 +8,9 @@ export async function POST(request: NextRequest) {
   const { email, password } = await request.json()
 
   try {
-    // Query includes role field - backwards compatible (NULL/undefined for old DBs)
+    // Query includes role and TOTP fields
     const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, password_hash, name, role FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, email, password_hash, name, role, totp_enabled FROM users WHERE email = ? LIMIT 1",
       [email]
     )
 
@@ -26,6 +26,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid email or password." }, { status: 401 })
     }
 
+    // Check if 2FA is enabled
+    if (user.totp_enabled) {
+      // Return requires2FA flag - don't issue token yet
+      return NextResponse.json({
+        success: true,
+        requires2FA: true,
+        userId: user.id,
+        message: "Please enter your 2FA code"
+      })
+    }
+
     // Get user role - default to 'admin' for backwards compatibility
     const userRole: UserRole = user.role || 'admin'
 
@@ -39,6 +50,7 @@ export async function POST(request: NextRequest) {
     // Set secure cookie with JWT token
     const response = NextResponse.json({
       success: true,
+      requires2FA: false,
       user: {
         id: user.id,
         email: user.email,

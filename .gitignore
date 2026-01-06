@@ -4,5 +4,6 @@ node_modules/*
 .next/*
 .vscode
 uploads/*
+error.log
 clickhouse-data
 mysql-data
