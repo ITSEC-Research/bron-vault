@@ -61,6 +61,14 @@ async function loadEnv() {
       process.env[key.trim()] = value.trim()
     }
   }
+  
+  // Set defaults for Docker environment (kalau MYSQL_HOST tidak diset)
+  if (!process.env.MYSQL_HOST) {
+    process.env.MYSQL_HOST = '127.0.0.1'
+  }
+  if (!process.env.MYSQL_PORT) {
+    process.env.MYSQL_PORT = '3306'
+  }
 }
 
 // Helper: Check if column exists
