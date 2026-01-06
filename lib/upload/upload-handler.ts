@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { validateRequest } from "@/lib/auth"
+import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { broadcastLogToSession, closeLogSession } from "@/lib/upload-connections"
 import { processFileUpload } from "./file-upload-processor"
 
@@ -8,6 +8,12 @@ export async function handleUploadRequest(request: NextRequest): Promise<NextRes
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Check admin role - analysts cannot upload data
+  const roleError = requireAdminRole(user)
+  if (roleError) {
+    return roleError
   }
 
   const formData = await request.formData()

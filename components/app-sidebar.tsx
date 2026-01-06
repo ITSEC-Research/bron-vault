@@ -1,12 +1,13 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug, Globe, Settings } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
 import { Sun, Moon } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import React from "react"
+import { useAuth, isAdmin } from "@/hooks/useAuth"
 
 import {
   Sidebar,
@@ -20,9 +21,20 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 
+interface MenuItem {
+  title: string
+  description: string
+  url: string
+  icon: LucideIcon
+  adminOnly?: boolean // Optional flag to restrict to admin only
+}
 
+interface MenuGroup {
+  title: string
+  items: MenuItem[]
+}
 
-const menuGroups = [
+const menuGroups: MenuGroup[] = [
   {
     title: "Home",
     items: [
@@ -59,12 +71,14 @@ const menuGroups = [
         description: "Upload & Process Files",
         url: "/upload",
         icon: Upload,
+        adminOnly: true, // Only admins can upload data
       },
       {
         title: "Debug ZIP",
         description: "Validate ZIP Files",
         url: "/debug-zip",
         icon: Bug,
+        adminOnly: true, // Only admins can debug uploads
       },
     ],
   },
@@ -72,10 +86,18 @@ const menuGroups = [
     title: "System",
     items: [
       {
+        title: "Users",
+        description: "Manage User Accounts",
+        url: "/users",
+        icon: Users,
+        adminOnly: true, // Only admins can manage users
+      },
+      {
         title: "Settings",
         description: "Configure System",
         url: "/settings",
         icon: Settings,
+        adminOnly: true, // Only admins can access settings
       },
     ],
   },
@@ -86,6 +108,10 @@ export function AppSidebar() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   const [logoSrc, setLogoSrc] = React.useState("/images/logo.png");
+  
+  // Get user role for menu filtering
+  const { user } = useAuth(false) // Don't require auth here, just get user if available
+  const userIsAdmin = isAdmin(user)
 
   // Helper function to check if menu item is active
   // For /domain-search, also match sub-routes like /domain-search/[domain]
@@ -112,6 +138,14 @@ export function AppSidebar() {
     }
   }, [mounted, resolvedTheme]);
 
+  // Filter menu groups and items based on user role
+  const filteredMenuGroups = menuGroups
+    .map(group => ({
+      ...group,
+      items: group.items.filter(item => !item.adminOnly || userIsAdmin)
+    }))
+    .filter(group => group.items.length > 0) // Remove empty groups
+
   return (
     <Sidebar className="border-r border-white/5 bg-sidebar/80 backdrop-blur-xl transition-all duration-300">
       <SidebarHeader className="border-b border-white/5 p-6 pb-8">
@@ -131,7 +165,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent className="flex flex-col h-full px-2 py-4">
         <div className="flex-1 overflow-auto space-y-4">
-          {menuGroups.map((group) => (
+          {filteredMenuGroups.map((group) => (
             <SidebarGroup key={group.title} className="bg-transparent p-0">
               <SidebarGroupLabel className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
                 {group.title}

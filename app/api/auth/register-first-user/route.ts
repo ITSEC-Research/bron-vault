@@ -41,15 +41,17 @@ export async function POST(request: NextRequest) {
     )
 
     if (!Array.isArray(tables) || tables.length === 0) {
-      // Create users table
+      // Create users table with role column
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           id INT AUTO_INCREMENT PRIMARY KEY,
           email VARCHAR(255) NOT NULL UNIQUE,
           password_hash VARCHAR(255) NOT NULL,
           name VARCHAR(255) DEFAULT NULL,
+          role ENUM('admin', 'analyst') NOT NULL DEFAULT 'admin',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_users_role (role)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `)
     }
@@ -84,9 +86,9 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create first user
+    // Create first user - always admin role for first user
     await pool.query(
-      "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
+      "INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, 'admin')",
       [email, hashedPassword, name]
     )
 

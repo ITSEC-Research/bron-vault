@@ -6,9 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start",
-    "migrate:dates": "npx tsx scripts/migrate-fix-and-normalize-dates.ts",
-    "migrate:dates:dry-run": "DRY_RUN=true npx tsx scripts/migrate-fix-and-normalize-dates.ts"
+    "start": "next start"
   },
   "dependencies": {
     "@clickhouse/client": "^1.14.0",

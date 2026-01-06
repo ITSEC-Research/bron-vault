@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { validateRequest } from "@/lib/auth"
+import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { chunkManager } from "@/lib/upload/chunk-manager"
 import { createReadStream, createWriteStream } from "fs"
 import { unlink } from "fs/promises"
@@ -19,6 +19,12 @@ export async function POST(request: NextRequest) {
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Check admin role - analysts cannot upload data
+  const roleError = requireAdminRole(user)
+  if (roleError) {
+    return roleError
   }
 
   try {

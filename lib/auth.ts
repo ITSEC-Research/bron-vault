@@ -1,12 +1,67 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production'
+
+// User roles type definition
+export type UserRole = 'admin' | 'analyst'
 
 export interface JWTPayload {
   userId: string
   username: string
+  role?: UserRole  // Optional for backwards compatibility with old tokens
   iat?: number
   exp?: number
+}
+
+// =====================================================
+// Role-based access control helpers
+// =====================================================
+
+/**
+ * Get user's role from JWT payload with fallback for old tokens
+ * Old tokens without role field are treated as 'admin' for backwards compatibility
+ */
+export function getUserRole(payload: JWTPayload | null): UserRole {
+  if (!payload) return 'analyst' // No auth = lowest privilege
+  return payload.role || 'admin' // Fallback to admin for old tokens
+}
+
+/**
+ * Check if user has admin role
+ * Old tokens without role field are treated as admin for backwards compatibility
+ */
+export function isAdmin(payload: JWTPayload | null): boolean {
+  if (!payload) return false
+  return payload.role === 'admin' || !payload.role // No role = old token = admin
+}
+
+/**
+ * Check if user has at least analyst role (any authenticated user)
+ */
+export function isAnalyst(payload: JWTPayload | null): boolean {
+  return payload !== null
+}
+
+/**
+ * Require admin role - returns error response if not admin
+ * Use this in API routes that modify data
+ */
+export function requireAdminRole(payload: JWTPayload | null): NextResponse | null {
+  if (!payload) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+  
+  if (!isAdmin(payload)) {
+    return NextResponse.json(
+      { success: false, error: "Access denied. Admin role required for this action." },
+      { status: 403 }
+    )
+  }
+  
+  return null // No error - user is admin
 }
 
 // Simple base64 encoding/decoding for Edge Runtime compatibility

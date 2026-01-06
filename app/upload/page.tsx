@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor, X } from "lucide-react"
+import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor, X, ShieldAlert } from "lucide-react"
 import { uploadFileInChunks, assembleAndProcessFile, calculateChunkSize } from "@/lib/upload/chunk-uploader"
 import { formatBytes } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { useAuth, isAdmin } from "@/hooks/useAuth"
 
 interface UploadStatus {
   status: "idle" | "uploading" | "processing" | "success" | "error"
@@ -41,6 +42,10 @@ interface LogEntry {
 }
 
 export default function UploadPage() {
+  // Auth state - check if user has admin role
+  const { user, loading: authLoading } = useAuth(true)
+  const userIsAdmin = isAdmin(user)
+
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
     status: "idle",
     message: "",
@@ -439,6 +444,66 @@ export default function UploadPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
+  }
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <main className="flex-1 p-6 bg-background">
+        <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Checking permissions...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  // Access denied for non-admin users (analysts)
+  if (!userIsAdmin) {
+    return (
+      <main className="flex-1 p-6 bg-background">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <Card className="glass-card border-destructive/50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="h-8 w-8 text-destructive" />
+                <div>
+                  <CardTitle className="text-foreground">Access Denied</CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    You don't have permission to upload data
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert className="border-destructive/30 bg-destructive/10">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertDescription className="text-foreground">
+                  <strong>Analyst Role Restriction:</strong> Your account has read-only access. 
+                  Only administrators can upload and modify data in the system.
+                </AlertDescription>
+              </Alert>
+              <div className="text-sm text-muted-foreground">
+                <p>As an analyst, you can:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Search and view credentials</li>
+                  <li>Browse device information</li>
+                  <li>View analytics and statistics</li>
+                  <li>Export and download reports</li>
+                </ul>
+              </div>
+              <div className="pt-4">
+                <Button variant="outline" onClick={() => window.history.back()}>
+                  Go Back
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    )
   }
 
   return (
