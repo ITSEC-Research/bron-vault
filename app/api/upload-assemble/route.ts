@@ -113,6 +113,11 @@ export async function POST(request: NextRequest) {
 
     // Stream chunks sequentially to final file
     const writeStream = createWriteStream(assembledFilePath)
+    
+    // Set max listeners to prevent MaxListenersExceededWarning
+    // Each pipeline() call adds multiple event listeners (error, close, finish, end)
+    // Set to accommodate all chunks plus a buffer
+    writeStream.setMaxListeners(chunkPaths.length * 4 + 10)
 
     for (let i = 0; i < chunkPaths.length; i++) {
       const chunkPath = chunkPaths[i]

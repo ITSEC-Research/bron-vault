@@ -327,70 +327,44 @@ async function createAppSettingsTable() {
     `)
 
     // Insert default settings if they don't exist
-    const existingSettings = await executeQuery(
-      'SELECT key_name FROM app_settings WHERE key_name IN (?, ?, ?, ?, ?, ?, ?)',
-      [
-        'upload_max_file_size',
-        'upload_chunk_size',
-        'upload_max_concurrent_chunks',
-        'db_batch_size_credentials',
-        'db_batch_size_password_stats',
-        'db_batch_size_files',
-        'file_write_parallel_limit'
-      ]
-    ) as any[]
+    // Use INSERT ... ON DUPLICATE KEY UPDATE to prevent race condition errors
+    // This ensures that if multiple requests try to insert the same key simultaneously,
+    // only one will succeed and others will be ignored without error
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['upload_max_file_size', '10737418240', 'Maximum file upload size in bytes (default: 10GB)']
+    )
 
-    const existingKeys = new Set((existingSettings || []).map((s: any) => s.key_name))
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['upload_chunk_size', '10485760', 'Chunk size for large file uploads in bytes (default: 10MB)']
+    )
 
-    if (!existingKeys.has('upload_max_file_size')) {
-      await executeQuery(
-        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
-        ['upload_max_file_size', '10737418240', 'Maximum file upload size in bytes (default: 10GB)']
-      )
-    }
-
-    if (!existingKeys.has('upload_chunk_size')) {
-      await executeQuery(
-        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
-        ['upload_chunk_size', '10485760', 'Chunk size for large file uploads in bytes (default: 10MB)']
-      )
-    }
-
-    if (!existingKeys.has('upload_max_concurrent_chunks')) {
-      await executeQuery(
-        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
-        ['upload_max_concurrent_chunks', '3', 'Maximum concurrent chunk uploads (default: 3)']
-      )
-    }
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['upload_max_concurrent_chunks', '3', 'Maximum concurrent chunk uploads (default: 3)']
+    )
 
     // Insert default batch size settings
-    if (!existingKeys.has('db_batch_size_credentials')) {
-      await executeQuery(
-        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
-        ['db_batch_size_credentials', '1000', 'Batch size for credentials bulk insert (default: 1000)']
-      )
-    }
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['db_batch_size_credentials', '1000', 'Batch size for credentials bulk insert (default: 1000)']
+    )
 
-    if (!existingKeys.has('db_batch_size_password_stats')) {
-      await executeQuery(
-        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
-        ['db_batch_size_password_stats', '500', 'Batch size for password stats bulk insert (default: 500)']
-      )
-    }
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['db_batch_size_password_stats', '500', 'Batch size for password stats bulk insert (default: 500)']
+    )
 
-    if (!existingKeys.has('db_batch_size_files')) {
-      await executeQuery(
-        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
-        ['db_batch_size_files', '500', 'Batch size for files bulk insert (default: 500)']
-      )
-    }
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['db_batch_size_files', '500', 'Batch size for files bulk insert (default: 500)']
+    )
 
-    if (!existingKeys.has('file_write_parallel_limit')) {
-      await executeQuery(
-        'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?)',
-        ['file_write_parallel_limit', '10', 'Maximum concurrent file writes (default: 10)']
-      )
-    }
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['file_write_parallel_limit', '10', 'Maximum concurrent file writes (default: 10)']
+    )
 
     console.log("✅ app_settings table ensured")
   } catch (error) {
