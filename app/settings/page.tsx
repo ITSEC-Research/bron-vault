@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Settings, Save, AlertCircle, Info, Upload, Database } from "lucide-react"
+import { Settings, Save, AlertCircle, Info, Upload, Database, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { formatBytes } from "@/lib/utils"
+import { useAuth, isAdmin } from "@/hooks/useAuth"
 
 interface UploadSettings {
   maxFileSize: number
@@ -43,6 +44,10 @@ export default function SettingsPage() {
   const searchParams = useSearchParams()
   const { toast } = useToast()
   
+  // Auth state - check if user has admin role
+  const { user, loading: authLoading } = useAuth(true)
+  const userIsAdmin = isAdmin(user)
+  
   // Tab state - sync with URL
   const [activeTab, setActiveTab] = useState<string>(searchParams.get('tab') || 'upload')
   
@@ -59,6 +64,56 @@ export default function SettingsPage() {
     setActiveTab(tab)
     // Update URL asynchronously for bookmarking
     router.replace(`/settings?tab=${tab}`, { scroll: false })
+  }
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <main className="flex-1 p-6 bg-background">
+        <div className="max-w-4xl mx-auto flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Checking permissions...</p>
+          </div>
+        </div>
+      </main>
+    )
+  }
+
+  // Access denied for non-admin users
+  if (!userIsAdmin) {
+    return (
+      <main className="flex-1 p-6 bg-background">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <Card className="glass-card border-destructive/50">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="h-8 w-8 text-destructive" />
+                <div>
+                  <CardTitle className="text-foreground">Access Denied</CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    You don't have permission to access settings
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert className="border-destructive/30 bg-destructive/10">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertDescription className="text-foreground">
+                  <strong>Admin Role Required:</strong> Only administrators can access and modify application settings.
+                </AlertDescription>
+              </Alert>
+              <div className="pt-4">
+                <Button variant="outline" onClick={() => router.push('/dashboard')}>
+                  Go to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
+    )
   }
 
   return (

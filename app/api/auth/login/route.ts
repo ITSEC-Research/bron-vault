@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { pool } from "@/lib/mysql"
 import bcrypt from "bcryptjs"
 import type { RowDataPacket } from "mysql2"
-import { generateToken, getSecureCookieOptions } from "@/lib/auth"
+import { generateToken, getSecureCookieOptions, UserRole } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json()
 
   try {
+    // Query includes role field - backwards compatible (NULL/undefined for old DBs)
     const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, password_hash, name FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, email, password_hash, name, role FROM users WHERE email = ? LIMIT 1",
       [email]
     )
 
@@ -25,10 +26,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid email or password." }, { status: 401 })
     }
 
-    // Generate JWT token
+    // Get user role - default to 'admin' for backwards compatibility
+    const userRole: UserRole = user.role || 'admin'
+
+    // Generate JWT token with role included
     const token = await generateToken({
       userId: String(user.id),
       username: user.name || user.email,
+      role: userRole,
     })
 
     // Set secure cookie with JWT token
@@ -37,7 +42,8 @@ export async function POST(request: NextRequest) {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name
+        name: user.name,
+        role: userRole
       }
     })
 

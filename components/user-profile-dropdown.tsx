@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, LogOut, Lock, ChevronDown } from "lucide-react";
+import { User, LogOut, Lock, ChevronDown, Shield, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,11 +12,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ChangePasswordModal from "./change-password-modal";
+import { Badge } from "@/components/ui/badge";
+
+type UserRole = 'admin' | 'analyst'
 
 interface UserData {
   id: number;
   email: string;
   name: string;
+  role: UserRole;
 }
 
 export default function UserProfileDropdown() {
@@ -41,7 +45,10 @@ export default function UserProfileDropdown() {
       });
       const data = await response.json();
       if (data.success) {
-        setUser(data.user);
+        setUser({
+          ...data.user,
+          role: data.user.role || 'admin' // Fallback for backwards compatibility
+        });
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -97,7 +104,23 @@ export default function UserProfileDropdown() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56 glass-modal">
           <div className="px-3 py-2 border-b border-border">
-            <p className="text-sm font-medium text-foreground">{user.name}</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-foreground">{user.name}</p>
+              <Badge 
+                variant={user.role === 'admin' ? 'default' : 'secondary'}
+                className={`text-[10px] px-1.5 py-0 h-5 ${
+                  user.role === 'admin' 
+                    ? 'bg-primary/20 text-primary border-primary/30' 
+                    : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                }`}
+              >
+                {user.role === 'admin' ? (
+                  <><Shield className="w-3 h-3 mr-1" />Admin</>
+                ) : (
+                  <><Eye className="w-3 h-3 mr-1" />Analyst</>
+                )}
+              </Badge>
+            </div>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
           <DropdownMenuItem 

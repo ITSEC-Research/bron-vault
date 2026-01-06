@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { validateRequest } from "@/lib/auth"
+import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { settingsManager } from "@/lib/settings"
 
 /**
  * GET /api/settings
  * Get all settings or settings by prefix
+ * Note: Both admin and analyst can READ settings
  */
 export async function GET(request: NextRequest) {
   // Validate authentication
@@ -43,12 +44,19 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/settings
  * Update setting(s)
+ * Note: Only admin can UPDATE settings
  */
 export async function POST(request: NextRequest) {
   // Validate authentication
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Check admin role - analysts cannot modify settings
+  const roleError = requireAdminRole(user)
+  if (roleError) {
+    return roleError
   }
 
   try {

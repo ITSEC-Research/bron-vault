@@ -182,21 +182,26 @@ CREATE TABLE IF NOT EXISTS app_settings (
 -- =====================================================
 -- Table: users
 -- =====================================================
+-- Roles:
+-- - 'admin': Full access (can upload data, manage settings, manage users)
+-- - 'analyst': Read-only access (can view/search data, cannot upload or modify)
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) DEFAULT NULL,
+    role ENUM('admin', 'analyst') NOT NULL DEFAULT 'admin',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_email (email)
+    INDEX idx_email (email),
+    INDEX idx_users_role (role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert default admin user
 -- Default password: "admin" (bcrypt hash with salt rounds 12)
 -- User dapat mengganti password ini setelah login pertama kali
-INSERT INTO users (email, password_hash, name) VALUES 
-    ('admin@bronvault.local', '$2b$12$V3YGoZlvgABmhIbt7H0ZyeygLONKnSe1TKuvp8OwEvc4u7nFWUUd.', 'Admin')
+INSERT INTO users (email, password_hash, name, role) VALUES 
+    ('admin@bronvault.local', '$2b$12$V3YGoZlvgABmhIbt7H0ZyeygLONKnSe1TKuvp8OwEvc4u7nFWUUd.', 'Admin', 'admin')
 ON DUPLICATE KEY UPDATE email=email;
 
 -- =====================================================
