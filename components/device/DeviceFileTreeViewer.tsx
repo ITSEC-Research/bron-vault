@@ -5,6 +5,7 @@ import { Download, Eye, Image, Book, Package, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { LoadingState } from "@/components/ui/loading"
 
 interface StoredFile {
   file_path: string
@@ -293,8 +294,8 @@ export function DeviceFileTreeViewer({
 
   if (isLoadingFiles) {
     return (
-      <div className="flex items-center justify-center h-32">
-        <p className="text-foreground text-sm">Loading files...</p>
+      <div className="glass-card p-4 rounded-lg flex flex-col items-center justify-center" style={{ height: 'calc(100vh - 220px)' }}>
+        <LoadingState type="data" message="Loading files..." size="sm" />
       </div>
     )
   }

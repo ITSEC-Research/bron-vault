@@ -11,6 +11,7 @@ import { DeviceFileTreeViewer } from "@/components/device/DeviceFileTreeViewer"
 import { DeviceMachineInfo } from "@/components/device/DeviceMachineInfo"
 import { DeviceOverview } from "@/components/device/DeviceOverview"
 import { FileContentDialog } from "@/components/file/FileContentDialog"
+import { LoadingState } from "@/components/ui/loading"
 
 interface DeviceInfo {
   deviceId: string
@@ -171,7 +172,7 @@ export default function DeviceDetailPage() {
   if (isLoadingDevice) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <p className="text-xs text-foreground">Loading device information...</p>
+        <LoadingState type="data" message="Loading device information..." size="md" />
       </div>
     )
   }

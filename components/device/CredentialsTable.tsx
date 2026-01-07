@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { LoadingState } from "@/components/ui/loading"
 
 interface Credential {
   browser: string
@@ -27,6 +28,7 @@ interface CredentialsTableProps {
   onRetryCredentials: () => void
   deviceId: string
   hideSearchBar?: boolean
+  noScrollContainer?: boolean // When true, table has no max-height/scroll (for sidepanel use)
 }
 
 // Fixed MaskedPassword component
@@ -196,6 +198,7 @@ export function CredentialsTable({
   onRetryCredentials,
   deviceId,
   hideSearchBar = false,
+  noScrollContainer = false,
 }: CredentialsTableProps) {
   const filteredCredentials = useMemo(() => {
     return deviceCredentials.filter((credential) => {
@@ -213,7 +216,7 @@ export function CredentialsTable({
   if (isLoadingCredentials) {
     return (
       <div className="flex items-center justify-center h-32">
-        <p className="text-foreground">Loading credentials...</p>
+        <LoadingState type="data" message="Loading credentials..." size="sm" />
       </div>
     )
   }
@@ -277,10 +280,15 @@ export function CredentialsTable({
     </div>
   )
 
+  // Container styles - with or without scroll based on noScrollContainer prop
+  const tableContainerClass = noScrollContainer
+    ? "glass-card border border-border/50 rounded-lg"
+    : "glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-350px)] pb-4 [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50"
+
   return (
     <div className="space-y-4">
       {!hideSearchBar && searchBarSection}
-      <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-350px)] pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+      <div className={tableContainerClass}>
         <Table className="table-fixed min-w-full">
           <TableHeader>
             <TableRow className="hover:bg-white/5">

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { LoadingState } from "@/components/ui/loading"
 
 interface Credential {
   browser: string | null
@@ -233,7 +234,7 @@ export function DeviceCredentialsTable({ deviceId }: DeviceCredentialsTableProps
   if (isLoadingCredentials) {
     return (
       <div className="flex items-center justify-center h-32">
-        <p className="text-xs text-foreground">Loading credentials...</p>
+        <LoadingState type="data" message="Loading credentials..." size="sm" />
       </div>
     )
   }

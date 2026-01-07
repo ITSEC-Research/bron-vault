@@ -234,7 +234,7 @@ function DashboardContent() {
 
             {/* Loading state for main content */}
             <LoadingState
-              type="default"
+              type="stats"
               message="Loading dashboard statistics..."
               size="lg"
             />

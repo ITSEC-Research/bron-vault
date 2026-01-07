@@ -244,8 +244,9 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
   }
 
   return (
-    <div className="glass-card p-4 rounded-lg">
-      <div className="flex items-center justify-between mb-3">
+    <div className="glass-card p-4 rounded-lg flex flex-col" style={{ height: 'calc(100vh - 450px)' }}>
+      {/* Header - NON-SCROLLING */}
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <div className="text-sm text-muted-foreground">
           Stolen File Structure ({selectedDevice.totalFiles} files total)
         </div>
@@ -259,12 +260,14 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
           <span>Download All Data</span>
         </Button>
       </div>
-      <div className="glass p-3 rounded border border-white/5 overflow-x-auto">
+      {/* File tree - SCROLLABLE */}
+      <div className="glass p-3 rounded border border-white/5 overflow-auto flex-1 [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ minHeight: 0 }}>
         <div className="min-w-max">
           {renderASCIITree(buildASCIITree(selectedDevice.files, selectedDevice.matchingFiles))}
         </div>
       </div>
-      <div className="mt-3 mb-2 text-xs text-muted-foreground">
+      {/* Legend - NON-SCROLLING */}
+      <div className="mt-3 mb-2 text-xs text-muted-foreground flex-shrink-0">
         <div className="flex items-center space-x-4">
           <span className="flex items-center"><Eye className="inline h-4 w-4 text-blue-500 mr-1" /> = Viewable text file</span>
           {/* eslint-disable-next-line jsx-a11y/alt-text -- Image is a lucide-react icon, not an img element */}

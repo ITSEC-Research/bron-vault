@@ -57,28 +57,44 @@ export function LoadingState({
   const Icon = icons[type]
   const defaultMessage = messages[type]
 
+  // Container sizes for the spinner ring
+  const containerSizeClasses = {
+    sm: "h-8 w-8",
+    md: "h-10 w-10",
+    lg: "h-14 w-14"
+  }
+
+  // Icon sizes (smaller, inside the spinner)
+  const iconSizeClasses = {
+    sm: "h-3 w-3",
+    md: "h-4 w-4",
+    lg: "h-6 w-6"
+  }
+
+  // Spinner ring sizes
+  const spinnerRingSizeClasses = {
+    sm: "h-8 w-8",
+    md: "h-10 w-10",
+    lg: "h-14 w-14"
+  }
+
   return (
     <div className={cn(
       "flex flex-col items-center justify-center p-8 text-center",
       className
     )}>
-      <div 
-        className={cn(
-          "relative text-primary/60 mb-3",
-          size === "sm" && "h-6 w-6",
-          size === "md" && "h-8 w-8",
-          size === "lg" && "h-12 w-12"
-        )}
-      >
-        {/* Icon with shine overlay effect */}
+      {/* Icon inside spinning ring */}
+      <div className={cn("relative flex items-center justify-center mb-3", containerSizeClasses[size])}>
+        {/* Spinning ring around the icon */}
+        <div className={cn(
+          "absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary/60 animate-spin",
+          spinnerRingSizeClasses[size]
+        )} />
+        {/* Static icon in center */}
         <Icon 
-          className="w-full h-full"
+          className={cn("text-primary/60 relative z-10", iconSizeClasses[size])}
           aria-label="Loading"
         />
-        {/* Shine effect overlay */}
-        <div className="absolute inset-0 overflow-hidden rounded-md">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shine" />
-        </div>
       </div>
       <p className={cn(
         "text-muted-foreground",

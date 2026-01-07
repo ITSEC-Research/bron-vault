@@ -29,6 +29,7 @@ import {
   FileType,
 } from "lucide-react"
 import { format } from "date-fns"
+import { LoadingState } from "@/components/ui/loading"
 
 interface OverviewData {
   summary: {
@@ -140,14 +141,8 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="glass-card animate-pulse">
-              <CardContent className="p-4">
-                <div className="h-16 bg-secondary/30 rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex items-center justify-center py-16">
+          <LoadingState type="stats" message="Loading device overview..." size="md" />
         </div>
       </div>
     )
