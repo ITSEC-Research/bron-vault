@@ -295,6 +295,7 @@ export const USERS_TABLE: TableDefinition = {
     { name: 'totp_secret', type: 'varchar(255)', nullable: true },
     { name: 'totp_enabled', type: 'tinyint(1)', nullable: true, default: '0' },
     { name: 'backup_codes', type: 'text', nullable: true },
+    { name: 'preferences', type: 'text', nullable: true },
     { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
     { name: 'updated_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP', extra: 'on update CURRENT_TIMESTAMP' },
   ],

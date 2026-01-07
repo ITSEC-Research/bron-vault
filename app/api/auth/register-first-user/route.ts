@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (!Array.isArray(tables) || tables.length === 0) {
-      // Create users table with role column
+      // Create users table with role column, totp, and preferences
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -69,9 +69,15 @@ export async function POST(request: NextRequest) {
           password_hash VARCHAR(255) NOT NULL,
           name VARCHAR(255) DEFAULT NULL,
           role ENUM('admin', 'analyst') NOT NULL DEFAULT 'admin',
+          totp_secret VARCHAR(255) DEFAULT NULL,
+          totp_enabled BOOLEAN DEFAULT FALSE,
+          backup_codes TEXT DEFAULT NULL,
+          preferences TEXT DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          INDEX idx_users_role (role)
+          INDEX idx_email (email),
+          INDEX idx_users_role (role),
+          INDEX idx_totp_enabled (totp_enabled)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `)
     }

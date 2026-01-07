@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { 
   User, 
   Lock, 
@@ -24,7 +25,9 @@ import {
   QrCode,
   Save,
   Download,
-  ClipboardList
+  ClipboardList,
+  Settings,
+  Activity
 } from "lucide-react";
 
 export default function UserSettingsPage() {
@@ -56,7 +59,7 @@ export default function UserSettingsPage() {
         </div>
 
         <Tabs defaultValue="password" className="w-full">
-          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-2 glass-card h-8">
+          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-3 glass-card h-8">
             <TabsTrigger
               value="password"
               className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
@@ -71,6 +74,13 @@ export default function UserSettingsPage() {
               <Shield className="h-3 w-3 mr-1" />
               Two-Factor Auth
             </TabsTrigger>
+            <TabsTrigger
+              value="preferences"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
+            >
+              <Settings className="h-3 w-3 mr-1" />
+              Preferences
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="password" className="mt-4">
@@ -79,6 +89,10 @@ export default function UserSettingsPage() {
 
           <TabsContent value="2fa" className="mt-4">
             <TwoFactorTab />
+          </TabsContent>
+
+          <TabsContent value="preferences" className="mt-4">
+            <PreferencesTab />
           </TabsContent>
         </Tabs>
       </div>
@@ -677,6 +691,133 @@ function TwoFactorTab() {
               </Button>
             </div>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ============== PREFERENCES TAB ==============
+
+function PreferencesTab() {
+  const { toast } = useToast();
+  const [streamEnabled, setStreamEnabled] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Load preference from database on mount
+  useEffect(() => {
+    async function loadPreferences() {
+      try {
+        const response = await fetch("/api/user/preferences");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.preferences) {
+            setStreamEnabled(data.preferences.stream_enabled ?? true);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load preferences:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadPreferences();
+  }, []);
+
+  const handleStreamToggle = async (checked: boolean) => {
+    setSaving(true);
+    try {
+      const response = await fetch("/api/user/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stream_enabled: checked }),
+      });
+
+      if (response.ok) {
+        setStreamEnabled(checked);
+        toast({
+          title: checked ? "Stream Data Enabled" : "Stream Data Disabled",
+          description: checked 
+            ? "Real-time progress will be shown during upload and parsing" 
+            : "Progress will be hidden during upload and parsing for better performance",
+        });
+      } else {
+        const data = await response.json();
+        toast({
+          title: "Error",
+          description: data.error || "Failed to save preference",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to save preference:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save preference",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="glass-card border-white/10 shadow-md">
+      <CardHeader className="pb-4">
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-primary" />
+          <div>
+            <CardTitle className="text-lg">Preferences</CardTitle>
+            <CardDescription className="text-xs">Customize your application experience</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading preferences...</span>
+          </div>
+        ) : (
+          <>
+            {/* Stream Data Toggle */}
+            <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Activity className="h-5 w-5 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="stream-toggle" className="text-sm font-medium cursor-pointer">
+                    Show Stream Data During Upload
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Display real-time parsing progress, file processing status, and detailed logs during upload operations.
+                    Disabling may improve performance for large files.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {saving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                <Switch
+                  id="stream-toggle"
+                  checked={streamEnabled}
+                  onCheckedChange={handleStreamToggle}
+                  disabled={saving}
+                />
+              </div>
+            </div>
+
+            {/* Info Box */}
+            <Alert className="bg-blue-500/5 border-blue-500/20">
+              <AlertTriangle className="h-4 w-4 text-blue-500" />
+              <AlertDescription className="text-xs text-muted-foreground">
+                <strong className="text-foreground">Note:</strong> Stream data shows real-time progress such as credentials found, 
+                file parsing status, and system information extraction. Disabling this will still process all data, 
+                but the live progress display will be hidden.
+              </AlertDescription>
+            </Alert>
+          </>
         )}
       </CardContent>
     </Card>

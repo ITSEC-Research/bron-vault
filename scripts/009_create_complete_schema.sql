@@ -189,6 +189,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
 -- - totp_secret: Base32 encoded secret key (admin can view for recovery)
 -- - totp_enabled: Flag to enable/disable 2FA (admin can set false to disable)
 -- - backup_codes: JSON array of one-time backup codes
+-- - preferences: JSON object for user-specific preferences (stored as TEXT for ClickHouse compatibility)
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -198,6 +199,7 @@ CREATE TABLE IF NOT EXISTS users (
     totp_secret VARCHAR(255) DEFAULT NULL,
     totp_enabled BOOLEAN DEFAULT FALSE,
     backup_codes TEXT DEFAULT NULL,
+    preferences TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),

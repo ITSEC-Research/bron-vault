@@ -62,6 +62,28 @@ export default function UploadPage() {
   // AbortController for cancelling uploads
   const abortControllerRef = useRef<AbortController | null>(null)
   
+  // Stream data preference from database
+  const [streamEnabled, setStreamEnabled] = useState(true)
+  
+  // Load stream preference from database on mount
+  useEffect(() => {
+    async function loadStreamPreference() {
+      try {
+        const response = await fetch("/api/user/preferences")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.preferences) {
+            setStreamEnabled(data.preferences.stream_enabled ?? true)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load stream preference:", error)
+        // Default to enabled on error
+      }
+    }
+    loadStreamPreference()
+  }, [])
+  
   // Upload settings state
   const [uploadSettings, setUploadSettings] = useState<{
     maxFileSize: number
@@ -588,8 +610,8 @@ export default function UploadPage() {
                     <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
                   </div>
                   <Progress value={uploadStatus.progress} className="w-full" />
-                  {/* Realtime Logs Window */}
-                  {(logs.length > 0) &&
+                  {/* Realtime Logs Window - Only show if stream is enabled */}
+                  {streamEnabled && (logs.length > 0) &&
                     <Card className="glass-card border-border/50">
                       <CardHeader>
                         <CardTitle className="flex items-center text-foreground">
