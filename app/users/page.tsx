@@ -426,10 +426,10 @@ export default function UsersPage() {
                       <TableCell>
                         <Badge 
                           variant={user.role === 'admin' ? 'default' : 'secondary'}
-                          className={`${
+                          className={`transition-colors ${
                             user.role === 'admin' 
-                              ? 'bg-primary/20 text-primary border-primary/30' 
-                              : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              ? 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/40' 
+                              : 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/40'
                           }`}
                         >
                           {user.role === 'admin' ? (

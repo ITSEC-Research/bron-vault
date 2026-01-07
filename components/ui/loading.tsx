@@ -62,15 +62,24 @@ export function LoadingState({
       "flex flex-col items-center justify-center p-8 text-center",
       className
     )}>
-      <Icon 
+      <div 
         className={cn(
-          "animate-spin text-primary mb-3",
+          "relative text-primary/60 mb-3",
           size === "sm" && "h-6 w-6",
           size === "md" && "h-8 w-8",
           size === "lg" && "h-12 w-12"
         )}
-        aria-label="Loading"
-      />
+      >
+        {/* Icon with shine overlay effect */}
+        <Icon 
+          className="w-full h-full"
+          aria-label="Loading"
+        />
+        {/* Shine effect overlay */}
+        <div className="absolute inset-0 overflow-hidden rounded-md">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full animate-shine" />
+        </div>
+      </div>
       <p className={cn(
         "text-muted-foreground",
         size === "sm" && "text-sm",

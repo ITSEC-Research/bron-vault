@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { Lock, Mail, User, ArrowRight, Loader2, Eye, EyeOff, Shield, KeyRound } from "lucide-react";
+import { Lock, Mail, User, ArrowRight, Loader2, Eye, EyeOff, KeyRound } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -249,7 +249,7 @@ export default function LoginPage() {
               {/* Header */}
               <div className="text-center mb-8">
                 <div className="mx-auto w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                  <Shield className="w-8 h-8 text-red-500" />
+                  <img src="/images/logo.png" alt="Broń Vault Logo" className="w-10 h-10 drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]" />
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-2">Two-Factor Authentication</h2>
                 <p className="text-white/50 text-sm">

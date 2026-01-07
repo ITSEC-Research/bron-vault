@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable standalone output for smaller Docker images
+  output: 'standalone',
   // Bundle optimization
   swcMinify: true,
   compiler: {
