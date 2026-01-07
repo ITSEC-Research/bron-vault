@@ -191,10 +191,20 @@ export async function POST(request: NextRequest) {
     let binaryFilesAdded = 0
     let binaryFilesSkipped = 0
 
+    // SECURITY: Define allowed uploads directory for path traversal protection
+    const uploadsDir = path.resolve(process.cwd(), 'uploads')
+
     for (const file of binaryFiles) {
       if (file.local_file_path) {
         try {
-          const fullPath = path.join(process.cwd(), file.local_file_path)
+          const fullPath = path.resolve(process.cwd(), file.local_file_path)
+
+          // SECURITY: Path traversal protection - ensure file is within uploads directory
+          if (!fullPath.startsWith(uploadsDir)) {
+            console.warn(`⚠️ Skipping file outside uploads directory: ${file.local_file_path}`)
+            binaryFilesSkipped++
+            continue
+          }
 
           if (existsSync(fullPath)) {
             const binaryData = await readFile(fullPath)

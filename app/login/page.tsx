@@ -18,7 +18,7 @@ export default function LoginPage() {
   
   // 2FA states
   const [requires2FA, setRequires2FA] = useState(false);
-  const [pendingUserId, setPendingUserId] = useState<number | null>(null);
+  const [pending2FAToken, setPending2FAToken] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [useBackupCode, setUseBackupCode] = useState(false);
   
@@ -101,7 +101,7 @@ export default function LoginPage() {
       if (data.success) {
         // Check if 2FA is required
         if (data.requires2FA) {
-          setPendingUserId(data.userId);
+          setPending2FAToken(data.pending2FAToken);
           setRequires2FA(true);
           setLoading(false);
           return;
@@ -148,7 +148,7 @@ export default function LoginPage() {
 
   const handle2FAVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pendingUserId || !totpCode) return;
+    if (!pending2FAToken || !totpCode) return;
     
     setLoading(true);
     try {
@@ -156,7 +156,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          userId: pendingUserId, 
+          pending2FAToken: pending2FAToken, 
           code: totpCode,
           isBackupCode: useBackupCode 
         }),
@@ -196,7 +196,7 @@ export default function LoginPage() {
 
   const handleBack = () => {
     setRequires2FA(false);
-    setPendingUserId(null);
+    setPending2FAToken(null);
     setTotpCode("");
     setUseBackupCode(false);
   };

@@ -2,22 +2,37 @@
  * API: Verify TOTP
  * Verifies TOTP code during login (when 2FA is enabled)
  * Also supports backup codes
+ * 
+ * SECURITY: Requires a valid pending2FAToken that proves the user
+ * has already passed password authentication. This prevents attackers
+ * from bypassing password authentication by directly calling this endpoint.
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { pool } from "@/lib/mysql"
-import { generateToken, getSecureCookieOptions, UserRole } from "@/lib/auth"
+import { generateToken, getSecureCookieOptions, UserRole, verifyPending2FAToken } from "@/lib/auth"
 import { verifyTOTP, verifyBackupCode } from "@/lib/totp"
 import type { RowDataPacket } from "mysql2"
 
 export async function POST(request: NextRequest) {
-  const { userId, code, isBackupCode } = await request.json()
+  const { pending2FAToken, code, isBackupCode } = await request.json()
 
-  if (!userId || !code) {
+  // SECURITY: Validate pending 2FA token instead of accepting userId directly
+  // This ensures the user has already passed password authentication
+  if (!pending2FAToken || !code) {
     return NextResponse.json({ 
       success: false, 
-      error: "User ID and code are required" 
+      error: "Pending 2FA token and verification code are required" 
     }, { status: 400 })
+  }
+
+  // Verify the pending 2FA token
+  const userId = await verifyPending2FAToken(pending2FAToken)
+  if (!userId) {
+    return NextResponse.json({ 
+      success: false, 
+      error: "Invalid or expired 2FA session. Please login again." 
+    }, { status: 401 })
   }
 
   try {

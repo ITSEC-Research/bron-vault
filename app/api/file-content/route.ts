@@ -88,6 +88,16 @@ export async function POST(request: NextRequest) {
       ? localFilePath
       : path.join(process.cwd(), localFilePath)
 
+    // SECURITY: Path traversal protection
+    // Ensure the resolved path is within the allowed uploads directory
+    const uploadsDir = path.resolve(process.cwd(), 'uploads')
+    const resolvedPath = path.resolve(absPath)
+    
+    if (!resolvedPath.startsWith(uploadsDir)) {
+      console.error(`Path traversal attempt detected: ${resolvedPath} is not within ${uploadsDir}`)
+      return NextResponse.json({ error: "Access denied: Invalid file path" }, { status: 403 })
+    }
+
     if (!existsSync(absPath)) {
       return NextResponse.json({ error: "File not found on disk" }, { status: 404 })
     }

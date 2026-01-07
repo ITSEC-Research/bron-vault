@@ -235,12 +235,15 @@ async function getSubdomainsData(
   // OPTIMIZED: 
   // 1. Use native path() and domain() functions (C++ level, very fast)
   // 2. Use expressions in GROUP BY (not aliases) for compatibility
-  // 3. Use safe LIMIT/OFFSET interpolation with validation
+  // 3. SECURITY: Use parameterized LIMIT/OFFSET
   const sortByExpr = sortBy === 'full_hostname' 
     ? HOSTNAME_EXPR 
     : sortBy === 'path' 
       ? PATH_EXPR 
       : 'credential_count'
+
+  // Add pagination params
+  const dataParams: Record<string, any> = { ...params, queryLimit: limit, queryOffset: offset }
 
   const dataQuery = `
     SELECT 
@@ -251,10 +254,10 @@ async function getSubdomainsData(
     ${finalWhereClause}
     GROUP BY ${HOSTNAME_EXPR}, ${PATH_EXPR}
     ORDER BY ${sortByExpr} ${sortOrder}
-    LIMIT ${limit} OFFSET ${offset}
+    LIMIT {queryLimit:UInt32} OFFSET {queryOffset:UInt32}
   `
 
-  const data = (await executeClickHouseQuery(dataQuery, params)) as any[]
+  const data = (await executeClickHouseQuery(dataQuery, dataParams)) as any[]
 
   return {
     data: data.map((row: any) => ({

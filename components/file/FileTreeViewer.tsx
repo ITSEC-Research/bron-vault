@@ -244,7 +244,7 @@ export function FileTreeViewer({ selectedDevice, onFileClick, onDownloadAllData 
   }
 
   return (
-    <div className="glass-card p-4 rounded-lg flex flex-col" style={{ height: 'calc(100vh - 450px)' }}>
+    <div className="glass-card p-4 rounded-lg flex flex-col" style={{ height: 'calc(100vh - 300px)' }}>
       {/* Header - NON-SCROLLING */}
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <div className="text-sm text-muted-foreground">

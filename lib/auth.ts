@@ -18,21 +18,24 @@ export interface JWTPayload {
 // =====================================================
 
 /**
- * Get user's role from JWT payload with fallback for old tokens
- * Old tokens without role field are treated as 'admin' for backwards compatibility
+ * Get user's role from JWT payload
+ * SECURITY: Tokens without role field default to 'analyst' (lowest privilege)
+ * This prevents privilege escalation from old/malformed tokens
  */
 export function getUserRole(payload: JWTPayload | null): UserRole {
   if (!payload) return 'analyst' // No auth = lowest privilege
-  return payload.role || 'admin' // Fallback to admin for old tokens
+  // SECURITY: Default to 'analyst' if role is missing - principle of least privilege
+  return payload.role || 'analyst'
 }
 
 /**
  * Check if user has admin role
- * Old tokens without role field are treated as admin for backwards compatibility
+ * SECURITY: Only explicit 'admin' role grants admin access
  */
 export function isAdmin(payload: JWTPayload | null): boolean {
   if (!payload) return false
-  return payload.role === 'admin' || !payload.role // No role = old token = admin
+  // SECURITY: Only explicit 'admin' role - no fallback for missing role
+  return payload.role === 'admin'
 }
 
 /**
@@ -176,6 +179,90 @@ export class AuthError extends Error {
   constructor(message: string, public statusCode: number = 401) {
     super(message)
     this.name = 'AuthError'
+  }
+}
+
+// =====================================================
+// Pending 2FA Token - Secure 2FA flow
+// =====================================================
+
+// Separate secret for pending 2FA tokens for additional security
+const PENDING_2FA_SECRET = process.env.JWT_SECRET ? process.env.JWT_SECRET + '-pending-2fa' : 'pending-2fa-secret-change-this'
+
+interface Pending2FAPayload {
+  userId: string
+  type: 'pending_2fa'
+  iat: number
+  exp: number
+}
+
+/**
+ * Generate a secure pending 2FA token after password verification
+ * This token proves the user has passed password authentication
+ * and is valid for only 5 minutes to complete 2FA verification
+ */
+export async function generatePending2FAToken(userId: string): Promise<string> {
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
+  }
+
+  const now = Math.floor(Date.now() / 1000)
+  const payload: Pending2FAPayload = {
+    userId,
+    type: 'pending_2fa',
+    iat: now,
+    exp: now + (5 * 60) // 5 minutes - short-lived for security
+  }
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header))
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload))
+  const data = `${encodedHeader}.${encodedPayload}`
+
+  const signature = await hmacSha256(PENDING_2FA_SECRET, data)
+  return `${data}.${signature}`
+}
+
+/**
+ * Verify a pending 2FA token
+ * Returns userId if valid, null otherwise
+ */
+export async function verifyPending2FAToken(token: string): Promise<string | null> {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      return null
+    }
+
+    const [encodedHeader, encodedPayload, signature] = parts
+    const data = `${encodedHeader}.${encodedPayload}`
+
+    // Verify signature using the separate pending 2FA secret
+    const expectedSignature = await hmacSha256(PENDING_2FA_SECRET, data)
+    if (signature !== expectedSignature) {
+      console.error('Pending 2FA token signature verification failed')
+      return null
+    }
+
+    // Decode and validate payload
+    const payload = JSON.parse(base64UrlDecode(encodedPayload)) as Pending2FAPayload
+
+    // Verify it's a pending 2FA token
+    if (payload.type !== 'pending_2fa') {
+      console.error('Invalid token type for pending 2FA')
+      return null
+    }
+
+    // Check expiration
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      console.error('Pending 2FA token expired')
+      return null
+    }
+
+    return payload.userId
+  } catch (error) {
+    console.error('Pending 2FA token verification failed:', error)
+    return null
   }
 }
 

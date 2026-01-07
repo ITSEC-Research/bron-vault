@@ -20,9 +20,10 @@ interface AuthState {
 }
 
 // Helper functions exported for use in components
+// SECURITY: Only explicit 'admin' role grants admin access - principle of least privilege
 export function isAdmin(user: User | null): boolean {
   if (!user) return false
-  return user.role === 'admin' || !user.role // Fallback for old API responses
+  return user.role === 'admin' // Only explicit admin role
 }
 
 export function isAnalyst(user: User | null): boolean {
@@ -56,8 +57,8 @@ export function useAuth(requireAuth: boolean = true) {
             setAuthState({
               user: {
                 ...data.user,
-                // Ensure role is set - default to 'admin' for backwards compatibility
-                role: data.user.role || 'admin'
+                // SECURITY: Default to 'analyst' for missing role - principle of least privilege
+                role: data.user.role || 'analyst'
               },
               loading: false,
               error: null
