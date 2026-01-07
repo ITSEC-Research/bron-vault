@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { targetDomain, filters, pagination, searchType = 'domain' } = body
+    const { targetDomain, filters, pagination, searchType = 'domain', deduplicate = false } = body
 
     if (!targetDomain || typeof targetDomain !== 'string') {
       return NextResponse.json({ error: "targetDomain is required" }, { status: 400 })
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
       // New code path - completely separate
       const keyword = targetDomain.trim()
       const keywordMode = body.keywordMode || 'full-url'
-      const subdomainsData = await getSubdomainsData(keyword, filters, pagination, 'keyword', keywordMode)
+      const subdomainsData = await getSubdomainsData(keyword, filters, pagination, 'keyword', keywordMode, deduplicate)
 
       return NextResponse.json({
         success: true,
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
     normalizedDomain = normalizedDomain.replace(/\/$/, '')
     normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
 
-      const subdomainsData = await getSubdomainsData(normalizedDomain, filters, pagination, 'domain')
+      const subdomainsData = await getSubdomainsData(normalizedDomain, filters, pagination, 'domain', 'full-url', deduplicate)
 
     return NextResponse.json({
       success: true,
@@ -177,7 +177,8 @@ async function getSubdomainsData(
   filters?: any,
   pagination?: any,
   searchType: 'domain' | 'keyword' = 'domain',
-  keywordMode: 'domain-only' | 'full-url' = 'full-url'
+  keywordMode: 'domain-only' | 'full-url' = 'full-url',
+  deduplicate: boolean = false
 ) {
   // Validate and sanitize pagination parameters
   const page = Math.max(1, Number(pagination?.page) || 1)
@@ -217,14 +218,21 @@ async function getSubdomainsData(
   // OPTIMIZED: Use uniq() with tuple (multiple arguments) instead of concat()
   // This avoids string concatenation for millions of rows, much more efficient
   // uniq() with tuple uses tuple comparison which is faster than string concat
-  const countQuery = `
-    SELECT uniq(
-      ${HOSTNAME_EXPR}, 
-      ${PATH_EXPR}
-    ) as total
-    FROM credentials c
-    ${finalWhereClause}
-  `
+  // When deduplicate=true, count only unique hostnames (without path)
+  const countQuery = deduplicate
+    ? `
+      SELECT uniq(${HOSTNAME_EXPR}) as total
+      FROM credentials c
+      ${finalWhereClause}
+    `
+    : `
+      SELECT uniq(
+        ${HOSTNAME_EXPR}, 
+        ${PATH_EXPR}
+      ) as total
+      FROM credentials c
+      ${finalWhereClause}
+    `
 
   const countResult = (await executeClickHouseQuery(countQuery, params)) as any[]
   const total = Number(countResult[0]?.total || 0)
@@ -236,26 +244,39 @@ async function getSubdomainsData(
   // 1. Use native path() and domain() functions (C++ level, very fast)
   // 2. Use expressions in GROUP BY (not aliases) for compatibility
   // 3. SECURITY: Use parameterized LIMIT/OFFSET
+  // When deduplicate=true, GROUP BY only hostname (aggregate all paths)
   const sortByExpr = sortBy === 'full_hostname' 
     ? HOSTNAME_EXPR 
     : sortBy === 'path' 
-      ? PATH_EXPR 
+      ? (deduplicate ? HOSTNAME_EXPR : PATH_EXPR) // When deduplicated, path sort falls back to hostname
       : 'credential_count'
 
   // Add pagination params
   const dataParams: Record<string, any> = { ...params, queryLimit: limit, queryOffset: offset }
 
-  const dataQuery = `
-    SELECT 
-      ${HOSTNAME_EXPR} as full_hostname,
-      ${PATH_EXPR} as path,
-      count() as credential_count
-    FROM credentials c
-    ${finalWhereClause}
-    GROUP BY ${HOSTNAME_EXPR}, ${PATH_EXPR}
-    ORDER BY ${sortByExpr} ${sortOrder}
-    LIMIT {queryLimit:UInt32} OFFSET {queryOffset:UInt32}
-  `
+  const dataQuery = deduplicate
+    ? `
+      SELECT 
+        ${HOSTNAME_EXPR} as full_hostname,
+        '(multiple)' as path,
+        count() as credential_count
+      FROM credentials c
+      ${finalWhereClause}
+      GROUP BY ${HOSTNAME_EXPR}
+      ORDER BY ${sortByExpr} ${sortOrder}
+      LIMIT {queryLimit:UInt32} OFFSET {queryOffset:UInt32}
+    `
+    : `
+      SELECT 
+        ${HOSTNAME_EXPR} as full_hostname,
+        ${PATH_EXPR} as path,
+        count() as credential_count
+      FROM credentials c
+      ${finalWhereClause}
+      GROUP BY ${HOSTNAME_EXPR}, ${PATH_EXPR}
+      ORDER BY ${sortByExpr} ${sortOrder}
+      LIMIT {queryLimit:UInt32} OFFSET {queryOffset:UInt32}
+    `
 
   const data = (await executeClickHouseQuery(dataQuery, dataParams)) as any[]
 

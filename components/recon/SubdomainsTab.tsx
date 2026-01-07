@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Globe, Link, ArrowUpDown, ArrowUp, ArrowDown, Filter, MoreHorizontal, Key } from "lucide-react"
+import { Globe, Link, ArrowUpDown, ArrowUp, ArrowDown, Filter, MoreHorizontal, Key, Loader2 } from "lucide-react"
 import { LoadingState } from "@/components/ui/loading"
 import {
   Pagination,
@@ -29,9 +29,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 interface SubdomainItem {
   fullHostname: string
+  path: string
+  credentialCount: number
+}
+
+interface PathItem {
   path: string
   credentialCount: number
 }
@@ -54,6 +64,40 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
   const [deduplicate, setDeduplicate] = useState(false)
   const [jumpToPage, setJumpToPage] = useState("")
   const [limit, setLimit] = useState(50)
+  
+  // Paths popup state
+  const [pathsData, setPathsData] = useState<{ [hostname: string]: { paths: PathItem[], total: number, hasMore: boolean, loading: boolean } }>({})
+
+  // Load paths for a specific hostname
+  const loadPaths = async (hostname: string) => {
+    if (pathsData[hostname]?.paths) return // Already loaded
+    
+    setPathsData(prev => ({ ...prev, [hostname]: { ...prev[hostname], loading: true, paths: [], total: 0, hasMore: false } }))
+    
+    try {
+      const response = await fetch("/api/domain-recon/paths", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostname, limit: 20 }),
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        setPathsData(prev => ({ 
+          ...prev, 
+          [hostname]: { 
+            paths: result.paths || [], 
+            total: result.total || 0, 
+            hasMore: result.hasMore || false,
+            loading: false 
+          } 
+        }))
+      }
+    } catch (error) {
+      console.error("Error loading paths:", error)
+      setPathsData(prev => ({ ...prev, [hostname]: { ...prev[hostname], loading: false, paths: [], total: 0, hasMore: false } }))
+    }
+  }
 
   // Reset to page 1 when limit changes
   useEffect(() => {
@@ -61,6 +105,16 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
       setPage(1)
     }
   }, [limit])
+
+  // Reset to page 1 when deduplicate changes and reload data
+  useEffect(() => {
+    if (page !== 1) {
+      setPage(1)
+    } else {
+      // If already on page 1, still reload data
+      loadData()
+    }
+  }, [deduplicate])
 
   useEffect(() => {
     loadData()
@@ -72,6 +126,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
       const body: any = {
         targetDomain,
         searchType,
+        deduplicate,
         pagination: {
           page,
           limit,
@@ -111,6 +166,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
     }
   }
 
+  // Local search filter (client-side) - deduplicate is now handled server-side
   const filteredData = useMemo(() => {
     let filtered = data
 
@@ -124,29 +180,8 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
       )
     }
 
-    // Apply deduplication if enabled (deduplicate by fullHostname only)
-    if (deduplicate) {
-      const subdomainMap = new Map<string, SubdomainItem>()
-      
-      filtered.forEach((item) => {
-        const existing = subdomainMap.get(item.fullHostname)
-        if (existing) {
-          // Aggregate credential count and keep the first path (or could show "Multiple paths")
-          subdomainMap.set(item.fullHostname, {
-            ...existing,
-            credentialCount: existing.credentialCount + item.credentialCount,
-            // Keep path as is, or could show aggregated info
-          })
-        } else {
-          subdomainMap.set(item.fullHostname, { ...item })
-        }
-      })
-      
-      filtered = Array.from(subdomainMap.values())
-    }
-
     return filtered
-  }, [data, searchQuery, deduplicate])
+  }, [data, searchQuery])
 
   const handleSort = (column: 'full_hostname' | 'path' | 'credential_count') => {
     if (sortBy === column) {
@@ -246,10 +281,8 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
         {/* Search and Deduplication */}
         <div className="mb-4 space-y-3">
           <div className="text-sm text-muted-foreground">
-            Found {total} entries
-            {deduplicate && ` (${filteredData.length} unique subdomains)`}
-            {searchQuery && !deduplicate && ` (${filteredData.length} filtered)`}
-            {searchQuery && deduplicate && ` (${filteredData.length} unique filtered)`}
+            Found {total} {deduplicate ? 'unique subdomains' : 'entries'}
+            {searchQuery && ` (${filteredData.length} filtered)`}
           </div>
           <div className="flex items-center space-x-3">
             <div className="w-80">
@@ -293,7 +326,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
           </div>
         ) : (
           <>
-            <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)] pb-4">
+            <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 520px)' }}>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-white/5">
@@ -338,8 +371,57 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                       <TableCell className="font-medium text-xs py-2 px-3 font-mono">
                         {item.fullHostname || targetDomain}
                       </TableCell>
-                      <TableCell className="text-xs py-2 px-3 font-mono">
-                        {item.path || "/"}
+                      <TableCell className="text-xs py-2 px-3">
+                        {item.path === '(multiple)' ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button
+                                onClick={() => loadPaths(item.fullHostname)}
+                                className="italic text-primary underline underline-offset-2 hover:text-primary/80 cursor-pointer"
+                              >
+                                (multiple paths)
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-0 glass-card border-border/50" align="start">
+                              <div className="p-3 border-b border-border/50">
+                                <div className="font-medium text-sm text-foreground">Paths for {item.fullHostname}</div>
+                                {pathsData[item.fullHostname]?.total > 0 && (
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    Showing {pathsData[item.fullHostname]?.paths.length} of {pathsData[item.fullHostname]?.total} paths
+                                  </div>
+                                )}
+                              </div>
+                              <div className="max-h-64 overflow-y-auto">
+                                {pathsData[item.fullHostname]?.loading ? (
+                                  <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                    <span className="ml-2 text-xs text-muted-foreground">Loading paths...</span>
+                                  </div>
+                                ) : pathsData[item.fullHostname]?.paths.length > 0 ? (
+                                  <div className="divide-y divide-border/50">
+                                    {pathsData[item.fullHostname].paths.map((pathItem, pathIndex) => (
+                                      <div key={pathIndex} className="px-3 py-2 hover:bg-white/5 flex justify-between items-center">
+                                        <span className="font-mono text-xs text-foreground truncate mr-2">{pathItem.path}</span>
+                                        <span className="text-xs text-muted-foreground shrink-0">{pathItem.credentialCount.toLocaleString()} creds</span>
+                                      </div>
+                                    ))}
+                                    {pathsData[item.fullHostname]?.hasMore && (
+                                      <div className="px-3 py-2 text-center text-xs text-muted-foreground">
+                                        ...and {pathsData[item.fullHostname].total - pathsData[item.fullHostname].paths.length} more paths
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                                    No paths found
+                                  </div>
+                                )}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <span className="font-mono">{item.path || "/"}</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-xs py-2 px-3 text-center">
                         {item.credentialCount.toLocaleString()}

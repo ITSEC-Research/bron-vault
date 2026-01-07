@@ -457,7 +457,7 @@ export function CredentialsTab({ targetDomain, searchType = 'domain', keywordMod
           </div>
         ) : (
           <>
-            <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-400px)] pb-4">
+            <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 560px)' }}>
               <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow className="hover:bg-white/5">

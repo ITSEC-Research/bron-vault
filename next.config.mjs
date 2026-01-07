@@ -24,18 +24,6 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Add performance optimizations for faster dev
-  experimental: {
-    // Turbopack optimizations
-    ...(isDev ? {
-      // Faster refresh in development
-      turbo: {
-        rules: {
-          // Optimize module resolution
-        },
-      },
-    } : {}),
-  },
   // Optimize module resolution for faster startup (only in production - not compatible with Turbo)
   ...(!isDev ? {
     modularizeImports: {

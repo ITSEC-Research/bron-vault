@@ -217,7 +217,7 @@ export function DeviceDetailsPanel({
                 </div>
               )}
               {/* Table - SCROLLABLE */}
-              <div className="overflow-y-auto overflow-x-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 450px)' }}>
+              <div className="overflow-y-auto overflow-x-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 380px)' }}>
                 <CredentialsTable
                   deviceCredentials={deviceCredentials}
                   isLoadingCredentials={isLoadingCredentials}
@@ -249,7 +249,7 @@ export function DeviceDetailsPanel({
                 </div>
               )}
               {/* Table - SCROLLABLE */}
-              <div className="overflow-y-auto overflow-x-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 450px)' }}>
+              <div className="overflow-y-auto overflow-x-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 380px)' }}>
                 <SoftwareTable
                   deviceSoftware={deviceSoftware}
                   isLoadingSoftware={isLoadingSoftware}
