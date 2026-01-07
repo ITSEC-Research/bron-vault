@@ -73,9 +73,14 @@ export async function generateQRCode(secret: string, email: string): Promise<str
  * Verify a TOTP code
  * @param secret - Base32 encoded secret
  * @param token - 6-digit code from user
- * @param window - Number of periods to check (default: 1 = ±30 seconds)
+ * @param window - Number of periods to check (default: 0 = only current 30-second window)
+ * 
+ * SECURITY NOTE: 
+ * - window: 0 = Only accepts current 30-second code (strictest)
+ * - window: 1 = Accepts ±1 period (~90 seconds total) - recommended for clock drift tolerance
+ * - Using window: 0 for maximum security - code expires exactly when authenticator shows new code
  */
-export function verifyTOTP(secret: string, token: string, window: number = 1): boolean {
+export function verifyTOTP(secret: string, token: string, window: number = 0): boolean {
   try {
     const totp = new OTPAuth.TOTP({
       issuer: APP_NAME,
@@ -87,6 +92,7 @@ export function verifyTOTP(secret: string, token: string, window: number = 1): b
     })
     
     // Returns delta (number of periods) or null if invalid
+    // With window: 0, only accepts the current period's code
     const delta = totp.validate({ token, window })
     return delta !== null
   } catch (error) {

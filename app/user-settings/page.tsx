@@ -22,7 +22,9 @@ import {
   Eye,
   EyeOff,
   QrCode,
-  Save
+  Save,
+  Download,
+  ClipboardList
 } from "lucide-react";
 
 export default function UserSettingsPage() {
@@ -526,11 +528,64 @@ function TwoFactorTab() {
             <Separator />
 
             {/* Backup Codes */}
-            <div className="space-y-2">
-              <h4 className="font-medium text-foreground flex items-center gap-2 text-sm">
-                <Key className="h-4 w-4" />
-                Backup Codes
-              </h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-foreground flex items-center gap-2 text-sm">
+                  <Key className="h-4 w-4" />
+                  Backup Codes
+                </h4>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const allCodes = setupData.backupCodes.map(code => `${code.slice(0, 4)}-${code.slice(4)}`).join('\n');
+                      navigator.clipboard.writeText(allCodes);
+                      setCopiedCode('all');
+                      setTimeout(() => setCopiedCode(null), 2000);
+                      toast({
+                        title: "Copied!",
+                        description: "All backup codes copied to clipboard",
+                      });
+                    }}
+                    className="h-8"
+                  >
+                    {copiedCode === 'all' ? (
+                      <Check className="h-3 w-3 mr-1 text-green-500" />
+                    ) : (
+                      <ClipboardList className="h-3 w-3 mr-1" />
+                    )}
+                    Copy All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const allCodes = setupData.backupCodes.map(code => `${code.slice(0, 4)}-${code.slice(4)}`).join('\n');
+                      const content = `BronVault 2FA Backup Codes\n${'='.repeat(30)}\n\nKeep these codes safe. Each code can only be used once.\n\n${allCodes}\n\nGenerated: ${new Date().toISOString()}`;
+                      const blob = new Blob([content], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = 'bronvault-backup-codes.txt';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                      toast({
+                        title: "Downloaded!",
+                        description: "Backup codes saved to file",
+                      });
+                    }}
+                    className="h-8"
+                  >
+                    <Download className="h-3 w-3 mr-1" />
+                    Download
+                  </Button>
+                </div>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Save these codes in a safe place. You can use them to login if you lose access to your authenticator.
               </p>
