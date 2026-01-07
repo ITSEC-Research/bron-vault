@@ -1,7 +1,7 @@
 // PredatorTheThief parser
 
 import { ParsedLogData } from '../types';
-import { extractValue, cleanValue, extractIP, extractUsername, normalizeLine, isSeparatorLine } from '../helpers';
+import { extractValue, cleanValue, extractUsername, normalizeLine, isSeparatorLine } from '../helpers';
 
 /**
  * Parse PredatorTheThief log
@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, normalizeLine, is
  *         Machine name: DESKTOP-AV33AV3
  *         OS version: Windows 10 Enterprise x64
  */
-export function parsePredatorTheThief(content: string, fileName: string): ParsedLogData {
+export function parsePredatorTheThief(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'PredatorTheThief',

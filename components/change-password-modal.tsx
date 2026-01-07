@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useFocusTrap, announceToScreenReader } from "@/lib/accessibility";
+import { useFocusTrap } from "@/lib/accessibility";
 
 interface ChangePasswordModalProps {
   open: boolean;
@@ -84,7 +84,7 @@ export default function ChangePasswordModal({ open, onOpenChange }: ChangePasswo
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Error",
         description: "Network error occurred",

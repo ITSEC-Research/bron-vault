@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select"
 import { Globe, Link, LayoutDashboard, Key } from "lucide-react"
 import { TimelineChart } from "./TimelineChart"
-import { LoadingState, LoadingChart, LoadingCard } from "@/components/ui/loading"
+import { LoadingState } from "@/components/ui/loading"
 
 interface OverviewTabProps {
   targetDomain: string
@@ -327,7 +327,7 @@ function RankingList({ title, icon: Icon, data, colorClass, barColorClass, textC
   const displayData = data.slice(0, 10)
   const maxVal = displayData.length > 0 ? Math.max(...displayData.map(d => d.credentialCount)) : 0
   // Use textColorClass if provided, otherwise fall back to colorClass
-  const finalTextColorClass = textColorClass || colorClass
+  const _finalTextColorClass = textColorClass || colorClass
 
   return (
     <Card className="glass-card border-border/50 h-full flex flex-col">

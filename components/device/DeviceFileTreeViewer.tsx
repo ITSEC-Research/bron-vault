@@ -220,6 +220,7 @@ export function DeviceFileTreeViewer({
           actionText = "Click to view content"
           isClickable = true
         } else if (["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(fileExtension) && node.hasContent) {
+          // eslint-disable-next-line jsx-a11y/alt-text -- Image is a lucide-react icon, not an img element
           icon = <Image className="inline h-4 w-4 text-violet-500" />
           actionIcon = <Eye className="inline h-4 w-4 text-blue-500 ml-1" />
           actionText = "Click to preview image"
@@ -248,7 +249,7 @@ export function DeviceFileTreeViewer({
         }
       }
 
-      const handleDownloadAllData = () => {
+      const _handleDownloadAllData = () => {
         if (onDownloadAllData && deviceFileData) {
           onDownloadAllData(deviceFileData.deviceId, deviceFileData.deviceName)
         }
@@ -387,6 +388,7 @@ export function DeviceFileTreeViewer({
             <Eye className="inline h-4 w-4 text-blue-500 mr-1" /> = Viewable text file
           </span>
           <span className="flex items-center">
+            {/* eslint-disable-next-line jsx-a11y/alt-text -- Image is a lucide-react icon, not an img element */}
             <Image className="inline h-4 w-4 text-violet-500 mr-1" /> = Image
           </span>
           <span className="flex items-center">
@@ -403,7 +405,7 @@ export function DeviceFileTreeViewer({
           </span>
         </div>
         <div className="mt-1 text-xs text-amber-500">
-          Note: Binary files are available via "Download All Data" button above
+          Note: Binary files are available via &quot;Download All Data&quot; button above
         </div>
       </div>
     </div>

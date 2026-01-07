@@ -2,7 +2,6 @@
 // Maps various country name formats to ISO 3166-1 alpha-2 codes
 
 import * as countries from 'i18n-iso-countries';
-// @ts-ignore - JSON import
 import enLocale from 'i18n-iso-countries/langs/en.json';
 
 // Register English locale
@@ -187,7 +186,7 @@ export function normalizeCountryToCode(country: string | null): string | null {
       if (name) {
         return trimmed;
       }
-    } catch (e) {
+    } catch (_e) {
       // Invalid code, continue to other checks
     }
   }
@@ -201,7 +200,7 @@ export function normalizeCountryToCode(country: string | null): string | null {
       if (name) {
         return code;
       }
-    } catch (e) {
+    } catch (_e) {
       // Invalid code, continue
     }
   }
@@ -215,7 +214,7 @@ export function normalizeCountryToCode(country: string | null): string | null {
       if (name) {
         return code;
       }
-    } catch (e) {
+    } catch (_e) {
       // Invalid code, continue
     }
   }
@@ -229,7 +228,7 @@ export function normalizeCountryToCode(country: string | null): string | null {
       if (name) {
         return code;
       }
-    } catch (e) {
+    } catch (_e) {
       // Invalid code, continue
     }
   }
@@ -249,7 +248,7 @@ export function normalizeCountryToCode(country: string | null): string | null {
     if (code) {
       return code;
     }
-  } catch (e) {
+  } catch (_e) {
     // Continue to other lookup methods
   }
   
@@ -262,7 +261,7 @@ export function normalizeCountryToCode(country: string | null): string | null {
         return code;
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Continue to alternative names lookup
   }
   
@@ -282,7 +281,7 @@ export function normalizeCountryToCode(country: string | null): string | null {
         }
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Ignore error, continue to fallback
   }
   

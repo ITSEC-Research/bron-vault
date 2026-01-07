@@ -42,7 +42,7 @@ interface BatchFormData {
 export default function SettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { toast } = useToast()
+  const { toast: _toast } = useToast()
   
   // Auth state - check if user has admin role
   const { user, loading: authLoading } = useAuth(true)
@@ -92,7 +92,7 @@ export default function SettingsPage() {
                 <div>
                   <CardTitle className="text-foreground">Access Denied</CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    You don't have permission to access settings
+                    You don&apos;t have permission to access settings
                   </CardDescription>
                 </div>
               </div>

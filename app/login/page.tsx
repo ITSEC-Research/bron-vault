@@ -76,7 +76,7 @@ export default function LoginPage() {
           variant: "destructive",
         });
       }
-    } catch (err) {
+    } catch (_err) {
       toast({
         title: "Network Error",
         description: "A network error occurred. Please try again.",
@@ -134,7 +134,7 @@ export default function LoginPage() {
           variant: "destructive",
         });
       }
-    } catch (err) {
+    } catch (_err) {
       // Show network error toast
       toast({
         title: "Network Error",
@@ -183,7 +183,7 @@ export default function LoginPage() {
           variant: "destructive",
         });
       }
-    } catch (err) {
+    } catch (_err) {
       toast({
         title: "Network Error",
         description: "A network error occurred. Please try again.",

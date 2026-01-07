@@ -213,7 +213,7 @@ async function createTables() {
   // Update existing software table if version column is too small
   try {
     await executeQuery(`ALTER TABLE software MODIFY COLUMN version VARCHAR(500) NULL`)
-  } catch (error) {
+  } catch (_error) {
     // Column might not exist yet or already be the right size, ignore error
     console.log("Version column update skipped (might already be correct size)")
   }

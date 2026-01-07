@@ -10,7 +10,7 @@ import { OverviewTab } from "@/components/recon/OverviewTab"
 import { SubdomainsTab } from "@/components/recon/SubdomainsTab"
 import { CredentialsTab } from "@/components/recon/CredentialsTab"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LoadingState, LoadingCard } from "@/components/ui/loading"
+import { LoadingCard } from "@/components/ui/loading"
 
 interface SummaryStats {
   totalSubdomains: number

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         } else if (typeof cached === "object" && cached !== null) {
           parsed = cached
         }
-      } catch (e) {
+      } catch (_e) {
         console.warn("Software analysis cache parse failed, will recalc")
       }
 

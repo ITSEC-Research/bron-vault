@@ -55,7 +55,7 @@ export function normalizeDateTime(
   // Priority 2: Numeric format with separator (DD/MM/YYYY, MM/DD/YYYY, DD.MM.YYYY, YYYY-MM-DD)
   const numericMatch = cleaned.match(/^(\d{1,4})[./-](\d{1,2})[./-](\d{2,4})(?:\s+(\d{1,2}):(\d{1,2}):(\d{1,2})(?:\s*(AM|PM))?)?/i);
   if (numericMatch) {
-    let [, part1, part2, part3, hour, minute, second, ampm] = numericMatch;
+    const [, part1, part2, part3, hour, minute, second, ampm] = numericMatch;
     const num1 = parseInt(part1, 10);
     const num2 = parseInt(part2, 10);
     const num3 = parseInt(part3, 10);
@@ -152,7 +152,7 @@ export function normalizeDateTime(
           time: extractTimeFromString(cleaned) || formatTime(dateObj),
         };
       }
-    } catch (e) {
+    } catch (_e) {
       // Continue to next format
     }
   }
@@ -170,7 +170,7 @@ export function normalizeDateTime(
         };
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Continue to fallback
   }
 
@@ -215,7 +215,7 @@ function extractTimeFromString(dateString: string): string | null {
   // Try to find time pattern HH:mm:ss or HH:mm
   const timeMatch = dateString.match(/(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\s*(AM|PM))?/i);
   if (timeMatch) {
-    let [, hour, minute, second, ampm] = timeMatch;
+    const [, hour, minute, second, ampm] = timeMatch;
     let h = parseInt(hour, 10);
     const m = parseInt(minute, 10);
     const s = second ? parseInt(second, 10) : 0;

@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Server, User, Package, FileText, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DeviceCredentialsTable } from "@/components/device/DeviceCredentialsTable"
 import { DeviceSoftwareTable } from "@/components/device/DeviceSoftwareTable"
 import { DeviceFileTreeViewer } from "@/components/device/DeviceFileTreeViewer"
@@ -133,7 +132,7 @@ export default function DeviceDetailPage() {
       } else {
         setFileContent("Error loading file content")
       }
-    } catch (error) {
+    } catch (_error) {
       setFileContent("Error loading file content")
     } finally {
       setIsLoadingFile(false)

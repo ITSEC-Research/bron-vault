@@ -8,7 +8,7 @@ import { extractValue, combineOS, cleanValue, extractIP, extractCountryCode, nor
  * Format: ProductName: macOS
  *         ProductVersion: 14.6
  */
-export function parseAtomicMac(content: string, fileName: string): ParsedLogData {
+export function parseAtomicMac(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Atomic Mac',

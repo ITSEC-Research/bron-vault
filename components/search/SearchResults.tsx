@@ -4,7 +4,6 @@ import React, { useEffect, useRef } from "react"
 import { Copy, CloudUpload, CalendarClock, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LoadingState, LoadingTable } from "@/components/ui/loading"
 
 interface SearchResult {
   deviceId: string
@@ -48,7 +47,7 @@ export function SearchResults({
       if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateString)) {
         isoString = dateString.replace(' ', 'T') + 'Z' // treat as UTC
       }
-      let date = new Date(isoString)
+      const date = new Date(isoString)
       if (isNaN(date.getTime())) {
         // fallback: parse manually
         const parts = dateString.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/)
@@ -65,7 +64,7 @@ export function SearchResults({
       const minutes = String(date.getMinutes()).padStart(2, '0')
       const seconds = String(date.getSeconds()).padStart(2, '0')
       return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`
-    } catch (e) {
+    } catch (_e) {
       return dateString
     }
   }
@@ -167,7 +166,7 @@ export function SearchResults({
       
       // Fallback: return original if we can't parse it
       return logDate
-    } catch (e) {
+    } catch (_e) {
       return logDate
     }
   }
@@ -235,7 +234,7 @@ export function SearchResults({
       {/* Header - only show count if we have results or finished loading */}
       {(!isLoading && (searchResults.length > 0 || totalDevices > 0)) && (
         <h2 className="text-lg font-semibold text-foreground">
-          Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
+          Found {displayCount.toLocaleString()} device instance(s) containing &quot;{searchQuery}&quot;
           {searchResults.length < displayCount && (
             <span className="text-sm text-muted-foreground font-normal ml-2">
               (showing {searchResults.length.toLocaleString()})
@@ -249,7 +248,7 @@ export function SearchResults({
         <div className="flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin" />
           <h2 className="text-lg font-semibold text-foreground">
-            Searching for devices containing "{searchQuery}"...
+            Searching for devices containing &quot;{searchQuery}&quot;...
           </h2>
         </div>
       )}
@@ -257,7 +256,7 @@ export function SearchResults({
       {/* Show existing results while loading more */}
       {isLoading && searchResults.length > 0 && (
         <h2 className="text-lg font-semibold text-foreground">
-          Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
+          Found {displayCount.toLocaleString()} device instance(s) containing &quot;{searchQuery}&quot;
           {searchResults.length < displayCount && (
             <span className="text-sm text-muted-foreground font-normal ml-2">
               (showing {searchResults.length.toLocaleString()})
@@ -280,7 +279,7 @@ export function SearchResults({
                   className="glass border-primary/30 text-primary"
                 >
                   <Copy className="h-3 w-3 mr-1" />
-                  {devices.length} instances of "{deviceName}"
+                  {devices.length} instances of &quot;{deviceName}&quot;
                 </Badge>
               </div>
             )}

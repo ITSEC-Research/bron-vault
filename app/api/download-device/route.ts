@@ -283,7 +283,7 @@ function extractUrlInfo(url: string): { domain: string | null; tld: string | nul
     }
 
     return { domain: hostname, tld: null }
-  } catch (error) {
+  } catch (_error) {
     return { domain: null, tld: null }
   }
 }
@@ -314,7 +314,7 @@ function isIpAddress(hostname: string): boolean {
     }
 
     return false
-  } catch (error) {
+  } catch (_error) {
     return false
   }
 }

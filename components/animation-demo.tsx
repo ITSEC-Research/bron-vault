@@ -71,7 +71,7 @@ export function AnimationDemo() {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            Click "Start Demo" to see all animations in action with sample data.
+            Click &quot;Start Demo&quot; to see all animations in action with sample data.
           </p>
           
           {showDemo && (

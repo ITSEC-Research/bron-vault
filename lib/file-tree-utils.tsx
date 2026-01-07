@@ -50,7 +50,7 @@ export function renderASCIITree(
     }
 
     // Determine file type and action
-    const fileExtension = node.name.toLowerCase().split(".").pop() || ""
+    const _fileExtension = node.name.toLowerCase().split(".").pop() || ""
     const isViewable = isViewableFile(node.name)
 
     return (

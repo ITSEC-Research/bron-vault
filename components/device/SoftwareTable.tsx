@@ -214,7 +214,7 @@ export function SoftwareTable({
       </div>
       {filteredSoftware.length === 0 && softwareSearchQuery && (
         <div className="text-center py-8 text-muted-foreground">
-          <p>No software found matching "{softwareSearchQuery}"</p>
+          <p>No software found matching &quot;{softwareSearchQuery}&quot;</p>
           <Button
             variant="ghost"
             size="sm"

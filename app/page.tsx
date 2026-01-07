@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic"
 
 import React, { useState, useEffect } from "react"
-import { Database, Folder, FileText, Eye, File, ImageIcon, Book, Package } from "lucide-react"
+import { Database, Folder, FileText, Eye, ImageIcon, Book, Package } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
@@ -64,7 +64,7 @@ interface Credential {
 
 export default function SearchPage() {
   // Use custom hooks for state management
-  const { stats, topPasswords, isStatsLoaded, statsError } = useStats()
+  const { stats, topPasswords: _topPasswords, isStatsLoaded, statsError } = useStats()
   const {
     searchQuery,
     setSearchQuery,
@@ -388,7 +388,7 @@ export default function SearchPage() {
       } else {
         setFileContent("Error loading file content")
       }
-    } catch (error) {
+    } catch (_error) {
       setFileContent("Error loading file content")
     } finally {
       setIsLoadingFile(false)
@@ -438,7 +438,7 @@ export default function SearchPage() {
     return `${(size / (1024 * 1024)).toFixed(1)} MB`
   }
 
-  const formatDate = (dateString: string) => {
+  const _formatDate = (dateString: string) => {
     if (!dateString) return "N/A"
     try {
       // Handle MySQL datetime format 'YYYY-MM-DD HH:mm:ss'
@@ -446,7 +446,7 @@ export default function SearchPage() {
       if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateString)) {
         isoString = dateString.replace(' ', 'T') + 'Z' // treat as UTC
       }
-      let date = new Date(isoString)
+      const date = new Date(isoString)
       if (isNaN(date.getTime())) {
         // fallback: parse manually
         const parts = dateString.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/)
@@ -456,13 +456,13 @@ export default function SearchPage() {
         return dateString
       }
       return date.toLocaleString()
-    } catch (e) {
+    } catch (_e) {
       return dateString
     }
   }
 
   // ASCII TREE BUILDER - IntelX Style with Advanced Features
-  const buildASCIITree = (files: StoredFile[], matchingFiles: string[]): TreeNode[] => {
+  const _buildASCIITree = (files: StoredFile[], matchingFiles: string[]): TreeNode[] => {
     const tree: TreeNode[] = []
     const nodeMap = new Map<string, TreeNode>()
 
@@ -538,7 +538,7 @@ export default function SearchPage() {
   }
 
   // Update the file tree renderer to show visual indicators
-  const renderASCIITree = (nodes: TreeNode[], isLast: boolean[] = []): React.ReactNode => {
+  const _renderASCIITree = (nodes: TreeNode[], isLast: boolean[] = []): React.ReactNode => {
     return nodes.map((node, index) => {
       const isLastChild = index === nodes.length - 1
       const currentIsLast = [...isLast, isLastChild]
@@ -643,13 +643,13 @@ export default function SearchPage() {
           </Tooltip>
 
           {/* Render children recursively */}
-          {node.children.length > 0 && <div>{renderASCIITree(node.children, currentIsLast)}</div>}
+          {node.children.length > 0 && <div>{_renderASCIITree(node.children, currentIsLast)}</div>}
         </div>
       )
     })
   }
 
-  const getMatchingFileNames = (matchingFiles: string[]) => {
+  const _getMatchingFileNames = (matchingFiles: string[]) => {
     return matchingFiles.map((filePath) => {
       const fileName = filePath.split("/").pop() || filePath
       return fileName
@@ -667,7 +667,7 @@ export default function SearchPage() {
     return grouped
   }
 
-  const groupedResults = groupResultsByName(searchResults)
+  const _groupedResults = groupResultsByName(searchResults)
 
   return (
     <TooltipProvider>
@@ -720,7 +720,7 @@ export default function SearchPage() {
             {/* No results message - only show if search has been executed */}
             {hasSearched && searchResults.length === 0 && searchQuery && !isLoading && stats.totalFiles > 0 && (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No devices found containing "{searchQuery}"</p>
+                <p className="text-muted-foreground">No devices found containing &quot;{searchQuery}&quot;</p>
                 <p className="text-sm text-muted-foreground mt-2">
                   Try searching with a different email or domain name.
                 </p>

@@ -10,7 +10,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         UserName: John
  *         MachineName: DESKTOP-I5DF3AA
  */
-export function parseRedLineMETA(content: string, fileName: string): ParsedLogData {
+export function parseRedLineMETA(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'RedLine/META',
@@ -30,7 +30,7 @@ export function parseRedLineMETA(content: string, fileName: string): ParsedLogDa
 
   let isInHardwaresSection = false;
   let isInAntiVirusSection = false;
-  const hardwareList: string[] = [];
+  const _hardwareList: string[] = [];
   const antivirusList: string[] = [];
 
   for (const line of lines) {

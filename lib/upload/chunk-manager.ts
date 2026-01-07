@@ -1,5 +1,5 @@
 import { existsSync } from "fs"
-import { readdir, stat, unlink, rmdir } from "fs/promises"
+import { readdir, unlink, rmdir } from "fs/promises"
 import path from "path"
 
 export interface ChunkMetadata {

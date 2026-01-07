@@ -355,7 +355,7 @@ export function CredentialsTable({
       </div>
       {filteredCredentials.length === 0 && credentialsSearchQuery && (
         <div className="text-center py-8 text-muted-foreground">
-          <p>No credentials found matching "{credentialsSearchQuery}"</p>
+          <p>No credentials found matching &quot;{credentialsSearchQuery}&quot;</p>
           <Button
             variant="ghost"
             size="sm"

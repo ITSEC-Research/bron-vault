@@ -104,7 +104,7 @@ async function runSchemaMigration() {
         "ALTER TABLE files COMMENT = 'Files table: metadata only. All file contents stored on disk via local_file_path'"
       )
       console.log("✅ Updated table comment")
-    } catch (e: any) {
+    } catch (_e: any) {
       console.log("⚠️  Could not update comment (non-critical)")
     }
 
@@ -175,7 +175,7 @@ async function main() {
     await runSchemaMigration()
 
     // Step 2: Data Migration
-    const result = await runDataMigration()
+    const _result = await runDataMigration()
 
     // Final verification
     console.log("=".repeat(60))
@@ -199,7 +199,7 @@ async function main() {
     // Close pool after all migrations are complete
     try {
       await pool.end()
-    } catch (e) {
+    } catch (_e) {
       // Ignore if pool already closed
     }
     process.exit(0)
@@ -208,7 +208,7 @@ async function main() {
     // Close pool on error
     try {
       await pool.end()
-    } catch (e) {
+    } catch (_e) {
       // Ignore if pool already closed
     }
     process.exit(1)

@@ -11,7 +11,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         [Hardware]
  *         Processor: AMD Phenom(tm) II X6 1090T Processor
  */
-export function parseVidar(content: string, fileName: string): ParsedLogData {
+export function parseVidar(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Vidar',

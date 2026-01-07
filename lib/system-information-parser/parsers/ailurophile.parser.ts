@@ -1,7 +1,7 @@
 // Ailurophile parser
 
 import { ParsedLogData } from '../types';
-import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCode, normalizeLine, isSeparatorLine } from '../helpers';
+import { extractValue, cleanValue, extractIP, extractCountryCode, normalizeLine, isSeparatorLine } from '../helpers';
 
 /**
  * Parse Ailurophile log
@@ -10,7 +10,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         Hostname: [redacted]
  *         PC Type: Microsoft Windows [redacted]
  */
-export function parseAilurophile(content: string, fileName: string): ParsedLogData {
+export function parseAilurophile(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Ailurophile',

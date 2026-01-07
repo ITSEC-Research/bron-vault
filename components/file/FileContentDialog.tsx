@@ -2,7 +2,6 @@
 
 import React from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface FileContentDialogProps {
   selectedFile: { deviceId: string; filePath: string; fileName: string } | null

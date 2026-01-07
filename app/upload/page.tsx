@@ -4,13 +4,12 @@ export const dynamic = "force-dynamic";
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor, X, ShieldAlert } from "lucide-react"
-import { uploadFileInChunks, assembleAndProcessFile, calculateChunkSize } from "@/lib/upload/chunk-uploader"
+import { uploadFileInChunks, assembleAndProcessFile } from "@/lib/upload/chunk-uploader"
 import { formatBytes } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { useAuth, isAdmin } from "@/hooks/useAuth"
@@ -56,7 +55,7 @@ export default function UploadPage() {
 
   // Add new state:
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [logSessionId, setLogSessionId] = useState<string>("")
+  const [_logSessionId, setLogSessionId] = useState<string>("")
   // Ref untuk auto scroll log (pada ScrollArea)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   
@@ -472,7 +471,7 @@ export default function UploadPage() {
                 <div>
                   <CardTitle className="text-foreground">Access Denied</CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    You don't have permission to upload data
+                    You don&apos;t have permission to upload data
                   </CardDescription>
                 </div>
               </div>

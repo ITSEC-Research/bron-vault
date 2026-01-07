@@ -10,7 +10,6 @@ export const runtime = "nodejs"
 
 function nodeStreamToWeb(stream: Readable): ReadableStream {
   // Node 17+ includes toWeb
-  // @ts-ignore
   return (stream as any).toWeb?.() ?? new ReadableStream({
     start(controller) {
       stream.on("data", (chunk) => controller.enqueue(chunk))

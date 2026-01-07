@@ -2,6 +2,7 @@
 // This ensures both upload API and upload-logs API use the same connections Map
 
 declare global {
+  // eslint-disable-next-line no-var
   var uploadLogConnections: Map<string, ReadableStreamDefaultController> | undefined
 }
 

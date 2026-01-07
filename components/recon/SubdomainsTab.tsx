@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Globe, Link, ArrowUpDown, ArrowUp, ArrowDown, Filter, MoreHorizontal, Key } from "lucide-react"
-import { LoadingState, LoadingTable } from "@/components/ui/loading"
+import { LoadingState } from "@/components/ui/loading"
 import {
   Pagination,
   PaginationContent,

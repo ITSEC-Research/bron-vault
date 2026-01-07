@@ -5,7 +5,7 @@ import type { RowDataPacket } from "mysql2"
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   console.log("🔍 [PRODUCTION] Check users endpoint called")
   try {
     // Check if users table exists

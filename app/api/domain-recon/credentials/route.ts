@@ -61,7 +61,7 @@ async function getCredentialsDataOptimized(
   
   // Setup Sort
   const allowedSortColumns = ['created_at', 'url', 'username', 'log_date', 'device_id']
-  let sortBy = allowedSortColumns.includes(pagination?.sortBy) ? pagination.sortBy : 'created_at'
+  const sortBy = allowedSortColumns.includes(pagination?.sortBy) ? pagination.sortBy : 'created_at'
   const sortOrder = (pagination?.sortOrder || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
 
   // ==========================================
@@ -70,7 +70,7 @@ async function getCredentialsDataOptimized(
   // PREWHERE is the key to speed in ClickHouse. 
   // It filters before JOIN and before reading heavy columns.
   
-  let prewhereConditions: string[] = []
+  const prewhereConditions: string[] = []
   const params: Record<string, any> = {}
 
   if (searchType === 'domain') {
@@ -135,7 +135,7 @@ async function getCredentialsDataOptimized(
   // ==========================================
   // Filters that require JOIN go in WHERE (executed after PREWHERE)
 
-  let whereConditions: string[] = []
+  const whereConditions: string[] = []
   const hasGlobalSearch = searchQuery && searchQuery.trim().length > 0
 
   if (hasGlobalSearch) {

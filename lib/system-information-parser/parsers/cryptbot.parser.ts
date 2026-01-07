@@ -1,7 +1,7 @@
 // CryptBot parser
 
 import { ParsedLogData } from '../types';
-import { extractValue, cleanValue, extractIP, extractUsername, normalizeLine, isSeparatorLine } from '../helpers';
+import { extractValue, cleanValue, extractUsername, normalizeLine, isSeparatorLine } from '../helpers';
 
 /**
  * Parse CryptBot log
@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, normalizeLine, is
  *         Local Date and Time: 2024-12-29 05:37:17 [ UTC: (UTC-08:00) Pacific Time (US & Canada) ]
  *         UserName (ComputerName): Bruno (DESKTOP-ET51AJO)
  */
-export function parseCryptBot(content: string, fileName: string): ParsedLogData {
+export function parseCryptBot(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'CryptBot',

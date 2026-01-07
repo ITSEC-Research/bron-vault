@@ -1,11 +1,9 @@
 import { mkdir } from "fs/promises"
-import { existsSync, createReadStream, createWriteStream } from "fs"
+import { existsSync } from "fs"
 import path from "path"
 import { executeQuery } from "@/lib/mysql"
 import crypto from "crypto"
 import yauzl from "yauzl"
-import { promisify } from "util"
-import { pipeline } from "stream/promises"
 import {
   extractDeviceNameWithMacOSSupport,
   type ZipStructureInfo,
@@ -371,7 +369,7 @@ export async function processZipStream(
     })
     
     // Now update deviceMap to use entries from zipfile2
-    for (const [deviceName, deviceFiles] of deviceMap) {
+    for (const [_deviceName, deviceFiles] of deviceMap) {
       for (let i = 0; i < deviceFiles.length; i++) {
         const filePath = deviceFiles[i].path
         const newEntry = entryMap2.get(filePath)
@@ -470,7 +468,7 @@ export async function processZipStream(
       if (zipfile2) {
         zipfile2.close()
       }
-    } catch (closeError) {
+    } catch (_closeError) {
       // Ignore close errors
     }
 
@@ -503,7 +501,7 @@ export async function processZipStream(
       if (typeof zipfile2 !== 'undefined' && zipfile2) {
         zipfile2.close()
       }
-    } catch (closeError) {
+    } catch (_closeError) {
       // Ignore close errors
     }
 

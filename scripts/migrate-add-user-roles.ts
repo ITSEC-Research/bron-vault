@@ -118,13 +118,13 @@ async function runMigration() {
     log("✅ Database connection successful\n", 'green')
     
     let updated = 0
-    let skipped = 0
+    let _skipped = 0
     
     // Step 1: Add role column
     log("Step 1: Add users.role column", 'blue')
     if (await columnExists(executeQuery, 'users', 'role')) {
       log("   ℹ️  Column already exists - skipped", 'yellow')
-      skipped++
+      _skipped++
     } else {
       await executeQuery(
         `ALTER TABLE users ADD COLUMN role ENUM('admin', 'analyst') NOT NULL DEFAULT 'admin' AFTER name`
@@ -137,7 +137,7 @@ async function runMigration() {
     log("\nStep 2: Add idx_users_role index", 'blue')
     if (await indexExists(executeQuery, 'users', 'idx_users_role')) {
       log("   ℹ️  Index already exists - skipped", 'yellow')
-      skipped++
+      _skipped++
     } else {
       await executeQuery(`CREATE INDEX idx_users_role ON users(role)`)
       log("   ✅ Created index: idx_users_role", 'green')
@@ -169,7 +169,7 @@ async function runMigration() {
     
     try {
       await pool.end()
-    } catch (e) {
+    } catch (_e) {
       // Ignore
     }
     process.exit(1)

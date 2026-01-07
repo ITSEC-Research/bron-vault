@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { generateId, announceToScreenReader } from "@/lib/accessibility"
 
 interface SearchInterfaceProps {
   searchQuery: string
@@ -22,7 +21,7 @@ export function SearchInterface({
   searchQuery,
   setSearchQuery,
   searchType,
-  setSearchType,
+  setSearchType: _setSearchType,
   isLoading,
   onSearch,
   onDetectSearchType,

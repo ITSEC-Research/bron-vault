@@ -20,8 +20,9 @@ interface TimelineChartProps {
   onGranularityChange?: (granularity: "auto" | "weekly" | "monthly") => void
 }
 
-export function TimelineChart({ data: initialData, targetDomain, onGranularityChange }: TimelineChartProps) {
+export function TimelineChart({ data: initialData, targetDomain: _targetDomain, onGranularityChange }: TimelineChartProps) {
   const [granularity, setGranularity] = useState<"auto" | "weekly" | "monthly">("auto")
+  void setGranularity // Used only for internal state management
   
   // Use initialData directly, no need for internal state that causes delay
   const data = Array.isArray(initialData) ? initialData : []

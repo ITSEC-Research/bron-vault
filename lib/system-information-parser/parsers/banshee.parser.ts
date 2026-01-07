@@ -10,7 +10,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         Build Name: bzPg7NGR1bFjBDl3Sjz9c1C03C2I89
  *         Country Code: US
  */
-export function parseBanshee(content: string, fileName: string): ParsedLogData {
+export function parseBanshee(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Banshee',

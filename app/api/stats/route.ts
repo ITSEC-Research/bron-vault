@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     if (cacheResult.length > 0) {
       console.log("📊 Using cached stats")
-      let cached = cacheResult[0].cache_data
+      const cached = cacheResult[0].cache_data
       let parsed: any = null
 
       try {

@@ -29,7 +29,7 @@ export default function BrowserVerticalBarChart({
     if (!el) return;
 
     const observer = new ResizeObserver(entries => {
-      for (let entry of entries) {
+      for (const entry of entries) {
         if (entry.contentRect.height) {
           setContainerHeight(entry.contentRect.height);
         }

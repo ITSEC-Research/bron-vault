@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { chunkManager } from "@/lib/upload/chunk-manager"
-import { createWriteStream } from "fs"
 import { existsSync } from "fs"
 import { mkdir } from "fs/promises"
 import path from "path"
-import { pipeline } from "stream/promises"
 
 /**
  * POST /api/upload-chunk
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
     const fileId = formData.get("fileId") as string
     const fileName = formData.get("fileName") as string
     const fileSize = parseInt(formData.get("fileSize") as string)
-    const chunkSize = parseInt(formData.get("chunkSize") as string)
+    const _chunkSize = parseInt(formData.get("chunkSize") as string)
     const sessionId = (formData.get("sessionId") as string) || "default"
 
     console.log(`📥 [CHUNK UPLOAD] Receiving chunk ${chunkIndex + 1}/${totalChunks} for file: ${fileName} (${fileId})`)

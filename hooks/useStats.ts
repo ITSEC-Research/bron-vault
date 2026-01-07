@@ -92,7 +92,7 @@ export function useStats(): UseStatsReturn {
           totalUrls: 0,
         })
       }
-    } catch (error) {
+    } catch (_error) {
       setIsStatsLoaded(true)
       setStatsError("No data found. Please upload a .zip file first using the Upload menu to populate the search database.")
       setStats({

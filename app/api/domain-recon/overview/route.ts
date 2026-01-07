@@ -280,7 +280,7 @@ async function getTopSubdomains(
   )`
   
   let query = ''
-  let queryParams: Record<string, string> = { ...params }
+  const queryParams: Record<string, string> = { ...params }
   
   if (searchType === 'keyword' && keywordMode === 'domain-only' && keyword) {
     query = `SELECT full_hostname, credential_count FROM (

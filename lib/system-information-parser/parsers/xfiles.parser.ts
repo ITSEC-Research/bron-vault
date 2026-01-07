@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         IP: 40.40.186.60
  *         Country: US (United States)
  */
-export function parseXFiles(content: string, fileName: string): ParsedLogData {
+export function parseXFiles(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'XFiles',

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { TrendingUp, Globe, Key, ExternalLink, HardDrive, Link, Database, Monitor, Package } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import nextDynamic from "next/dynamic"
@@ -212,7 +211,7 @@ function DashboardContent() {
         hour: "2-digit",
         minute: "2-digit",
       })
-    } catch (error) {
+    } catch (_error) {
       return dateString
     }
   }

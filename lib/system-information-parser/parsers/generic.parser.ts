@@ -7,7 +7,7 @@ import { extractValue, combineOS, cleanValue, extractIP, extractUsername, extrac
  * Generic parser - best-effort parsing untuk stealer yang tidak dikenal
  * Pattern-based matching untuk label umum
  */
-export function parseGeneric(content: string, fileName: string): ParsedLogData {
+export function parseGeneric(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Generic',
