@@ -3,10 +3,12 @@ import { validateRequest } from "@/lib/auth"
 
 const PUBLIC_PATHS = [
   "/login",
+  "/db-sync",
   "/api/auth/login",
   "/api/auth/verify-totp",
   "/api/auth/check-users",
   "/api/auth/register-first-user",
+  "/api/db-sync",
   "/_next",
   "/favicon.ico"
 ]

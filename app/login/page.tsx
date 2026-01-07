@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail, User, ArrowRight, Loader2, Eye, EyeOff, KeyRound } from "lucide-react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -15,6 +16,7 @@ export default function LoginPage() {
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [checkingUsers, setCheckingUsers] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [checkingSchema, setCheckingSchema] = useState(true);
   
   // 2FA states
   const [requires2FA, setRequires2FA] = useState(false);
@@ -25,10 +27,32 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  // Check if any users exist on component mount
+  // Check database schema on component mount
   useEffect(() => {
-    checkUserCount();
+    checkDatabaseSchema();
   }, []);
+
+  const checkDatabaseSchema = async () => {
+    try {
+      const response = await fetch("/api/db-sync");
+      const data = await response.json();
+
+      if (data.success && !data.isValid) {
+        // Schema mismatch - redirect to db-sync page
+        router.push("/db-sync");
+        return;
+      }
+      
+      // Schema is valid, proceed to check users
+      setCheckingSchema(false);
+      checkUserCount();
+    } catch (error) {
+      console.error("Failed to check database schema:", error);
+      // On error, still proceed to login (maybe fresh install)
+      setCheckingSchema(false);
+      checkUserCount();
+    }
+  };
 
   const checkUserCount = async () => {
     try {
@@ -201,8 +225,8 @@ export default function LoginPage() {
     setUseBackupCode(false);
   };
 
-  // Show loading while checking user count
-  if (checkingUsers) {
+  // Show loading while checking schema and user count
+  if (checkingSchema || checkingUsers) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-[#0a0a0a] relative overflow-hidden">
         {/* Animated Background */}
@@ -220,7 +244,9 @@ export default function LoginPage() {
                 <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
               </div>
             </div>
-            <p className="text-white/60 font-medium">Checking system status...</p>
+            <p className="text-white/60 font-medium">
+              {checkingSchema ? "Checking database schema..." : "Checking system status..."}
+            </p>
           </div>
         </div>
       </div>
