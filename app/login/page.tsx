@@ -248,8 +248,8 @@ export default function LoginPage() {
             <div className="p-8 sm:p-10">
               {/* Header */}
               <div className="text-center mb-8">
-                <div className="mx-auto w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                  <img src="/images/logo.png" alt="Broń Vault Logo" className="w-10 h-10 drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]" />
+                <div className="mx-auto mb-4">
+                  <img src="/images/logo.png" alt="Broń Vault Logo" className="h-16 w-auto mx-auto drop-shadow-[0_0_10px_rgba(239,68,68,0.4)]" />
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-2">Two-Factor Authentication</h2>
                 <p className="text-white/50 text-sm">
