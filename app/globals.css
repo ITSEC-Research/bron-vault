@@ -195,7 +195,23 @@ html[data-theme='light'] *,
   background: var(--bron-text-muted);
 }
 
+/* Text selection/highlight styles - visible in both light and dark modes */
 ::selection {
-  background: var(--primary);
-  color: white;
+  background: hsl(3 100% 55% / 0.3); /* Default: Red with transparency for light mode */
+  color: hsl(0 0% 10%); /* Dark text for visibility */
+}
+
+/* Light mode specific selection */
+html[data-theme='light'] ::selection,
+[data-theme='light'] ::selection {
+  background: hsl(3 100% 55% / 0.3); /* Red with transparency */
+  color: hsl(0 0% 10%); /* Dark text for visibility */
+}
+
+/* Dark mode specific selection */
+html[data-theme='dark'] ::selection,
+[data-theme='dark'] ::selection,
+:root:not([data-theme='light']) ::selection {
+  background: hsl(3 100% 60% / 0.4); /* Red with transparency */
+  color: hsl(0 0% 98%); /* Light text for visibility */
 }

@@ -177,8 +177,7 @@ Once all services are running, you can access:
 # Linux/macOS
 ./docker-status.sh
 
-**View logs:**
-```bash
+# View logs:
 docker-compose logs -f
 ```
 
