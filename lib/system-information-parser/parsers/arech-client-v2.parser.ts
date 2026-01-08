@@ -10,7 +10,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         UserName: John
  *         Country: GE
  */
-export function parseArechClientV2(content: string, fileName: string): ParsedLogData {
+export function parseArechClientV2(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'ArechClientV2',
@@ -30,7 +30,7 @@ export function parseArechClientV2(content: string, fileName: string): ParsedLog
 
   let isInHardwaresSection = false;
   let isInAntiVirusSection = false;
-  const hardwareList: string[] = [];
+  const _hardwareList: string[] = [];
   const antivirusList: string[] = [];
 
   for (const line of lines) {

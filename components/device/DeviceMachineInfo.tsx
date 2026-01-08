@@ -19,7 +19,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Skeleton } from "@/components/ui/skeleton"
+import { LoadingState } from "@/components/ui/loading"
 
 interface MachineInfo {
   deviceId: string
@@ -230,10 +230,8 @@ export function DeviceMachineInfo({ deviceId }: DeviceMachineInfoProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
+          <div className="flex items-center justify-center py-8">
+            <LoadingState type="data" message="Loading host information..." size="sm" />
           </div>
         </CardContent>
       </Card>

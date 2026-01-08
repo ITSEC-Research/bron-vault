@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         Log Date: 03-12-2024, 23:45:57
  *         Country Code: US
  */
-export function parseMeduza(content: string, fileName: string): ParsedLogData {
+export function parseMeduza(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Meduza',

@@ -272,6 +272,9 @@ async function getTopSubdomains(
   keywordMode: string,
   keyword: string
 ) {
+  // SECURITY: Validate limit parameter
+  const safeLimit = Math.min(1000, Math.max(1, Math.floor(Number(limit)) || 10))
+  
   // IMPORTANT: Use domain() native function with fallback extract() regex
   const hostnameExpr = `if(
     length(domain(c.url)) > 0,
@@ -280,17 +283,17 @@ async function getTopSubdomains(
   )`
   
   let query = ''
-  let queryParams: Record<string, string> = { ...params }
+  const queryParams: Record<string, any> = { ...params, queryLimit: safeLimit }
   
   if (searchType === 'keyword' && keywordMode === 'domain-only' && keyword) {
     query = `SELECT full_hostname, credential_count FROM (
         SELECT ${hostnameExpr} as full_hostname, count() as credential_count
         FROM credentials c ${whereClause} GROUP BY full_hostname
-      ) WHERE full_hostname ilike {keyword:String} ORDER BY credential_count DESC LIMIT ${Number(limit)}`
+      ) WHERE full_hostname ilike {keyword:String} ORDER BY credential_count DESC LIMIT {queryLimit:UInt32}`
     queryParams.keyword = `%${keyword}%`
   } else {
     query = `SELECT ${hostnameExpr} as full_hostname, count() as credential_count
-    FROM credentials c ${whereClause} GROUP BY full_hostname ORDER BY credential_count DESC LIMIT ${Number(limit)}`
+    FROM credentials c ${whereClause} GROUP BY full_hostname ORDER BY credential_count DESC LIMIT {queryLimit:UInt32}`
   }
   
   const result = (await executeClickHouseQuery(query, queryParams)) as any[]
@@ -303,6 +306,9 @@ async function getTopSubdomains(
 }
 
 async function getTopPaths(whereClause: string, params: Record<string, string>, limit: number) {
+  // SECURITY: Validate limit parameter
+  const safeLimit = Math.min(1000, Math.max(1, Math.floor(Number(limit)) || 10))
+  
   // IMPORTANT: Use path() native function. 
   // If path() returns empty string (for root), we return '/'
   const pathExpr = `if(length(path(c.url)) > 0, path(c.url), '/')`
@@ -313,8 +319,8 @@ async function getTopPaths(whereClause: string, params: Record<string, string>, 
     ${whereClause}
     GROUP BY path
     ORDER BY credential_count DESC
-    LIMIT ${Number(limit)}`,
-    params
+    LIMIT {queryLimit:UInt32}`,
+    { ...params, queryLimit: safeLimit }
   )) as any[]
 
   // IMPORTANT: Cast count() to Number (ClickHouse returns String)

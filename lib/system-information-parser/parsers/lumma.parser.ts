@@ -8,7 +8,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  * Format: OS Version: Windows 11 Pro (10.0.22631) x64
  * Handle format dengan indent/tab untuk list items (Anti Virus, GPU)
  */
-export function parseLumma(content: string, fileName: string): ParsedLogData {
+export function parseLumma(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Lumma',

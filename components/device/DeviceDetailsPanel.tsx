@@ -5,7 +5,6 @@ import { X, User, File, Package, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { CredentialsTable, CredentialsSearchBar } from "./CredentialsTable"
 import { FileTreeViewer } from "../file/FileTreeViewer"
 import { SoftwareTable, SoftwareSearchBar } from "./SoftwareTable"
@@ -86,7 +85,7 @@ export function DeviceDetailsPanel({
   onRetrySoftware,
   onFileClick,
   onDownloadAllData,
-  onViewFullDetails,
+  onViewFullDetails: _onViewFullDetails,
 }: DeviceDetailsPanelProps) {
   const [softwareDeduplicate, setSoftwareDeduplicate] = useState(false)
 
@@ -134,7 +133,7 @@ export function DeviceDetailsPanel({
 
   return (
     <Sheet open={!!selectedDevice} onOpenChange={onClose}>
-      <SheetContent className="w-[60%] sm:max-w-none glass backdrop-blur-xl border-l border-white/5">
+      <SheetContent className="w-[60%] sm:max-w-none glass backdrop-blur-xl border-l border-white/5 overflow-hidden">
         <SheetHeader>
           <SheetTitle className="flex items-center justify-between text-foreground">
             <span>{selectedDevice.deviceName}</span>
@@ -203,63 +202,75 @@ export function DeviceDetailsPanel({
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="credentials" className="mt-4 mb-4">
+            <TabsContent value="credentials" className="mt-4">
+              {/* Search bar - NON-SCROLLING */}
               {!isLoadingCredentials && !credentialsError && deviceCredentials.length > 0 && (
-                <CredentialsSearchBar
+                <div className="mb-3">
+                  <CredentialsSearchBar
+                    deviceCredentials={deviceCredentials}
+                    credentialsSearchQuery={credentialsSearchQuery}
+                    setCredentialsSearchQuery={setCredentialsSearchQuery}
+                    showPasswords={showPasswords}
+                    setShowPasswords={setShowPasswords}
+                    filteredCount={filteredCredentialsCount}
+                  />
+                </div>
+              )}
+              {/* Table - SCROLLABLE */}
+              <div className="overflow-y-auto overflow-x-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+                <CredentialsTable
                   deviceCredentials={deviceCredentials}
-                  credentialsSearchQuery={credentialsSearchQuery}
-                  setCredentialsSearchQuery={setCredentialsSearchQuery}
+                  isLoadingCredentials={isLoadingCredentials}
+                  credentialsError={credentialsError}
                   showPasswords={showPasswords}
                   setShowPasswords={setShowPasswords}
-                  filteredCount={filteredCredentialsCount}
+                  credentialsSearchQuery={credentialsSearchQuery}
+                  setCredentialsSearchQuery={setCredentialsSearchQuery}
+                  onRetryCredentials={onRetryCredentials}
+                  deviceId={selectedDevice.deviceId}
+                  hideSearchBar={true}
+                  noScrollContainer={true}
                 />
-              )}
-              <CredentialsTable
-                deviceCredentials={deviceCredentials}
-                isLoadingCredentials={isLoadingCredentials}
-                credentialsError={credentialsError}
-                showPasswords={showPasswords}
-                setShowPasswords={setShowPasswords}
-                credentialsSearchQuery={credentialsSearchQuery}
-                setCredentialsSearchQuery={setCredentialsSearchQuery}
-                onRetryCredentials={onRetryCredentials}
-                deviceId={selectedDevice.deviceId}
-                hideSearchBar={true}
-              />
+              </div>
             </TabsContent>
 
-            <TabsContent value="software" className="mt-4 mb-4">
+            <TabsContent value="software" className="mt-4">
+              {/* Search bar - NON-SCROLLING */}
               {!isLoadingSoftware && !softwareError && deviceSoftware.length > 0 && (
-                <SoftwareSearchBar
+                <div className="mb-3">
+                  <SoftwareSearchBar
+                    deviceSoftware={deviceSoftware}
+                    softwareSearchQuery={softwareSearchQuery}
+                    setSoftwareSearchQuery={setSoftwareSearchQuery}
+                    deduplicate={softwareDeduplicate}
+                    setDeduplicate={setSoftwareDeduplicate}
+                    filteredCount={filteredSoftwareCount}
+                  />
+                </div>
+              )}
+              {/* Table - SCROLLABLE */}
+              <div className="overflow-y-auto overflow-x-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50" style={{ maxHeight: 'calc(100vh - 380px)' }}>
+                <SoftwareTable
                   deviceSoftware={deviceSoftware}
+                  isLoadingSoftware={isLoadingSoftware}
+                  softwareError={softwareError}
                   softwareSearchQuery={softwareSearchQuery}
                   setSoftwareSearchQuery={setSoftwareSearchQuery}
+                  onRetrySoftware={onRetrySoftware}
+                  deviceId={selectedDevice.deviceId}
+                  hideSearchBar={true}
                   deduplicate={softwareDeduplicate}
-                  setDeduplicate={setSoftwareDeduplicate}
-                  filteredCount={filteredSoftwareCount}
+                  noScrollContainer={true}
                 />
-              )}
-              <SoftwareTable
-                deviceSoftware={deviceSoftware}
-                isLoadingSoftware={isLoadingSoftware}
-                softwareError={softwareError}
-                softwareSearchQuery={softwareSearchQuery}
-                setSoftwareSearchQuery={setSoftwareSearchQuery}
-                onRetrySoftware={onRetrySoftware}
-                deviceId={selectedDevice.deviceId}
-                hideSearchBar={true}
-                deduplicate={softwareDeduplicate}
-              />
+              </div>
             </TabsContent>
 
             <TabsContent value="files" className="mt-4">
-              <div className="h-[calc(100vh-170px)] overflow-y-auto overflow-x-hidden pb-32">
-                <FileTreeViewer
-                  selectedDevice={selectedDevice}
-                  onFileClick={onFileClick}
-                  onDownloadAllData={onDownloadAllData}
-                />
-              </div>
+              <FileTreeViewer
+                selectedDevice={selectedDevice}
+                onFileClick={onFileClick}
+                onDownloadAllData={onDownloadAllData}
+              />
             </TabsContent>
           </Tabs>
         </div>

@@ -189,7 +189,7 @@ function extractVersionFromString(str: string): string | null {
   return null;
 }
 
-function isVersionString(str: string): boolean {
+function _isVersionString(str: string): boolean {
   // Check if string contains version-like patterns
   const versionPatterns = [
     /\d+\.\d+/, // Basic version like "1.0"

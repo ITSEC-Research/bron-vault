@@ -1,28 +1,78 @@
-import mysql from "mysql2/promise"
+import mysql, { Pool, PoolConnection, QueryResult, RowDataPacket, FieldPacket, ResultSetHeader, OkPacket, ProcedureCallPacket } from "mysql2/promise"
 
-// MySQL connection configuration
-const dbConfig = {
+// MySQL connection configuration - lazy loaded
+const getDbConfig = () => ({
   host: process.env.MYSQL_HOST || "localhost",
   port: Number.parseInt(process.env.MYSQL_PORT || "3306"),
   user: process.env.MYSQL_USER || "root",
   password: process.env.MYSQL_PASSWORD || "",
   database: process.env.MYSQL_DATABASE || "stealer_logs",
   charset: "utf8mb4",
-}
-
-// Create connection pool with optimized settings for high volume
-const pool = mysql.createPool({
-  ...dbConfig,
-  waitForConnections: true,
-  connectionLimit: 50,
-  queueLimit: 0,
 })
 
-export { pool }
+// Singleton pattern for connection pool - lazy initialization
+// This prevents blocking startup while waiting for DB connection
+const globalForMysql = global as unknown as {
+  mysqlPool: Pool | undefined
+}
+
+function getPool(): Pool {
+  if (globalForMysql.mysqlPool) {
+    return globalForMysql.mysqlPool
+  }
+
+  const dbConfig = getDbConfig()
+  
+  // Create connection pool with optimized settings for high volume
+  globalForMysql.mysqlPool = mysql.createPool({
+    ...dbConfig,
+    waitForConnections: true,
+    connectionLimit: 50,
+    queueLimit: 0,
+    // Add connection timeout to prevent hanging
+    connectTimeout: 10000,
+    // Enable keep-alive
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
+  })
+
+  return globalForMysql.mysqlPool
+}
+
+// Type-safe pool wrapper for lazy initialization
+// Matches mysql2/promise Pool interface for backwards compatibility
+type QueryReturnType<T extends QueryResult> = Promise<[T, FieldPacket[]]>;
+
+interface LazyPool {
+  execute<T extends RowDataPacket[][] | RowDataPacket[] | OkPacket | OkPacket[] | ResultSetHeader>(
+    sql: string,
+    values?: any[]
+  ): QueryReturnType<T>;
+  query<T extends RowDataPacket[][] | RowDataPacket[] | OkPacket | OkPacket[] | ResultSetHeader | ProcedureCallPacket>(
+    sql: string,
+    values?: any[]
+  ): QueryReturnType<T>;
+  getConnection(): Promise<PoolConnection>;
+  end(): Promise<void>;
+}
+
+// Export pool getter for backwards compatibility with full type support
+export const pool: LazyPool = {
+  execute: <T extends RowDataPacket[][] | RowDataPacket[] | OkPacket | OkPacket[] | ResultSetHeader>(
+    sql: string, 
+    values?: any[]
+  ) => getPool().execute<T>(sql, values),
+  query: <T extends RowDataPacket[][] | RowDataPacket[] | OkPacket | OkPacket[] | ResultSetHeader | ProcedureCallPacket>(
+    sql: string, 
+    values?: any[]
+  ) => getPool().query<T>(sql, values),
+  getConnection: () => getPool().getConnection(),
+  end: () => getPool().end(),
+}
 
 export async function executeQuery(query: string, params: any[] = []) {
   try {
-    const [results] = await pool.execute(query, params)
+    const [results] = await getPool().execute(query, params)
     return results
   } catch (error) {
     console.error("Database query error:", error)
@@ -32,6 +82,8 @@ export async function executeQuery(query: string, params: any[] = []) {
 
 export async function initializeDatabase() {
   try {
+    const dbConfig = getDbConfig()
+    
     // Create database if not exists
     const connection = await mysql.createConnection({
       host: dbConfig.host,
@@ -63,6 +115,7 @@ export async function initializeDatabase() {
 }
 
 async function ensureLocalFilePathColumn() {
+  const dbConfig = getDbConfig()
   try {
     console.log("🔧 Ensuring local_file_path column exists...")
 
@@ -213,7 +266,7 @@ async function createTables() {
   // Update existing software table if version column is too small
   try {
     await executeQuery(`ALTER TABLE software MODIFY COLUMN version VARCHAR(500) NULL`)
-  } catch (error) {
+  } catch (_error) {
     // Column might not exist yet or already be the right size, ignore error
     console.log("Version column update skipped (might already be correct size)")
   }
@@ -254,6 +307,7 @@ async function createTables() {
   `)
   
   // Add log_time column if it doesn't exist (for existing databases)
+  const dbConfig = getDbConfig()
   try {
     // Check if column exists first (MySQL doesn't support IF NOT EXISTS for ADD COLUMN)
     const columnCheck = await executeQuery(
@@ -400,6 +454,7 @@ export async function ensurePerformanceIndexes() {
   }
 
   indexesEnsuring = true
+  const dbConfig = getDbConfig()
 
   try {
     console.log("🔧 Ensuring performance indexes exist...")

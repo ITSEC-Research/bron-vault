@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         Current JarFile Path: C:/Users/WDAGUtilityAccount/AppData/Local/Temp/svchost.jar
  *         UserName: WDAGUtilityAccount
  */
-export function parseSkalka(content: string, fileName: string): ParsedLogData {
+export function parseSkalka(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Skalka',

@@ -9,7 +9,7 @@ import { extractValue, combineOS, cleanValue, extractIP, extractUsername, normal
  *         OS Name: Microsoft Windows 10 Pro
  *         OS Version: 10.0.19045 N/A Build 19045
  */
-export function parseBlankGrabber(content: string, fileName: string): ParsedLogData {
+export function parseBlankGrabber(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Blank Grabber',

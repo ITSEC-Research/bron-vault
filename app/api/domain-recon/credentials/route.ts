@@ -55,13 +55,21 @@ async function getCredentialsDataOptimized(
   searchType: 'domain' | 'keyword' = 'domain',
   keywordMode: 'domain-only' | 'full-url' = 'full-url'
 ) {
-  const page = Number(pagination?.page) || 1
-  const limit = Number(pagination?.limit) || 50
-  const offset = Number((page - 1) * limit)
+  // SECURITY: Validate and sanitize pagination parameters
+  const page = Math.max(1, Math.floor(Number(pagination?.page)) || 1)
+  const limit = Math.min(1000, Math.max(1, Math.floor(Number(pagination?.limit)) || 50))
+  const offset = Math.max(0, Math.floor((page - 1) * limit))
   
-  // Setup Sort
-  const allowedSortColumns = ['created_at', 'url', 'username', 'log_date', 'device_id']
-  let sortBy = allowedSortColumns.includes(pagination?.sortBy) ? pagination.sortBy : 'created_at'
+  // SECURITY: Whitelist allowed sort columns to prevent SQL injection
+  const allowedSortColumns: Record<string, string> = {
+    'created_at': 'c.created_at',
+    'url': 'c.url',
+    'username': 'c.username',
+    'log_date': 'log_date', // Special handling below
+    'device_id': 'c.device_id'
+  }
+  const sortByInput = String(pagination?.sortBy || 'created_at')
+  const sortBy = allowedSortColumns[sortByInput] ? sortByInput : 'created_at'
   const sortOrder = (pagination?.sortOrder || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
 
   // ==========================================
@@ -70,7 +78,7 @@ async function getCredentialsDataOptimized(
   // PREWHERE is the key to speed in ClickHouse. 
   // It filters before JOIN and before reading heavy columns.
   
-  let prewhereConditions: string[] = []
+  const prewhereConditions: string[] = []
   const params: Record<string, any> = {}
 
   if (searchType === 'domain') {
@@ -135,7 +143,7 @@ async function getCredentialsDataOptimized(
   // ==========================================
   // Filters that require JOIN go in WHERE (executed after PREWHERE)
 
-  let whereConditions: string[] = []
+  const whereConditions: string[] = []
   const hasGlobalSearch = searchQuery && searchQuery.trim().length > 0
 
   if (hasGlobalSearch) {
@@ -192,14 +200,20 @@ async function getCredentialsDataOptimized(
   // ==========================================
 
   // Handle Sort Log Date (Requires Join Logic)
+  // SECURITY: Build ORDER BY using whitelisted column mapping
   let orderByClause = ''
   if (sortBy === 'log_date') {
     orderByClause = `ORDER BY coalesce(toDate(si.log_date), c.created_at) ${sortOrder}`
-  } else if (sortBy === 'device_id') {
-    orderByClause = `ORDER BY c.device_id ${sortOrder}`
   } else {
-    orderByClause = `ORDER BY c.${sortBy} ${sortOrder}`
+    // Use the pre-validated column from allowedSortColumns mapping
+    const safeColumn = allowedSortColumns[sortBy] || 'c.created_at'
+    orderByClause = `ORDER BY ${safeColumn} ${sortOrder}`
   }
+
+  // SECURITY: Use parameterized LIMIT/OFFSET for ClickHouse
+  // Add limit and offset to params object
+  params['queryLimit'] = limit
+  params['queryOffset'] = offset
 
   const dataQuery = `
     SELECT 
@@ -218,7 +232,7 @@ async function getCredentialsDataOptimized(
     ${prewhereClause} -- Heavy filters executed first here
     ${whereClause}    -- Light/join filters executed later
     ${orderByClause}
-    LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    LIMIT {queryLimit:UInt32} OFFSET {queryOffset:UInt32}
   `
 
   console.log("📊 Data Query Executing with PREWHERE...")

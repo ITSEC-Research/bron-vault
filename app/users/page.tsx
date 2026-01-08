@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, Plus, Pencil, Trash2, Shield, Eye, AlertCircle, CheckCircle, X, ShieldAlert } from "lucide-react"
+import { Users, Plus, Pencil, Trash2, Shield, Eye, AlertCircle, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -110,7 +110,7 @@ export default function UsersPage() {
           description: data.error || "Failed to load users"
         })
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -176,7 +176,7 @@ export default function UsersPage() {
           description: data.error || "Failed to create user"
         })
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -230,7 +230,7 @@ export default function UsersPage() {
           description: data.error || "Failed to update user"
         })
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -268,7 +268,7 @@ export default function UsersPage() {
           description: data.error || "Failed to delete user"
         })
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -342,7 +342,7 @@ export default function UsersPage() {
                 <div>
                   <CardTitle className="text-foreground">Access Denied</CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    You don't have permission to manage users
+                    You don&apos;t have permission to manage users
                   </CardDescription>
                 </div>
               </div>
@@ -426,10 +426,10 @@ export default function UsersPage() {
                       <TableCell>
                         <Badge 
                           variant={user.role === 'admin' ? 'default' : 'secondary'}
-                          className={`${
+                          className={`transition-colors ${
                             user.role === 'admin' 
-                              ? 'bg-primary/20 text-primary border-primary/30' 
-                              : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+                              ? 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/40' 
+                              : 'bg-blue-500/20 text-blue-400 border-blue-500/30 hover:bg-blue-500/40'
                           }`}
                         >
                           {user.role === 'admin' ? (

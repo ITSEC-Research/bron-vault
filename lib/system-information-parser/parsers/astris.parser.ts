@@ -7,7 +7,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  * Parse Astris stealer log (INI-like format)
  * Format: [General], [Machine], [Geolocation], [Hardware]
  */
-export function parseAstris(content: string, fileName: string): ParsedLogData {
+export function parseAstris(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Astris',

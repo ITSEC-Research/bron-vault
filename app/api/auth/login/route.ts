@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { pool } from "@/lib/mysql"
 import bcrypt from "bcryptjs"
 import type { RowDataPacket } from "mysql2"
-import { generateToken, getSecureCookieOptions, UserRole } from "@/lib/auth"
+import { generateToken, generatePending2FAToken, getSecureCookieOptions, UserRole } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json()
 
   try {
-    // Query includes role field - backwards compatible (NULL/undefined for old DBs)
+    // Query includes role and TOTP fields
     const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, password_hash, name, role FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, email, password_hash, name, role, totp_enabled FROM users WHERE email = ? LIMIT 1",
       [email]
     )
 
@@ -26,6 +26,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Invalid email or password." }, { status: 401 })
     }
 
+    // Check if 2FA is enabled
+    if (user.totp_enabled) {
+      // Generate a secure pending 2FA token that proves password was verified
+      // This token is short-lived (5 minutes) and can only be used for 2FA verification
+      const pending2FAToken = await generatePending2FAToken(String(user.id))
+      
+      // Return requires2FA flag with secure pending token - don't issue auth token yet
+      return NextResponse.json({
+        success: true,
+        requires2FA: true,
+        pending2FAToken, // Secure token that proves password was verified
+        message: "Please enter your 2FA code"
+      })
+    }
+
     // Get user role - default to 'admin' for backwards compatibility
     const userRole: UserRole = user.role || 'admin'
 
@@ -39,6 +54,7 @@ export async function POST(request: NextRequest) {
     // Set secure cookie with JWT token
     const response = NextResponse.json({
       success: true,
+      requires2FA: false,
       user: {
         id: user.id,
         email: user.email,

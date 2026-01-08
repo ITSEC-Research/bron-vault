@@ -120,7 +120,7 @@ export function combineOS(osName: string | null, osVersion: string | null): stri
   
   // At this point, both osName and osVersion are guaranteed to be non-null
   // Clean OS Version
-  let cleanVersion = (osVersion as string)
+  const cleanVersion = (osVersion as string)
     .replace(/N\/A\s+Build\s+/i, '')  // Remove "N/A Build"
     .replace(/\s+Build\s+/i, ' ')     // Remove "Build" word
     .replace(/N\/A/gi, '')            // Remove "N/A"
@@ -262,7 +262,7 @@ export function normalizeEncoding(content: string): string {
     // Try to decode as UTF-8
     const decoded = decodeURIComponent(escape(content));
     return decoded;
-  } catch (error) {
+  } catch (_error) {
     // If failed, return as-is (browser usually handles encoding)
     return content;
   }

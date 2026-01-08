@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { LoadingState } from "@/components/ui/loading"
 
 interface Software {
   software_name: string
@@ -24,6 +25,7 @@ interface SoftwareTableProps {
   deviceId: string
   hideSearchBar?: boolean
   deduplicate?: boolean
+  noScrollContainer?: boolean // When true, table has no max-height/scroll (for sidepanel use)
 }
 
 // Simple hover tooltip for manual copy
@@ -68,6 +70,7 @@ export function SoftwareTable({
   deviceId,
   hideSearchBar = false,
   deduplicate: externalDeduplicate,
+  noScrollContainer = false,
 }: SoftwareTableProps) {
   const [internalDeduplicate, setInternalDeduplicate] = useState(false)
   const deduplicate = externalDeduplicate !== undefined ? externalDeduplicate : internalDeduplicate
@@ -103,7 +106,7 @@ export function SoftwareTable({
   if (isLoadingSoftware) {
     return (
       <div className="flex items-center justify-center h-32">
-        <p className="text-foreground">Loading software...</p>
+        <LoadingState type="data" message="Loading software..." size="sm" />
       </div>
     )
   }
@@ -177,10 +180,15 @@ export function SoftwareTable({
     </div>
   )
 
+  // Container styles - with or without scroll based on noScrollContainer prop
+  const tableContainerClass = noScrollContainer
+    ? "glass-card border border-border/50 rounded-lg"
+    : "glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-350px)] pb-4 [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50"
+
   return (
     <div className="space-y-4">
       {!hideSearchBar && searchBarSection}
-      <div className="glass-card border border-border/50 rounded-lg overflow-x-auto overflow-y-auto max-h-[calc(100vh-280px)] sm:max-h-[calc(100vh-350px)] pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+      <div className={tableContainerClass}>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-white/5">
@@ -214,7 +222,7 @@ export function SoftwareTable({
       </div>
       {filteredSoftware.length === 0 && softwareSearchQuery && (
         <div className="text-center py-8 text-muted-foreground">
-          <p>No software found matching "{softwareSearchQuery}"</p>
+          <p>No software found matching &quot;{softwareSearchQuery}&quot;</p>
           <Button
             variant="ghost"
             size="sm"

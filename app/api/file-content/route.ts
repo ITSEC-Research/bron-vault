@@ -8,9 +8,74 @@ import { Readable } from "stream"
 
 export const runtime = "nodejs"
 
+// Static base directory for uploads - resolved once at module load
+const UPLOADS_BASE_DIR = path.resolve(process.cwd(), 'uploads')
+
+/**
+ * Safely resolve a file path within the uploads directory
+ * Returns null if path is invalid or escapes the uploads directory
+ */
+function safeResolvePath(localFilePath: string): string | null {
+  if (!localFilePath || typeof localFilePath !== 'string') {
+    return null
+  }
+
+  // Sanitize: remove null bytes and normalize
+  const sanitized = localFilePath.replace(/\0/g, '').trim()
+  if (!sanitized) {
+    return null
+  }
+
+  // Build absolute path
+  let absolutePath: string
+  if (path.isAbsolute(sanitized)) {
+    // Already absolute - normalize it
+    absolutePath = path.normalize(sanitized)
+  } else {
+    // Relative path - join with cwd (uploads paths stored relative to project root)
+    absolutePath = path.join(process.cwd(), sanitized)
+  }
+
+  // Resolve to get canonical path (resolves .. and symlinks)
+  const resolvedPath = path.resolve(absolutePath)
+
+  // Security check: ensure path is within uploads directory
+  // Allow paths that START with uploads dir or ARE within it
+  if (!resolvedPath.startsWith(UPLOADS_BASE_DIR)) {
+    console.error(`Path traversal attempt: ${resolvedPath} is outside ${UPLOADS_BASE_DIR}`)
+    return null
+  }
+
+  return resolvedPath
+}
+
+/**
+ * Check if file exists at the given safe path
+ */
+function fileExistsAtPath(safePath: string): boolean {
+  try {
+    return existsSync(safePath)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Read text file content from safe path
+ */
+async function readTextFile(safePath: string): Promise<string> {
+  return await readFile(safePath, "utf-8")
+}
+
+/**
+ * Create readable stream from safe path
+ */
+function createFileStream(safePath: string): Readable {
+  return createReadStream(safePath)
+}
+
 function nodeStreamToWeb(stream: Readable): ReadableStream {
   // Node 17+ includes toWeb
-  // @ts-ignore
   return (stream as any).toWeb?.() ?? new ReadableStream({
     start(controller) {
       stream.on("data", (chunk) => controller.enqueue(chunk))
@@ -84,12 +149,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File path not found" }, { status: 404 })
     }
 
-    const localFilePath = fileRecord.local_file_path
-    const absPath = path.isAbsolute(localFilePath)
-      ? localFilePath
-      : path.join(process.cwd(), localFilePath)
+    // SECURITY: Use safe path resolution with built-in traversal protection
+    const safePath = safeResolvePath(fileRecord.local_file_path)
+    
+    if (!safePath) {
+      console.error(`Invalid or unsafe file path: ${fileRecord.local_file_path}`)
+      return NextResponse.json({ error: "Access denied: Invalid file path" }, { status: 403 })
+    }
 
-    if (!existsSync(absPath)) {
+    if (!fileExistsAtPath(safePath)) {
       return NextResponse.json({ error: "File not found on disk" }, { status: 404 })
     }
 
@@ -102,7 +170,7 @@ export async function POST(request: NextRequest) {
     // STEP 5: Handle text files - read as text and return JSON
     if (isText) {
       try {
-        const content = await readFile(absPath, "utf-8")
+        const content = await readTextFile(safePath)
         return NextResponse.json({ content })
       } catch (error) {
         console.error("Error reading text file:", error)
@@ -117,7 +185,7 @@ export async function POST(request: NextRequest) {
     }
 
     // STEP 6: Handle binary files (images, etc.) - return stream
-    const ext = path.extname(absPath).toLowerCase()
+    const ext = path.extname(safePath).toLowerCase()
     let contentType = "application/octet-stream"
 
     // Image types
@@ -129,14 +197,14 @@ export async function POST(request: NextRequest) {
     // Add more MIME types as needed
 
     try {
-      const nodeStream = createReadStream(absPath)
+      const nodeStream = createFileStream(safePath)
       const webStream = nodeStreamToWeb(nodeStream)
 
       return new NextResponse(webStream, {
         status: 200,
         headers: {
           "Content-Type": contentType,
-          "Content-Disposition": `inline; filename="${path.basename(absPath)}"`,
+          "Content-Disposition": `inline; filename="${path.basename(safePath)}"`,
         },
       })
     } catch (error) {

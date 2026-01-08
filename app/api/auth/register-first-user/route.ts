@@ -27,11 +27,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validate password strength
-    if (password.length < 6) {
+    // Validate password strength - matches validation.ts requirements
+    if (password.length < 8) {
       return NextResponse.json({ 
         success: false, 
-        error: "Password must be at least 6 characters long" 
+        error: "Password must be at least 8 characters long" 
+      }, { status: 400 })
+    }
+    
+    // SECURITY: Check password complexity
+    if (!/[A-Z]/.test(password)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Password must contain at least one uppercase letter" 
+      }, { status: 400 })
+    }
+    if (!/[a-z]/.test(password)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Password must contain at least one lowercase letter" 
+      }, { status: 400 })
+    }
+    if (!/[0-9]/.test(password)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Password must contain at least one number" 
       }, { status: 400 })
     }
 
@@ -41,7 +61,7 @@ export async function POST(request: NextRequest) {
     )
 
     if (!Array.isArray(tables) || tables.length === 0) {
-      // Create users table with role column
+      // Create users table with role column, totp, and preferences
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -49,9 +69,15 @@ export async function POST(request: NextRequest) {
           password_hash VARCHAR(255) NOT NULL,
           name VARCHAR(255) DEFAULT NULL,
           role ENUM('admin', 'analyst') NOT NULL DEFAULT 'admin',
+          totp_secret VARCHAR(255) DEFAULT NULL,
+          totp_enabled BOOLEAN DEFAULT FALSE,
+          backup_codes TEXT DEFAULT NULL,
+          preferences TEXT DEFAULT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          INDEX idx_users_role (role)
+          INDEX idx_email (email),
+          INDEX idx_users_role (role),
+          INDEX idx_totp_enabled (totp_enabled)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `)
     }

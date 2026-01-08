@@ -5,13 +5,13 @@ import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Server, User, Package, FileText, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DeviceCredentialsTable } from "@/components/device/DeviceCredentialsTable"
 import { DeviceSoftwareTable } from "@/components/device/DeviceSoftwareTable"
 import { DeviceFileTreeViewer } from "@/components/device/DeviceFileTreeViewer"
 import { DeviceMachineInfo } from "@/components/device/DeviceMachineInfo"
 import { DeviceOverview } from "@/components/device/DeviceOverview"
 import { FileContentDialog } from "@/components/file/FileContentDialog"
+import { LoadingState } from "@/components/ui/loading"
 
 interface DeviceInfo {
   deviceId: string
@@ -133,7 +133,7 @@ export default function DeviceDetailPage() {
       } else {
         setFileContent("Error loading file content")
       }
-    } catch (error) {
+    } catch (_error) {
       setFileContent("Error loading file content")
     } finally {
       setIsLoadingFile(false)
@@ -172,7 +172,7 @@ export default function DeviceDetailPage() {
   if (isLoadingDevice) {
     return (
       <div className="min-h-screen bg-transparent flex items-center justify-center">
-        <p className="text-xs text-foreground">Loading device information...</p>
+        <LoadingState type="data" message="Loading device information..." size="md" />
       </div>
     )
   }

@@ -1,28 +1,37 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development'
+
 const nextConfig = {
-  // Bundle optimization
+  // Enable standalone output for smaller Docker images (production only)
+  ...(isDev ? {} : { output: 'standalone' }),
+  // Bundle optimization (only in production - not compatible with Turbo)
   swcMinify: true,
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
-      exclude: ['error', 'warn']
-    } : false,
-  },
+  ...(!isDev ? {
+    compiler: {
+      removeConsole: {
+        exclude: ['error', 'warn']
+      },
+    },
+  } : {}),
   eslint: {
     // Only ignore during builds in development, not production
-    ignoreDuringBuilds: process.env.NODE_ENV === 'development',
+    ignoreDuringBuilds: isDev,
   },
   typescript: {
     // Only ignore build errors in development, not production
-    ignoreBuildErrors: process.env.NODE_ENV === 'development',
+    ignoreBuildErrors: isDev,
   },
   images: {
     unoptimized: true,
   },
-  // Add performance optimizations
-  experimental: {
-    // Disable CSS optimization to avoid critters dependency issue
-    // optimizeCss: true,
-  },
+  // Optimize module resolution for faster startup (only in production - not compatible with Turbo)
+  ...(!isDev ? {
+    modularizeImports: {
+      'lucide-react': {
+        transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
+      },
+    },
+  } : {}),
   // Add security headers
   async headers() {
     return [

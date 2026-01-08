@@ -13,7 +13,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *     Username: Administrator\ZTLRFZYKCOID
  *     Windows name: Windows Server 2016 Standard x64
  */
-export function parsePhemedrone(content: string, fileName: string): ParsedLogData {
+export function parsePhemedrone(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Phemedrone',

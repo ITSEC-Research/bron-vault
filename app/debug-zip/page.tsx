@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Progress } from "@/components/ui/progress"
 
 interface ZipAnalysis {

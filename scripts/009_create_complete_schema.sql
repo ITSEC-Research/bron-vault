@@ -185,16 +185,26 @@ CREATE TABLE IF NOT EXISTS app_settings (
 -- Roles:
 -- - 'admin': Full access (can upload data, manage settings, manage users)
 -- - 'analyst': Read-only access (can view/search data, cannot upload or modify)
+-- TOTP/2FA columns:
+-- - totp_secret: Base32 encoded secret key (admin can view for recovery)
+-- - totp_enabled: Flag to enable/disable 2FA (admin can set false to disable)
+-- - backup_codes: JSON array of one-time backup codes
+-- - preferences: JSON object for user-specific preferences (stored as TEXT for ClickHouse compatibility)
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) DEFAULT NULL,
     role ENUM('admin', 'analyst') NOT NULL DEFAULT 'admin',
+    totp_secret VARCHAR(255) DEFAULT NULL,
+    totp_enabled BOOLEAN DEFAULT FALSE,
+    backup_codes TEXT DEFAULT NULL,
+    preferences TEXT DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
-    INDEX idx_users_role (role)
+    INDEX idx_users_role (role),
+    INDEX idx_totp_enabled (totp_enabled)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert default admin user

@@ -19,7 +19,7 @@
  */
 
 import { executeQuery, pool } from "../lib/mysql"
-import { readFile, writeFile, mkdir } from "fs/promises"
+import { writeFile, mkdir } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
 
@@ -57,7 +57,6 @@ export async function migrateExistingFiles(
   try {
     // Get all files that have content in DB but no local_file_path
     // Process in batches to avoid memory issues
-    let offset = 0
     let hasMore = true
 
     let lastId = 0

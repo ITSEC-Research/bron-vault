@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js build output
+.next/
+out/
+
+# Production
+build/
+dist/
+
+# Database data directories (persistent volumes)
+mysql-data/
+clickhouse-data/
+
+# Uploads (should be mounted as volume)
+uploads/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files (handled separately)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+error.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Docker files (not needed inside container)
+docker-compose.yml
+docker-start.sh
+docker-status.sh
+Dockerfile
+Dockerfile.setup
+
+# Documentation
+README.md
+AUTHORS.md
+LICENSE
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+coverage/

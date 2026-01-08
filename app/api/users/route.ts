@@ -76,11 +76,31 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validate password strength
-    if (password.length < 6) {
+    // Validate password strength - matches validation.ts requirements
+    if (password.length < 8) {
       return NextResponse.json({ 
         success: false, 
-        error: "Password must be at least 6 characters long" 
+        error: "Password must be at least 8 characters long" 
+      }, { status: 400 })
+    }
+    
+    // SECURITY: Check password complexity
+    if (!/[A-Z]/.test(password)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Password must contain at least one uppercase letter" 
+      }, { status: 400 })
+    }
+    if (!/[a-z]/.test(password)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Password must contain at least one lowercase letter" 
+      }, { status: 400 })
+    }
+    if (!/[0-9]/.test(password)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Password must contain at least one number" 
       }, { status: 400 })
     }
 
@@ -216,10 +236,29 @@ export async function PUT(request: NextRequest) {
     }
 
     if (password) {
-      if (password.length < 6) {
+      // SECURITY: Validate password complexity - matches validation.ts requirements
+      if (password.length < 8) {
         return NextResponse.json({ 
           success: false, 
-          error: "Password must be at least 6 characters long" 
+          error: "Password must be at least 8 characters long" 
+        }, { status: 400 })
+      }
+      if (!/[A-Z]/.test(password)) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Password must contain at least one uppercase letter" 
+        }, { status: 400 })
+      }
+      if (!/[a-z]/.test(password)) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Password must contain at least one lowercase letter" 
+        }, { status: 400 })
+      }
+      if (!/[0-9]/.test(password)) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Password must contain at least one number" 
         }, { status: 400 })
       }
       const hashedPassword = await bcrypt.hash(password, 12)

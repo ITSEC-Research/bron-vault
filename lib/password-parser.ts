@@ -145,7 +145,7 @@ export function analyzePasswordFile(content: string): {
             result.credentialCount++
             result.passwordCounts.set(password, (result.passwordCounts.get(password) || 0) + 1)
           }
-        } catch (escapeError) {
+        } catch (_escapeError) {
           // Skip invalid passwords that cause escape errors
           console.warn(`Skipping password with invalid characters: ${password.substring(0, 10)}...`)
         }
@@ -221,11 +221,11 @@ export function analyzePasswordFile(content: string): {
       // Validate password for special characters
       // Allow empty password ("") as long as Password: field exists
       try {
-        const testEscape = escapePassword(password)
+        const _testEscape = escapePassword(password)
         // Set password even if empty (""), because "" !== undefined
         // escapePassword("") returns "" (valid), so set it directly
         currentCredential.password = password
-      } catch (escapeError) {
+      } catch (_escapeError) {
         // Skip invalid passwords that cause errors
         console.warn(`Skipping invalid password: ${password.substring(0, 10)}...`)
       }
@@ -270,7 +270,7 @@ export function isIpAddress(url: string): boolean {
 
     const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/
     return ipRegex.test(hostname)
-  } catch (error) {
+  } catch (_error) {
     return false
   }
 }
@@ -299,7 +299,7 @@ export function extractUrlInfo(url: string): { domain: string | null; tld: strin
     }
 
     return { domain: hostname, tld: null }
-  } catch (error) {
+  } catch (_error) {
     return { domain: null, tld: null }
   }
 }

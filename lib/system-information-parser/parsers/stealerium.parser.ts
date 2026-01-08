@@ -11,7 +11,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, normalizeLine, is
  *     [Machine]
  *     Username: John
  */
-export function parseStealerium(content: string, fileName: string): ParsedLogData {
+export function parseStealerium(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Stealerium',

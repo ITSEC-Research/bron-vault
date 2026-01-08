@@ -1,7 +1,7 @@
 // RisePro parser
 
 import { ParsedLogData } from '../types';
-import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCode, normalizeLine, isSeparatorLine } from '../helpers';
+import { extractValue, cleanValue, extractIP, extractUsername, normalizeLine, isSeparatorLine } from '../helpers';
 
 /**
  * Parse RisePro log
@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         Version: 2.0
  *         Date: Sat Jul 06 3:43:57 2024
  */
-export function parseRisePro(content: string, fileName: string): ParsedLogData {
+export function parseRisePro(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'RisePro',

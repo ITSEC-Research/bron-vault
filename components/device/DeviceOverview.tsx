@@ -3,20 +3,9 @@
 import React, { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  Bar,
-  Pie,
-  PieChart,
-  BarChart,
   RadialBarChart,
   RadialBar,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
   Legend,
-  XAxis,
-  YAxis,
   Tooltip,
   ResponsiveContainer,
   Cell,
@@ -34,13 +23,13 @@ import {
   MapPin,
   Server,
   Lock,
-  Folder,
   BarChart3,
   Info,
   FolderOpen,
   FileType,
 } from "lucide-react"
 import { format } from "date-fns"
+import { LoadingState } from "@/components/ui/loading"
 
 interface OverviewData {
   summary: {
@@ -152,14 +141,8 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="glass-card animate-pulse">
-              <CardContent className="p-4">
-                <div className="h-16 bg-secondary/30 rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="flex items-center justify-center py-16">
+          <LoadingState type="stats" message="Loading device overview..." size="md" />
         </div>
       </div>
     )
@@ -183,7 +166,7 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
     )
   }
 
-  const { summary, topPasswords, browserDistribution, topDomains, fileStatistics, hostInfo } = overviewData
+  const { summary, topPasswords, browserDistribution: _browserDistribution, topDomains, fileStatistics, hostInfo } = overviewData
 
   // Format top passwords for chart (top 10) - Polar Area Chart style
   // In polar area chart, each segment has same angle but different radius
@@ -221,7 +204,7 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
     (fileStatistics?.bySize || []).map((item: any) => [item.category, item.count])
   )
   
-  const chartFileSizes = staticCategories.map((category, index) => ({
+  const chartFileSizes = staticCategories.map((category, _index) => ({
     name: category,
     value: fileSizeMap.get(category) || 0, // Default to 0 if category doesn't exist in data
     color: "hsl(4, 100%, 45%)", // bron-accent-red - consistent color for all bars, matches Top Domains
@@ -229,12 +212,12 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
 
   // Format top domains for Horizontal Bar Chart (limit to 7)
   // Use consistent color for all bars since ranking is already clear from position
-  const chartDomains = (topDomains || []).slice(0, 7).map((item, index) => ({
+  const chartDomains = (topDomains || []).slice(0, 7).map((item, _index) => ({
     name: item.domain && item.domain.length > 30 ? `${item.domain.substring(0, 30)}...` : (item.domain || "Unknown"),
     fullDomain: item.domain || "Unknown",
     value: item.count || 0,
     color: "hsl(4, 100%, 45%)", // bron-accent-red - consistent color for all bars, matches File Statistics
-    rank: index + 1,
+    rank: _index + 1,
   }))
 
   // Format upload date

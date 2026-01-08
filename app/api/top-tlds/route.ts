@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     if (cacheResult.length > 0) {
       console.log("📊 [TOP-TLDS] Using cached top TLDs")
-      let cachedDataRaw = cacheResult[0].cache_data
+      const cachedDataRaw = cacheResult[0].cache_data
       let cachedData: any = null
 
       try {

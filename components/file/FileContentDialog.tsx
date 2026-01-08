@@ -2,7 +2,6 @@
 
 import React from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface FileContentDialogProps {
   selectedFile: { deviceId: string; filePath: string; fileName: string } | null
@@ -32,7 +31,7 @@ export function FileContentDialog({
             Device: {deviceName}
           </DialogDescription>
         </DialogHeader>
-        <div className="h-[60vh] w-full overflow-y-auto overflow-x-auto">
+        <div className="h-[60vh] w-full overflow-y-auto overflow-x-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--primary)/0.3)_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-primary/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-primary/50">
           {isLoadingFile ? (
             <div className="flex items-center justify-center h-32">
               <p className="text-foreground">Loading file content...</p>

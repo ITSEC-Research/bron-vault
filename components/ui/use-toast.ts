@@ -18,6 +18,7 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
+// Used for type inference only
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
   UPDATE_TOAST: "UPDATE_TOAST",
@@ -33,6 +34,7 @@ function genId() {
 }
 
 type ActionType = typeof actionTypes
+void actionTypes // Suppress unused variable warning
 
 type Action =
   | {

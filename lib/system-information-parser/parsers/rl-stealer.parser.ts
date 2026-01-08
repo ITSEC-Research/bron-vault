@@ -1,7 +1,7 @@
 // RL Stealer parser
 
 import { ParsedLogData } from '../types';
-import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCode, normalizeLine, isSeparatorLine, extractSectionFromSeparator } from '../helpers';
+import { extractValue, cleanValue, extractIP, extractUsername, normalizeLine, isSeparatorLine } from '../helpers';
 
 /**
  * Parse RL Stealer log
@@ -11,7 +11,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *     PC user : EC2AMAZ-75HN4R3/Administrator
  *     IP Geolocation : 127.0.0.1 [India]
  */
-export function parseRLStealer(content: string, fileName: string): ParsedLogData {
+export function parseRLStealer(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'RL Stealer',

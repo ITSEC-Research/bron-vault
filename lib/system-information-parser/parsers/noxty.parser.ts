@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         Operating System: Microsoft Windows 10 Pro   10.0.17134
  *         CPU: Intel   Celeron® G6900, Intel Celeron G6900   2.59 GHz
  */
-export function parseNoxty(content: string, fileName: string): ParsedLogData {
+export function parseNoxty(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Noxty',

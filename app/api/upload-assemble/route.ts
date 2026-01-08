@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
         }
         setTimeout(() => closeLogSession(sessionId), 1000)
       }
-    } catch (broadcastError) {
+    } catch (_broadcastError) {
       // Ignore broadcast errors
     }
     

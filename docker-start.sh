@@ -36,16 +36,10 @@ fi
 echo -e "${CYAN}🚀 Starting Bron Vault Services...${NC}"
 echo ""
 
-# Check if containers already exist
-if docker-compose ps -q | grep -q .; then
-    # Containers exist, just start them (no build needed)
-    echo -e "${BLUE}ℹ️  Containers already exist, starting without rebuild...${NC}"
-    docker-compose up -d
-else
-    # First time setup, need to build
-    echo -e "${BLUE}ℹ️  First time setup, building images...${NC}"
-    docker-compose up -d --build
-fi
+# Always use --build but Docker will use cache for unchanged layers
+# This ensures code updates are picked up while staying fast due to caching
+echo -e "${BLUE}ℹ️  Building and starting services (using cache for unchanged layers)...${NC}"
+docker-compose up -d --build
 
 echo ""
 echo -e "${GREEN}✅ All services started!${NC}"

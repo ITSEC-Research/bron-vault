@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         Traffic Name: 001FT-35
  *         HWID: [redacted]
  */
-export function parseRhadamanthys(content: string, fileName: string): ParsedLogData {
+export function parseRhadamanthys(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'Rhadamanthys',

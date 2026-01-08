@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { LoadingState } from "@/components/ui/loading"
 
 interface Credential {
   browser: string | null
@@ -81,7 +82,7 @@ const HoverableCell = ({
 
 // URL Cell with copy functionality
 const UrlCell = ({ url }: { url: string }) => {
-  const displayContent = url.length > 50 ? `${url.substring(0, 50)}...` : url
+  const _displayContent = url.length > 50 ? `${url.substring(0, 50)}...` : url
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -233,7 +234,7 @@ export function DeviceCredentialsTable({ deviceId }: DeviceCredentialsTableProps
   if (isLoadingCredentials) {
     return (
       <div className="flex items-center justify-center h-32">
-        <p className="text-xs text-foreground">Loading credentials...</p>
+        <LoadingState type="data" message="Loading credentials..." size="sm" />
       </div>
     )
   }
@@ -364,7 +365,7 @@ export function DeviceCredentialsTable({ deviceId }: DeviceCredentialsTableProps
 
       {filteredCredentials.length === 0 && credentialsSearchQuery && (
         <div className="text-center py-8 text-muted-foreground">
-          <p>No credentials found matching "{credentialsSearchQuery}"</p>
+          <p>No credentials found matching &quot;{credentialsSearchQuery}&quot;</p>
           <Button
             variant="ghost"
             size="sm"

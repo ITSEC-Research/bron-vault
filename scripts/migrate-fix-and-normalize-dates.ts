@@ -395,7 +395,7 @@ async function normalizeAllDates() {
               console.log(`   ... and ${longDates - 5} more records`);
             }
           }
-        } catch (sampleError) {
+        } catch (_sampleError) {
           // Ignore error when showing samples
         }
       }

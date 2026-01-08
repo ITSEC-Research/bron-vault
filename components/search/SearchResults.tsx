@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from "react"
 import { Copy, CloudUpload, CalendarClock, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LoadingState, LoadingTable } from "@/components/ui/loading"
+import { LoadingState } from "@/components/ui/loading"
 
 interface SearchResult {
   deviceId: string
@@ -48,7 +48,7 @@ export function SearchResults({
       if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateString)) {
         isoString = dateString.replace(' ', 'T') + 'Z' // treat as UTC
       }
-      let date = new Date(isoString)
+      const date = new Date(isoString)
       if (isNaN(date.getTime())) {
         // fallback: parse manually
         const parts = dateString.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/)
@@ -65,7 +65,7 @@ export function SearchResults({
       const minutes = String(date.getMinutes()).padStart(2, '0')
       const seconds = String(date.getSeconds()).padStart(2, '0')
       return `${month}/${day}/${year} ${hours}:${minutes}:${seconds}`
-    } catch (e) {
+    } catch (_e) {
       return dateString
     }
   }
@@ -167,7 +167,7 @@ export function SearchResults({
       
       // Fallback: return original if we can't parse it
       return logDate
-    } catch (e) {
+    } catch (_e) {
       return logDate
     }
   }
@@ -235,7 +235,7 @@ export function SearchResults({
       {/* Header - only show count if we have results or finished loading */}
       {(!isLoading && (searchResults.length > 0 || totalDevices > 0)) && (
         <h2 className="text-lg font-semibold text-foreground">
-          Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
+          Found {displayCount.toLocaleString()} device instance(s) containing &quot;{searchQuery}&quot;
           {searchResults.length < displayCount && (
             <span className="text-sm text-muted-foreground font-normal ml-2">
               (showing {searchResults.length.toLocaleString()})
@@ -246,25 +246,25 @@ export function SearchResults({
       
       {/* Loading indicator */}
       {isLoading && searchResults.length === 0 && (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          <h2 className="text-lg font-semibold text-foreground">
-            Searching for devices containing "{searchQuery}"...
-          </h2>
+        <div className="flex flex-col items-center justify-center py-12">
+          <LoadingState type="search" message={`Searching for devices containing "${searchQuery}"...`} size="md" />
         </div>
       )}
       
       {/* Show existing results while loading more */}
       {isLoading && searchResults.length > 0 && (
         <h2 className="text-lg font-semibold text-foreground">
-          Found {displayCount.toLocaleString()} device instance(s) containing "{searchQuery}"
+          Found {displayCount.toLocaleString()} device instance(s) containing &quot;{searchQuery}&quot;
           {searchResults.length < displayCount && (
             <span className="text-sm text-muted-foreground font-normal ml-2">
               (showing {searchResults.length.toLocaleString()})
             </span>
           )}
           <span className="text-sm text-muted-foreground font-normal ml-2">
-            <Loader2 className="h-4 w-4 inline animate-spin mr-1" />
+            <span className="inline-flex items-center justify-center h-4 w-4 mr-1 relative align-middle">
+              <span className="absolute inset-0 border-2 border-primary/20 border-t-primary/60 rounded-full animate-spin" />
+              <Loader2 className="h-2.5 w-2.5 text-primary" />
+            </span>
             Loading more...
           </span>
         </h2>
@@ -280,7 +280,7 @@ export function SearchResults({
                   className="glass border-primary/30 text-primary"
                 >
                   <Copy className="h-3 w-3 mr-1" />
-                  {devices.length} instances of "{deviceName}"
+                  {devices.length} instances of &quot;{deviceName}&quot;
                 </Badge>
               </div>
             )}
@@ -375,7 +375,10 @@ export function SearchResults({
         <div ref={loadMoreRef} className="h-20 flex items-center justify-center">
           {isLoading && (
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="relative flex items-center justify-center h-5 w-5">
+                <span className="absolute inset-0 border-2 border-primary/20 border-t-primary/60 rounded-full animate-spin" />
+                <Loader2 className="h-3 w-3 text-primary" />
+              </span>
               <span className="text-sm">Loading more devices...</span>
             </div>
           )}

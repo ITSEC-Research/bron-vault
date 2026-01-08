@@ -4,13 +4,12 @@ export const dynamic = "force-dynamic";
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor, X, ShieldAlert } from "lucide-react"
-import { uploadFileInChunks, assembleAndProcessFile, calculateChunkSize } from "@/lib/upload/chunk-uploader"
+import { uploadFileInChunks, assembleAndProcessFile } from "@/lib/upload/chunk-uploader"
 import { formatBytes } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { useAuth, isAdmin } from "@/hooks/useAuth"
@@ -56,12 +55,34 @@ export default function UploadPage() {
 
   // Add new state:
   const [logs, setLogs] = useState<LogEntry[]>([])
-  const [logSessionId, setLogSessionId] = useState<string>("")
+  const [_logSessionId, setLogSessionId] = useState<string>("")
   // Ref untuk auto scroll log (pada ScrollArea)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   
   // AbortController for cancelling uploads
   const abortControllerRef = useRef<AbortController | null>(null)
+  
+  // Stream data preference from database
+  const [streamEnabled, setStreamEnabled] = useState(true)
+  
+  // Load stream preference from database on mount
+  useEffect(() => {
+    async function loadStreamPreference() {
+      try {
+        const response = await fetch("/api/user/preferences")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.preferences) {
+            setStreamEnabled(data.preferences.stream_enabled ?? true)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load stream preference:", error)
+        // Default to enabled on error
+      }
+    }
+    loadStreamPreference()
+  }, [])
   
   // Upload settings state
   const [uploadSettings, setUploadSettings] = useState<{
@@ -472,7 +493,7 @@ export default function UploadPage() {
                 <div>
                   <CardTitle className="text-foreground">Access Denied</CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    You don't have permission to upload data
+                    You don&apos;t have permission to upload data
                   </CardDescription>
                 </div>
               </div>
@@ -589,8 +610,8 @@ export default function UploadPage() {
                     <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
                   </div>
                   <Progress value={uploadStatus.progress} className="w-full" />
-                  {/* Realtime Logs Window */}
-                  {(logs.length > 0) &&
+                  {/* Realtime Logs Window - Only show if stream is enabled */}
+                  {streamEnabled && (logs.length > 0) &&
                     <Card className="glass-card border-border/50">
                       <CardHeader>
                         <CardTitle className="flex items-center text-foreground">

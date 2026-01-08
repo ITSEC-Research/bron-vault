@@ -1,7 +1,7 @@
 // StealC parser
 
 import { ParsedLogData } from '../types';
-import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCode, normalizeLine, isSeparatorLine, extractSectionFromSeparator } from '../helpers';
+import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCode, normalizeLine, isSeparatorLine } from '../helpers';
 
 /**
  * Parse StealC log
@@ -12,7 +12,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *     System Summary:
  *       - HWID: G5NGOT9X695ZPKPW0RQSPS
  */
-export function parseStealC(content: string, fileName: string): ParsedLogData {
+export function parseStealC(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'StealC',

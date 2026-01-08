@@ -49,9 +49,10 @@ export async function POST(request: NextRequest) {
     if (type === "email") {
       // Email search: Keep existing logic but add pagination
       // ClickHouse: Use ilike for case-insensitive search
-      const pageNum = Number.parseInt(String(page)) || 1
-      const limitNum = Number.parseInt(String(limit)) || 50
-      const offset = (pageNum - 1) * limitNum
+      // SECURITY: Validate and sanitize pagination parameters
+      const pageNum = Math.max(1, Math.floor(Number(page)) || 1)
+      const limitNum = Math.min(1000, Math.max(1, Math.floor(Number(limit)) || 50))
+      const offset = Math.max(0, (pageNum - 1) * limitNum)
       
       const searchPattern = `%${query}%`
       
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
       const total = totalCountResult[0]?.total || 0
       
       // Get devices with pagination (ClickHouse)
-      // limitNum and offset are already validated as safe integers
+      // SECURITY: Use parameterized LIMIT/OFFSET
       const devicesResult = await executeClickHouseQuery(
         `
         SELECT DISTINCT d.device_id, d.device_name, d.upload_batch, d.upload_date
@@ -78,37 +79,58 @@ export async function POST(request: NextRequest) {
         INNER JOIN credentials c ON d.device_id = c.device_id
         WHERE c.username ilike {searchPattern:String}
         ORDER BY d.upload_date DESC, d.device_name
-        LIMIT ${limitNum} OFFSET ${offset}
+        LIMIT {limitNum:UInt32} OFFSET {offset:UInt32}
         `,
-        { searchPattern },
+        { searchPattern, limitNum, offset },
       ) as any[]
       
-      // Get file count and system info for each device (ClickHouse)
-      const devices = []
-      for (const row of devicesResult) {
-        const fileCount = await executeClickHouseQuery(
-          `SELECT count() as total FROM files WHERE device_id = {deviceId:String}`,
-          { deviceId: row.device_id },
-        ) as any[]
-        
-        const systemInfo = await executeClickHouseQuery(
-          `SELECT log_date FROM systeminformation WHERE device_id = {deviceId:String} LIMIT 1`,
-          { deviceId: row.device_id },
-        ) as any[]
-        
-        devices.push({
-          deviceId: row.device_id,
-          deviceName: row.device_name,
-          uploadBatch: row.upload_batch,
-          uploadDate: row.upload_date,
-          matchingFiles: [],
-          matchedContent: [],
-          files: [],
-          totalFiles: fileCount[0]?.total || 0,
-          credentials: [],
-          logDate: systemInfo[0]?.log_date || undefined,
-        })
+      // OPTIMIZED: Get file count and system info in batch queries instead of N+1
+      // Extract all device IDs for batch query
+      const deviceIds = devicesResult.map(r => r.device_id)
+      
+      // Batch query for file counts
+      const fileCountsResult = deviceIds.length > 0 ? await executeClickHouseQuery(
+        `SELECT device_id, count() as total 
+         FROM files 
+         WHERE device_id IN ({deviceIds:Array(String)})
+         GROUP BY device_id`,
+        { deviceIds },
+      ) as any[] : []
+      
+      // Batch query for system info
+      const systemInfoResult = deviceIds.length > 0 ? await executeClickHouseQuery(
+        `SELECT device_id, log_date 
+         FROM systeminformation 
+         WHERE device_id IN ({deviceIds:Array(String)})`,
+        { deviceIds },
+      ) as any[] : []
+      
+      // Create lookup maps for O(1) access
+      const fileCountMap = new Map<string, number>()
+      for (const row of fileCountsResult) {
+        fileCountMap.set(row.device_id, Number(row.total) || 0)
       }
+      
+      const systemInfoMap = new Map<string, string>()
+      for (const row of systemInfoResult) {
+        if (!systemInfoMap.has(row.device_id)) {
+          systemInfoMap.set(row.device_id, row.log_date)
+        }
+      }
+      
+      // Build response using lookup maps
+      const devices = devicesResult.map((row: any) => ({
+        deviceId: row.device_id,
+        deviceName: row.device_name,
+        uploadBatch: row.upload_batch,
+        uploadDate: row.upload_date,
+        matchingFiles: [],
+        matchedContent: [],
+        files: [],
+        totalFiles: fileCountMap.get(row.device_id) || 0,
+        credentials: [],
+        logDate: systemInfoMap.get(row.device_id) || undefined,
+      }))
       
       return NextResponse.json({
         devices,
@@ -151,7 +173,7 @@ export async function POST(request: NextRequest) {
       // Get devices with pagination (ClickHouse)
       // ClickHouse doesn't support EXISTS with correlated subqueries like MySQL
       // Use IN subquery instead (more efficient than JOIN for this case)
-      // limitNum and offset are already validated as safe integers
+      // SECURITY: Use parameterized LIMIT/OFFSET
       const devicesResult = await executeClickHouseQuery(
         `SELECT DISTINCT d.device_id, d.device_name, d.upload_batch, d.upload_date
          FROM devices d
@@ -161,52 +183,58 @@ export async function POST(request: NextRequest) {
            WHERE ${whereClause}
          )
          ORDER BY d.upload_date DESC, d.device_name
-         LIMIT ${limitNum} OFFSET ${offset}`,
-        params,
+         LIMIT {limitNum:UInt32} OFFSET {offset:UInt32}`,
+        { ...params, limitNum, offset },
       ) as any[]
       
       console.log(`📊 Found ${devicesResult.length} devices (page ${pageNum}, total: ${total})`)
       
-      // Get file count, matching files, and system info for each device (ClickHouse)
-      const devices = []
-      for (const row of devicesResult) {
-        // Get file count
-        const fileCount = await executeClickHouseQuery(
-          `SELECT count() as total FROM files WHERE device_id = {deviceId:String}`,
-          { deviceId: row.device_id },
-        ) as any[]
-        
-        // Get matching file paths (files that contain matching credentials)
-        // Merge params: device_id + whereClause params
-        const matchingFilesParams = { ...params, deviceId: row.device_id }
-        const matchingFilesResult = await executeClickHouseQuery(
-          `SELECT DISTINCT file_path
-           FROM credentials
-           WHERE device_id = {deviceId:String} AND ${whereClause} AND file_path IS NOT NULL`,
-          matchingFilesParams,
-        ) as any[]
-        
-        const matchingFiles = matchingFilesResult.map((f: any) => f.file_path).filter(Boolean)
-        
-        // Get system info
-        const systemInfo = await executeClickHouseQuery(
-          `SELECT log_date FROM systeminformation WHERE device_id = {deviceId:String} LIMIT 1`,
-          { deviceId: row.device_id },
-        ) as any[]
-        
-        devices.push({
-          deviceId: row.device_id,
-          deviceName: row.device_name,
-          uploadBatch: row.upload_batch,
-          uploadDate: row.upload_date,
-          matchingFiles,
-          matchedContent: [], // Will be populated when device is clicked (lazy loading)
-          files: [],
-          totalFiles: fileCount[0]?.total || 0,
-          credentials: [], // Will be loaded when device is clicked (lazy loading)
-          logDate: systemInfo[0]?.log_date || undefined,
-        })
+      // OPTIMIZED: Batch queries to avoid N+1 pattern
+      const deviceIds = devicesResult.map((r: any) => r.device_id)
+      
+      // Batch query: Get file counts for all devices at once
+      const fileCountsResult = deviceIds.length > 0 ? await executeClickHouseQuery(
+        `SELECT device_id, count() as total FROM files WHERE device_id IN ({deviceIds:Array(String)}) GROUP BY device_id`,
+        { deviceIds },
+      ) as any[] : []
+      const fileCountsMap = new Map(fileCountsResult.map((r: any) => [r.device_id, r.total]))
+      
+      // Batch query: Get matching files for all devices at once
+      const matchingFilesResult = deviceIds.length > 0 ? await executeClickHouseQuery(
+        `SELECT device_id, file_path
+         FROM credentials
+         WHERE device_id IN ({deviceIds:Array(String)}) AND ${whereClause} AND file_path IS NOT NULL`,
+        { ...params, deviceIds },
+      ) as any[] : []
+      const matchingFilesMap = new Map<string, string[]>()
+      for (const row of matchingFilesResult) {
+        const files = matchingFilesMap.get(row.device_id) || []
+        if (row.file_path && !files.includes(row.file_path)) {
+          files.push(row.file_path)
+        }
+        matchingFilesMap.set(row.device_id, files)
       }
+      
+      // Batch query: Get system info for all devices at once
+      const systemInfoResult = deviceIds.length > 0 ? await executeClickHouseQuery(
+        `SELECT device_id, log_date FROM systeminformation WHERE device_id IN ({deviceIds:Array(String)})`,
+        { deviceIds },
+      ) as any[] : []
+      const systemInfoMap = new Map(systemInfoResult.map((r: any) => [r.device_id, r.log_date]))
+      
+      // Build devices array using Maps for O(1) lookups
+      const devices = devicesResult.map((row: any) => ({
+        deviceId: row.device_id,
+        deviceName: row.device_name,
+        uploadBatch: row.upload_batch,
+        uploadDate: row.upload_date,
+        matchingFiles: matchingFilesMap.get(row.device_id) || [],
+        matchedContent: [], // Will be populated when device is clicked (lazy loading)
+        files: [],
+        totalFiles: fileCountsMap.get(row.device_id) || 0,
+        credentials: [], // Will be loaded when device is clicked (lazy loading)
+        logDate: systemInfoMap.get(row.device_id) || undefined,
+      }))
       
       return NextResponse.json({
         devices,

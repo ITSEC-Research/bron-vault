@@ -194,7 +194,7 @@ export function parseUrl(url: string): ParsedUrl {
       : hostname
     
     // Get full domain (could be subdomain.domain.tld)
-    const domain = hostname
+    const _domain = hostname
     
     // Extract subdomain
     const subdomain = extractSubdomain(hostname, baseDomain)

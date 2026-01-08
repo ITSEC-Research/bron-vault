@@ -1,6 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import AppHeader from "@/components/app-header";
 
@@ -19,8 +19,8 @@ export default function ClientLayoutWithSidebar({ children }: { children: React.
   else if (pathname === "/upload") title = "broń Vault - Upload";
   else if (pathname === "/debug-zip") title = "broń Vault - Debug ZIP";
 
-  // Don't render sidebar/header if on login page
-  if (pathname === "/login") {
+  // Don't render sidebar/header if on login or db-sync page
+  if (pathname === "/login" || pathname === "/db-sync") {
     return (
       <main className="flex-1 bg-background">{children}</main>
     );

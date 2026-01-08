@@ -2,7 +2,6 @@ import { writeFile, mkdir } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
 import { executeQuery } from "@/lib/mysql"
-import crypto from "crypto"
 import { processSoftwareFiles } from "@/lib/software-parser"
 import { processSystemInformationFiles } from "@/lib/system-information-parser"
 import {

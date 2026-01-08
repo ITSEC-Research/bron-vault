@@ -8,7 +8,7 @@ import { extractValue, combineOS, cleanValue, extractIP, extractUsername, normal
  * Format: OS Name: Microsoft Windows 10 Pro
  *         OS Version: 10.0.19044 N/A Build 19044
  */
-export function parseExelaStealer(content: string, fileName: string): ParsedLogData {
+export function parseExelaStealer(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'ExelaStealer',

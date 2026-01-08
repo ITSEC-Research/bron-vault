@@ -9,7 +9,7 @@ import { extractValue, cleanValue, extractIP, extractUsername, extractCountryCod
  *         User Name: John
  *         Windows: Windows Server 2022 Datacenter 64 Bit
  */
-export function parseDarkCrystalRAT(content: string, fileName: string): ParsedLogData {
+export function parseDarkCrystalRAT(content: string, _fileName: string): ParsedLogData {
   const lines = content.split(/\r?\n/);
   const result: ParsedLogData = {
     stealerType: 'DarkCrystal RAT',
