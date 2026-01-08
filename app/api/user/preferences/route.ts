@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { validateRequest } from "@/lib/auth"
+import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { executeQuery } from "@/lib/mysql"
 
 // Define the user preferences interface
@@ -26,6 +26,12 @@ export async function GET(request: NextRequest) {
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Check admin role - preferences are admin-only
+  const roleError = requireAdminRole(user)
+  if (roleError) {
+    return roleError
   }
 
   try {
@@ -82,6 +88,12 @@ export async function POST(request: NextRequest) {
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Check admin role - preferences are admin-only
+  const roleError = requireAdminRole(user)
+  if (roleError) {
+    return roleError
   }
 
   try {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, isAdmin } from "@/hooks/useAuth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,8 @@ import {
 } from "lucide-react";
 
 export default function UserSettingsPage() {
-  const { loading: authLoading } = useAuth(true);
+  const { user, loading: authLoading } = useAuth(true);
+  const isUserAdmin = isAdmin(user);
 
   if (authLoading) {
     return (
@@ -59,7 +60,7 @@ export default function UserSettingsPage() {
         </div>
 
         <Tabs defaultValue="password" className="w-full">
-          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-3 glass-card h-8">
+          <TabsList className={`items-center justify-center rounded-md p-1 text-muted-foreground grid w-full ${isUserAdmin ? 'grid-cols-3' : 'grid-cols-2'} glass-card h-8`}>
             <TabsTrigger
               value="password"
               className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
@@ -74,13 +75,15 @@ export default function UserSettingsPage() {
               <Shield className="h-3 w-3 mr-1" />
               Two-Factor Auth
             </TabsTrigger>
-            <TabsTrigger
-              value="preferences"
-              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
-            >
-              <Settings className="h-3 w-3 mr-1" />
-              Preferences
-            </TabsTrigger>
+            {isUserAdmin && (
+              <TabsTrigger
+                value="preferences"
+                className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                Preferences
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="password" className="mt-4">
@@ -91,9 +94,11 @@ export default function UserSettingsPage() {
             <TwoFactorTab />
           </TabsContent>
 
-          <TabsContent value="preferences" className="mt-4">
-            <PreferencesTab />
-          </TabsContent>
+          {isUserAdmin && (
+            <TabsContent value="preferences" className="mt-4">
+              <PreferencesTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </main>
