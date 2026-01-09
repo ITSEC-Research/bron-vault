@@ -122,6 +122,7 @@ export const client = new Proxy({} as ClickHouseClient, {
  * 
  * @param query SQL query with named parameters: {paramName:Type}
  * @param params Object with parameter values: { paramName: value }
+ * @param signal Optional AbortSignal to cancel query (if driver supports it)
  * @returns Array of results (similar to MySQL format)
  * 
  * @example
@@ -134,19 +135,80 @@ export const client = new Proxy({} as ClickHouseClient, {
  */
 export async function executeQuery(
   query: string, 
-  params: Record<string, unknown> = {}
+  params: Record<string, unknown> = {},
+  signal?: AbortSignal
 ): Promise<any[]> {
+  // Check abort BEFORE any async operations to avoid overhead
+  if (signal?.aborted) {
+    const error = new Error("Query aborted by client")
+    error.name = "AbortError"
+    throw error
+  }
+
   try {
     const chClient = getClickHouseClient()
-    const resultSet = await chClient.query({
+    
+    // Build query options
+    const queryOptions: any = {
       query: query,
       format: 'JSONEachRow', // Important so output is Array of Objects similar to MySQL
       query_params: params,  // ClickHouse uses named parameters
-    })
+    }
+    
+    // Pass signal if provided and not already aborted
+    // Note: @clickhouse/client v1.x uses abort_signal (underscore) property
+    // Verified: @clickhouse/client v1.14.0 uses abort_signal
+    // 
+    // IMPORTANT: Only pass signal if not already aborted to avoid overhead
+    if (signal && !signal.aborted) {
+      // Use abort_signal (underscore) - correct property name for @clickhouse/client v1.x
+      queryOptions.abort_signal = signal
+    }
+    
+    // Check abort again before expensive query operation
+    if (signal?.aborted) {
+      const error = new Error("Query aborted by client")
+      error.name = "AbortError"
+      throw error
+    }
+    
+    const resultSet = await chClient.query(queryOptions)
+    
+    // Check if signal was aborted during query execution
+    if (signal?.aborted) {
+      const error = new Error("Query aborted by client")
+      error.name = "AbortError"
+      throw error
+    }
     
     const data = await resultSet.json()
-    return data as any[]
+    
+    // Final check before returning
+    if (signal?.aborted) {
+      const error = new Error("Query aborted by client")
+      error.name = "AbortError"
+      throw error
+    }
+    
+    return (data as unknown) as any[]
   } catch (error) {
+    // 🛑 KEY: Detect abort errors more aggressively
+    // Check name, code, and message to catch all variants of abort errors
+    const isAbort = 
+      error instanceof Error && (
+        error.name === 'AbortError' || 
+        (error as any).code === 'ECONNRESET' || 
+        error.message?.toLowerCase().includes('aborted') ||
+        error.message?.toLowerCase().includes('abort')
+      )
+
+    if (isAbort) {
+      // Re-throw without logging - this is normal behavior
+      // Abort request is valid user behavior, not a system error
+      throw error
+    }
+    
+    // Only log errors that are real server issues
     console.error("❌ ClickHouse query error:", error)
     console.error("❌ Error type:", typeof error)
     console.error("❌ Error message:", error instanceof Error ? error.message : String(error))

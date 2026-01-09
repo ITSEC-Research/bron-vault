@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, isAdmin } from "@/hooks/useAuth";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,34 @@ import {
 export default function UserSettingsPage() {
   const { user, loading: authLoading } = useAuth(true);
   const isUserAdmin = isAdmin(user);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // Get initial tab from URL query parameter
+  const initialTab = searchParams.get("tab") || "password";
+  // Validate tab value - only allow valid tabs
+  const validTabs = ["password", "2fa", "preferences"];
+  const defaultTab = validTabs.includes(initialTab) ? initialTab : "password";
+  
+  // Use state to control the active tab
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  
+  // Update active tab when URL query parameter changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab") || "password";
+    if (validTabs.includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
+  
+  // Handle tab change - update both state and URL
+  const handleTabChange = (value: string) => {
+    if (validTabs.includes(value)) {
+      setActiveTab(value);
+      // Update URL with query parameter without page reload
+      router.push(`/user-settings?tab=${value}`, { scroll: false });
+    }
+  };
 
   if (authLoading) {
     return (
@@ -59,7 +88,7 @@ export default function UserSettingsPage() {
           <p className="text-muted-foreground mt-2">Manage your account security settings</p>
         </div>
 
-        <Tabs defaultValue="password" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className={`items-center justify-center rounded-md p-1 text-muted-foreground grid w-full ${isUserAdmin ? 'grid-cols-3' : 'grid-cols-2'} glass-card h-8`}>
             <TabsTrigger
               value="password"
@@ -673,9 +702,9 @@ function TwoFactorTab() {
         ) : (
           /* 2FA not enabled */
           <div className="space-y-4">
-            <Alert className="bg-muted/50 border-muted">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
+            <Alert className="bg-yellow-500/15 border-2 border-yellow-500/50">
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              <AlertDescription className="text-sm text-foreground font-medium leading-relaxed">
                 Two-factor authentication is not enabled. We recommend enabling it for better security.
               </AlertDescription>
             </Alert>
@@ -814,10 +843,10 @@ function PreferencesTab() {
             </div>
 
             {/* Info Box */}
-            <Alert className="bg-blue-500/5 border-blue-500/20">
+            <Alert className="bg-blue-500/10 border-2 border-blue-500/50">
               <AlertTriangle className="h-4 w-4 text-blue-500" />
-              <AlertDescription className="text-xs text-muted-foreground">
-                <strong className="text-foreground">Note:</strong> Stream data shows real-time progress such as credentials found, 
+              <AlertDescription className="text-sm text-foreground font-medium leading-relaxed">
+                <strong>Note:</strong> Stream data shows real-time progress such as credentials found, 
                 file parsing status, and system information extraction. Disabling this will still process all data, 
                 but the live progress display will be hidden.
               </AlertDescription>

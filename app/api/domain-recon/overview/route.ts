@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
+import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
 
 /**
  * Build WHERE clause for domain matching (ClickHouse version)
@@ -56,18 +57,27 @@ function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-ur
 }
 
 export async function POST(request: NextRequest) {
+  // ✅ Check abort VERY EARLY - before validateRequest
+  throwIfAborted(request)
+  
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
 
   try {
+    // Check if request was aborted early
+    throwIfAborted(request)
+    
     const body = await request.json()
     const { targetDomain, timelineGranularity, searchType = 'domain', type } = body
 
     if (!targetDomain || typeof targetDomain !== 'string') {
       return NextResponse.json({ error: "targetDomain is required" }, { status: 400 })
     }
+
+    // Get signal for passing to database queries
+    const signal = getRequestSignal(request)
 
     let whereClause = ''
     let params: Record<string, string> = {}
@@ -97,17 +107,28 @@ export async function POST(request: NextRequest) {
     // ============================================
     
     if (type === 'stats') {
+      // Check abort before expensive operations
+      throwIfAborted(request)
+      
       // Fast data: Subdomains + Paths only
       const [topSubdomains, topPaths] = await Promise.all([
-        getTopSubdomains(whereClause, params, 10, searchType, body.keywordMode || 'full-url', targetDomain).catch((e) => { 
-          console.error("❌ Subdomains Error:", e)
+        getTopSubdomains(whereClause, params, 10, searchType, body.keywordMode || 'full-url', targetDomain, signal).catch((e) => { 
+          // Don't log AbortError as error
+          if (e instanceof Error && e.name !== 'AbortError') {
+            console.error("❌ Subdomains Error:", e)
+          }
           return []
         }),
-        getTopPaths(whereClause, params, 10).catch((e) => { 
-          console.error("❌ Paths Error:", e)
+        getTopPaths(whereClause, params, 10, signal).catch((e) => { 
+          if (e instanceof Error && e.name !== 'AbortError') {
+            console.error("❌ Paths Error:", e)
+          }
           return []
         }),
       ])
+      
+      // Check abort after operations
+      throwIfAborted(request)
 
       console.log("✅ Stats data retrieved:", {
         topSubdomainsCount: topSubdomains?.length || 0,
@@ -124,11 +145,19 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'timeline') {
+      // Check abort before expensive operations
+      throwIfAborted(request)
+      
       // Slow data: Timeline only
-      const timelineData = await getTimelineData(whereClause, params, timelineGranularity || 'auto').catch((e) => { 
-        console.error("❌ Timeline Error:", e)
+      const timelineData = await getTimelineData(whereClause, params, timelineGranularity || 'auto', signal).catch((e) => { 
+        if (e instanceof Error && e.name !== 'AbortError') {
+          console.error("❌ Timeline Error:", e)
+        }
         return []
       })
+      
+      // Check abort after operations
+      throwIfAborted(request)
 
       console.log("✅ Timeline data retrieved:", {
         timelineCount: timelineData?.length || 0,
@@ -144,20 +173,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Default: Return all data (backward compatible)
+    // Check abort before expensive operations
+    throwIfAborted(request)
+    
     const [timelineData, topSubdomains, topPaths] = await Promise.all([
-      getTimelineData(whereClause, params, timelineGranularity || 'auto').catch((e) => { 
-        console.error("❌ Timeline Error:", e)
+      getTimelineData(whereClause, params, timelineGranularity || 'auto', signal).catch((e) => { 
+        if (e instanceof Error && e.name !== 'AbortError') {
+          console.error("❌ Timeline Error:", e)
+        }
         return []
       }),
-      getTopSubdomains(whereClause, params, 10, searchType, body.keywordMode || 'full-url', targetDomain).catch((e) => { 
-        console.error("❌ Subdomains Error:", e)
+      getTopSubdomains(whereClause, params, 10, searchType, body.keywordMode || 'full-url', targetDomain, signal).catch((e) => { 
+        if (e instanceof Error && e.name !== 'AbortError') {
+          console.error("❌ Subdomains Error:", e)
+        }
         return []
       }),
-      getTopPaths(whereClause, params, 10).catch((e) => { 
-        console.error("❌ Paths Error:", e)
+      getTopPaths(whereClause, params, 10, signal).catch((e) => { 
+        if (e instanceof Error && e.name !== 'AbortError') {
+          console.error("❌ Paths Error:", e)
+        }
         return []
       }),
     ])
+    
+    // Check abort after operations
+    throwIfAborted(request)
 
     console.log("✅ Overview data retrieved:", {
       timelineCount: timelineData?.length || 0,
@@ -176,12 +217,19 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
+    // Handle abort errors gracefully
+    const abortResponse = handleAbortError(error)
+    if (abortResponse) {
+      return abortResponse
+    }
+    
+    // Handle other errors
     console.error("❌ Error in overview API:", error)
     return NextResponse.json({ error: "Failed to get overview data" }, { status: 500 })
   }
 }
 
-async function getTimelineData(whereClause: string, params: Record<string, string>, granularity: string) {
+async function getTimelineData(whereClause: string, params: Record<string, string>, granularity: string, signal?: AbortSignal) {
   // OPTIMIZED DATE PARSING STRATEGY (POST-NORMALIZATION)
   // After normalization, log_date is already in standard YYYY-MM-DD format
   // Query becomes very simple and fast - directly toDate() without complex parsing
@@ -209,7 +257,8 @@ async function getTimelineData(whereClause: string, params: Record<string, strin
     LEFT JOIN devices d ON c.device_id = d.device_id
     LEFT JOIN systeminformation si ON d.device_id = si.device_id
     ${whereClause}`,
-    params
+    params,
+    signal
   )) as any[]
 
   const range = dateRangeResult[0]
@@ -254,7 +303,7 @@ async function getTimelineData(whereClause: string, params: Record<string, strin
   }
 
   console.log("📅 Executing timeline query with granularity:", actualGranularity)
-  const result = (await executeClickHouseQuery(query, params)) as any[]
+  const result = (await executeClickHouseQuery(query, params, signal)) as any[]
 
   console.log("📊 Timeline query result:", result.length, "entries")
 
@@ -270,7 +319,8 @@ async function getTopSubdomains(
   limit: number,
   searchType: string,
   keywordMode: string,
-  keyword: string
+  keyword: string,
+  signal?: AbortSignal
 ) {
   // SECURITY: Validate limit parameter
   const safeLimit = Math.min(1000, Math.max(1, Math.floor(Number(limit)) || 10))
@@ -296,7 +346,7 @@ async function getTopSubdomains(
     FROM credentials c ${whereClause} GROUP BY full_hostname ORDER BY credential_count DESC LIMIT {queryLimit:UInt32}`
   }
   
-  const result = (await executeClickHouseQuery(query, queryParams)) as any[]
+  const result = (await executeClickHouseQuery(query, queryParams, signal)) as any[]
 
   // IMPORTANT: Cast count() to Number (ClickHouse returns String)
   return result.map((row: any) => ({
@@ -305,7 +355,7 @@ async function getTopSubdomains(
   }))
 }
 
-async function getTopPaths(whereClause: string, params: Record<string, string>, limit: number) {
+async function getTopPaths(whereClause: string, params: Record<string, string>, limit: number, signal?: AbortSignal) {
   // SECURITY: Validate limit parameter
   const safeLimit = Math.min(1000, Math.max(1, Math.floor(Number(limit)) || 10))
   
@@ -320,7 +370,8 @@ async function getTopPaths(whereClause: string, params: Record<string, string>, 
     GROUP BY path
     ORDER BY credential_count DESC
     LIMIT {queryLimit:UInt32}`,
-    { ...params, queryLimit: safeLimit }
+    { ...params, queryLimit: safeLimit },
+    signal
   )) as any[]
 
   // IMPORTANT: Cast count() to Number (ClickHouse returns String)

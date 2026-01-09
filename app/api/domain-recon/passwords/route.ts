@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
+import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
 
 /**
  * Build WHERE clause for domain matching that supports subdomains (ClickHouse version)
@@ -58,18 +59,27 @@ function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-ur
 }
 
 export async function POST(request: NextRequest) {
+  // ✅ Check abort VERY EARLY - before validateRequest
+  throwIfAborted(request)
+  
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
 
   try {
+    // Check if request was aborted early
+    throwIfAborted(request)
+    
     const body = await request.json()
     const { targetDomain, searchType = 'domain', keywordMode } = body
 
     if (!targetDomain || typeof targetDomain !== 'string') {
       return NextResponse.json({ error: "targetDomain is required" }, { status: 400 })
     }
+
+    // Get signal for passing to database queries
+    const signal = getRequestSignal(request)
 
     let whereClause: string
     let params: Record<string, string>
@@ -92,6 +102,9 @@ export async function POST(request: NextRequest) {
       params = result.params
     }
 
+    // Check abort before expensive operations
+    throwIfAborted(request)
+
     console.log("🔑 Getting top passwords (optimized query)...")
     
     // OPTIMIZED QUERY (ClickHouse):
@@ -113,8 +126,12 @@ export async function POST(request: NextRequest) {
       GROUP BY c.password
       ORDER BY total_count DESC, c.password ASC
       LIMIT 10`,
-      params
+      params,
+      signal
     )) as any[]
+    
+    // Check abort after operations
+    throwIfAborted(request)
 
     console.log("🔑 Top passwords query result:", result.length, "items")
     
@@ -128,6 +145,13 @@ export async function POST(request: NextRequest) {
       topPasswords: topPasswords || [],
     })
   } catch (error) {
+    // Handle abort errors gracefully
+    const abortResponse = handleAbortError(error)
+    if (abortResponse) {
+      return abortResponse
+    }
+    
+    // Handle other errors
     console.error("❌ Error in passwords API:", error)
     return NextResponse.json(
       {
