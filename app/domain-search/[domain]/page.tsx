@@ -108,34 +108,54 @@ function DomainContent({
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    loadSummary()
-  }, [domain, searchType, keywordMode])
+    const abortController = new AbortController()
+    
+    const loadSummary = async () => {
+      setIsLoading(true)
+      try {
+        const body: any = { targetDomain: domain, searchType }
+        if (searchType === 'keyword' && keywordMode) {
+          body.keywordMode = keywordMode
+        }
+        const response = await fetch("/api/domain-recon/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: abortController.signal,
+        })
 
-  const loadSummary = async () => {
-    setIsLoading(true)
-    try {
-      const body: any = { targetDomain: domain, searchType }
-      if (searchType === 'keyword' && keywordMode) {
-        body.keywordMode = keywordMode
-      }
-      const response = await fetch("/api/domain-recon/summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
+        // Check if request was aborted before processing response
+        if (abortController.signal.aborted) {
+          return
+        }
 
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          setSummary(data.summary)
+        if (response.ok) {
+          const data = await response.json()
+          // Check again if request was aborted before setting state
+          if (!abortController.signal.aborted && data.success) {
+            setSummary(data.summary)
+          }
+        }
+      } catch (error: any) {
+        // Don't log AbortError as error - this is normal behavior
+        if (error.name !== 'AbortError') {
+          console.error("Error loading summary:", error)
+        }
+      } finally {
+        // Only update loading state if not aborted
+        if (!abortController.signal.aborted) {
+          setIsLoading(false)
         }
       }
-    } catch (error) {
-      console.error("Error loading summary:", error)
-    } finally {
-      setIsLoading(false)
     }
-  }
+    
+    loadSummary()
+    
+    // Cleanup: Cancel request if component unmounts or dependencies change
+    return () => {
+      abortController.abort()
+    }
+  }, [domain, searchType, keywordMode])
 
   return (
     <div className="space-y-4">

@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
+import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
 
 export async function POST(request: NextRequest) {
+  // ✅ Check abort VERY EARLY - before validateRequest
+  throwIfAborted(request)
+  
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
 
   try {
+    // Check if request was aborted early
+    throwIfAborted(request)
+    
     const body = await request.json()
     const { targetDomain, filters, pagination, searchQuery, searchType = 'domain' } = body
 
@@ -27,8 +34,17 @@ export async function POST(request: NextRequest) {
     }
     console.log("🚀 API Called (Optimized):", logData)
 
+    // Get signal for passing to database queries
+    const signal = getRequestSignal(request)
+
+    // Check abort before expensive operations
+    throwIfAborted(request)
+
     // Call the new data getter function
-    const credentialsData = await getCredentialsDataOptimized(cleanDomain, filters, pagination, searchQuery, searchType, body.keywordMode)
+    const credentialsData = await getCredentialsDataOptimized(cleanDomain, filters, pagination, searchQuery, searchType, body.keywordMode, signal)
+    
+    // Check abort after operations
+    throwIfAborted(request)
 
     return NextResponse.json({
       success: true,
@@ -39,6 +55,13 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
+    // Handle abort errors gracefully
+    const abortResponse = handleAbortError(error)
+    if (abortResponse) {
+      return abortResponse
+    }
+    
+    // Handle other errors
     console.error("❌ Error in credentials API:", error)
     return NextResponse.json(
       { error: "Failed to get credentials data", details: error instanceof Error ? error.message : "Unknown error" },
@@ -53,7 +76,8 @@ async function getCredentialsDataOptimized(
   pagination?: any,
   searchQuery?: string,
   searchType: 'domain' | 'keyword' = 'domain',
-  keywordMode: 'domain-only' | 'full-url' = 'full-url'
+  keywordMode: 'domain-only' | 'full-url' = 'full-url',
+  signal?: AbortSignal
 ) {
   // SECURITY: Validate and sanitize pagination parameters
   const page = Math.max(1, Math.floor(Number(pagination?.page)) || 1)
@@ -192,7 +216,7 @@ async function getCredentialsDataOptimized(
     `
   }
 
-  const countResult = (await executeClickHouseQuery(countQuery, params)) as any[]
+  const countResult = (await executeClickHouseQuery(countQuery, params, signal)) as any[]
   const total = countResult[0]?.total || 0
 
   // ==========================================
@@ -237,7 +261,7 @@ async function getCredentialsDataOptimized(
 
   console.log("📊 Data Query Executing with PREWHERE...")
 
-  const data = (await executeClickHouseQuery(dataQuery, params)) as any[]
+  const data = (await executeClickHouseQuery(dataQuery, params, signal)) as any[]
 
   return {
     data: data.map((row: any) => ({

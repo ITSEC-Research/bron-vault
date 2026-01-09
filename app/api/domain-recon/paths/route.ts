@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
+import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
 
 // ============================================
 // CLICKHOUSE EXPRESSIONS (CONSTANTS) - DRY Principle
@@ -42,12 +43,18 @@ const PATH_EXPR = `if(
 )`
 
 export async function POST(request: NextRequest) {
+  // ✅ Check abort VERY EARLY - before validateRequest
+  throwIfAborted(request)
+  
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
 
   try {
+    // Check if request was aborted early
+    throwIfAborted(request)
+    
     const body = await request.json()
     const { hostname, limit = 20 } = body
 
@@ -55,8 +62,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "hostname is required" }, { status: 400 })
     }
 
+    // Get signal for passing to database queries
+    const signal = getRequestSignal(request)
+
     // Validate limit
     const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100))
+
+    // Check abort before expensive operations
+    throwIfAborted(request)
 
     // Query paths for specific hostname
     const dataQuery = `
@@ -73,7 +86,7 @@ export async function POST(request: NextRequest) {
     const data = (await executeClickHouseQuery(dataQuery, { 
       hostname: hostname.trim(),
       queryLimit: safeLimit 
-    })) as any[]
+    }, signal)) as any[]
 
     // Get total paths count
     const countQuery = `
@@ -81,8 +94,11 @@ export async function POST(request: NextRequest) {
       FROM credentials c
       WHERE ${HOSTNAME_EXPR} = {hostname:String}
     `
-    const countResult = (await executeClickHouseQuery(countQuery, { hostname: hostname.trim() })) as any[]
+    const countResult = (await executeClickHouseQuery(countQuery, { hostname: hostname.trim() }, signal)) as any[]
     const totalPaths = Number(countResult[0]?.total || 0)
+    
+    // Check abort after operations
+    throwIfAborted(request)
 
     return NextResponse.json({
       success: true,
@@ -95,6 +111,13 @@ export async function POST(request: NextRequest) {
       hasMore: totalPaths > safeLimit,
     })
   } catch (error) {
+    // Handle abort errors gracefully
+    const abortResponse = handleAbortError(error)
+    if (abortResponse) {
+      return abortResponse
+    }
+    
+    // Handle other errors
     console.error("❌ Error in paths API:", error)
     return NextResponse.json(
       {

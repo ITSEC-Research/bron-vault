@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
+import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
 
 // ============================================
 // CLICKHOUSE EXPRESSIONS (CONSTANTS) - DRY Principle
@@ -110,12 +111,18 @@ function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-ur
 }
 
 export async function POST(request: NextRequest) {
+  // ✅ Check abort VERY EARLY - before validateRequest
+  throwIfAborted(request)
+  
   const user = await validateRequest(request)
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
 
   try {
+    // Check if request was aborted early
+    throwIfAborted(request)
+    
     const body = await request.json()
     const { targetDomain, filters, pagination, searchType = 'domain', deduplicate = false } = body
 
@@ -123,16 +130,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "targetDomain is required" }, { status: 400 })
     }
 
+    // Get signal for passing to database queries
+    const signal = getRequestSignal(request)
+
     // ============================================
     // CODE PATH SEPARATION - CLEAR & MAINTAINABLE
     // ============================================
+    
+    // Check abort before expensive operations
+    throwIfAborted(request)
     
     if (searchType === 'keyword') {
       // ===== KEYWORD SEARCH PATH =====
       // New code path - completely separate
       const keyword = targetDomain.trim()
       const keywordMode = body.keywordMode || 'full-url'
-      const subdomainsData = await getSubdomainsData(keyword, filters, pagination, 'keyword', keywordMode, deduplicate)
+      const subdomainsData = await getSubdomainsData(keyword, filters, pagination, 'keyword', keywordMode, deduplicate, signal)
+
+      // Check abort after operations
+      throwIfAborted(request)
 
       return NextResponse.json({
         success: true,
@@ -150,7 +166,10 @@ export async function POST(request: NextRequest) {
     normalizedDomain = normalizedDomain.replace(/\/$/, '')
     normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
 
-      const subdomainsData = await getSubdomainsData(normalizedDomain, filters, pagination, 'domain', 'full-url', deduplicate)
+      const subdomainsData = await getSubdomainsData(normalizedDomain, filters, pagination, 'domain', 'full-url', deduplicate, signal)
+
+      // Check abort after operations
+      throwIfAborted(request)
 
     return NextResponse.json({
       success: true,
@@ -161,6 +180,13 @@ export async function POST(request: NextRequest) {
     })
     }
   } catch (error) {
+    // Handle abort errors gracefully
+    const abortResponse = handleAbortError(error)
+    if (abortResponse) {
+      return abortResponse
+    }
+    
+    // Handle other errors
     console.error("❌ Error in subdomains API:", error)
     return NextResponse.json(
       {
@@ -178,7 +204,8 @@ async function getSubdomainsData(
   pagination?: any,
   searchType: 'domain' | 'keyword' = 'domain',
   keywordMode: 'domain-only' | 'full-url' = 'full-url',
-  deduplicate: boolean = false
+  deduplicate: boolean = false,
+  signal?: AbortSignal
 ) {
   // Validate and sanitize pagination parameters
   const page = Math.max(1, Number(pagination?.page) || 1)
@@ -234,7 +261,7 @@ async function getSubdomainsData(
       ${finalWhereClause}
     `
 
-  const countResult = (await executeClickHouseQuery(countQuery, params)) as any[]
+  const countResult = (await executeClickHouseQuery(countQuery, params, signal)) as any[]
   const total = Number(countResult[0]?.total || 0)
 
   // ============================================
@@ -278,7 +305,7 @@ async function getSubdomainsData(
       LIMIT {queryLimit:UInt32} OFFSET {queryOffset:UInt32}
     `
 
-  const data = (await executeClickHouseQuery(dataQuery, dataParams)) as any[]
+  const data = (await executeClickHouseQuery(dataQuery, dataParams, signal)) as any[]
 
   return {
     data: data.map((row: any) => ({

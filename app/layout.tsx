@@ -6,6 +6,10 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { ThemeProvider } from "@/components/theme-provider"
 import ClientLayoutWithSidebar from "@/components/client-layout-with-sidebar"
 import { Toaster } from "@/components/ui/toaster"
+// Setup global error handlers early (server-side only)
+if (typeof window === 'undefined') {
+  require("@/lib/error-handler")
+}
 
 const inter = Inter({
   subsets: ["latin"],

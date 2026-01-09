@@ -2,6 +2,10 @@
 const isDev = process.env.NODE_ENV === 'development'
 
 const nextConfig = {
+  // Enable instrumentation hook for global error handlers
+  experimental: {
+    instrumentationHook: true, // Enable instrumentation.ts
+  },
   // Enable standalone output for smaller Docker images (production only)
   ...(isDev ? {} : { output: 'standalone' }),
   // Bundle optimization (only in production - not compatible with Turbo)
