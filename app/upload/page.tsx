@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor, X, ShieldAlert } from "lucide-react"
+import { Upload, FileArchive, CheckCircle, AlertCircle, Info, SkipForward, HardDrive, Monitor, X, ShieldAlert, Activity, Loader2, ChevronRight } from "lucide-react"
 import { uploadFileInChunks, assembleAndProcessFile } from "@/lib/upload/chunk-uploader"
 import { formatBytes } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,11 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import { useAuth, isAdmin } from "@/hooks/useAuth"
+import { useToast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 interface UploadStatus {
   status: "idle" | "uploading" | "processing" | "success" | "error"
@@ -44,6 +48,7 @@ export default function UploadPage() {
   // Auth state - check if user has admin role
   const { user, loading: authLoading } = useAuth(true)
   const userIsAdmin = isAdmin(user)
+  const { toast } = useToast()
 
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({
     status: "idle",
@@ -64,6 +69,8 @@ export default function UploadPage() {
   
   // Stream data preference from database
   const [streamEnabled, setStreamEnabled] = useState(true)
+  const [savingPreference, setSavingPreference] = useState(false)
+  const [showInfoBanner, setShowInfoBanner] = useState(true)
   
   // Load stream preference from database on mount
   useEffect(() => {
@@ -83,6 +90,52 @@ export default function UploadPage() {
     }
     loadStreamPreference()
   }, [])
+
+  // Handle quick toggle for stream preference
+  const handleQuickToggle = async (checked: boolean) => {
+    // Optimistic update
+    const previousValue = streamEnabled
+    setStreamEnabled(checked)
+    setSavingPreference(true)
+
+    try {
+      const response = await fetch("/api/user/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stream_enabled: checked }),
+        credentials: "include",
+      })
+
+      if (response.ok) {
+        toast({
+          title: checked ? "Stream Data Enabled" : "Stream Data Disabled",
+          description: checked 
+            ? "Real-time progress will be shown during upload and parsing" 
+            : "Progress will be hidden during upload and parsing for better performance",
+        })
+      } else {
+        // Revert on error
+        setStreamEnabled(previousValue)
+        const data = await response.json()
+        toast({
+          title: "Error",
+          description: data.error || "Failed to save preference",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      // Revert on error
+      setStreamEnabled(previousValue)
+      console.error("Failed to save preference:", error)
+      toast({
+        title: "Error",
+        description: "Failed to save preference. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSavingPreference(false)
+    }
+  }
   
   // Upload settings state
   const [uploadSettings, setUploadSettings] = useState<{
@@ -547,6 +600,73 @@ export default function UploadPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Quick Toggle for Stream Data Preference */}
+            {uploadStatus.status === "idle" && (
+              <div className="flex items-center justify-between p-4 rounded-lg bg-white/5 border border-white/10">
+                <div className="flex items-center gap-3 flex-1">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Activity className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="stream-toggle-quick" className="text-sm font-medium cursor-pointer text-foreground">
+                        Show Stream Data During Upload
+                      </Label>
+                      <Badge variant="outline" className="text-xs border-primary/30 text-primary">
+                        Your preference
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Display real-time parsing progress and logs. Disabling may improve performance for large files.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {savingPreference && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  <Switch
+                    id="stream-toggle-quick"
+                    checked={streamEnabled}
+                    onCheckedChange={handleQuickToggle}
+                    disabled={savingPreference}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Info Banner - Collapsible */}
+            {uploadStatus.status === "idle" && showInfoBanner && (
+              <Alert className="glass-card border-blue-500/20 bg-blue-500/5">
+                <Info className="h-4 w-4 text-blue-500" />
+                <AlertDescription className="text-sm text-foreground">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="mb-1">
+                        <strong>Stream Data</strong> shows real-time progress such as credentials found, file parsing status, 
+                        and system information extraction during upload. This is your personal preference and can be 
+                        changed anytime.
+                      </p>
+                      <Link 
+                        href="/user-settings?tab=preferences"
+                        className="inline-flex items-center gap-1 text-primary hover:text-primary/80 text-xs font-medium mt-1 transition-colors"
+                      >
+                        Manage all preferences
+                        <ChevronRight className="h-3 w-3" />
+                      </Link>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-transparent"
+                      onClick={() => setShowInfoBanner(false)}
+                      aria-label="Close info banner"
+                    >
+                      <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {uploadStatus.status === "idle" && (
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 backdrop-blur-sm ${

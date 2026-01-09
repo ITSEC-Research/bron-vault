@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, isAdmin } from "@/hooks/useAuth";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,13 @@ import {
 export default function UserSettingsPage() {
   const { user, loading: authLoading } = useAuth(true);
   const isUserAdmin = isAdmin(user);
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL query parameter
+  const initialTab = searchParams.get("tab") || "password";
+  // Validate tab value - only allow valid tabs
+  const validTabs = ["password", "2fa", "preferences"];
+  const defaultTab = validTabs.includes(initialTab) ? initialTab : "password";
 
   if (authLoading) {
     return (
@@ -59,7 +67,7 @@ export default function UserSettingsPage() {
           <p className="text-muted-foreground mt-2">Manage your account security settings</p>
         </div>
 
-        <Tabs defaultValue="password" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
           <TabsList className={`items-center justify-center rounded-md p-1 text-muted-foreground grid w-full ${isUserAdmin ? 'grid-cols-3' : 'grid-cols-2'} glass-card h-8`}>
             <TabsTrigger
               value="password"
