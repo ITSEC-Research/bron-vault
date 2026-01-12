@@ -60,7 +60,7 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
                 </div>
               </div>
               <span className="text-sm text-muted-foreground font-mono ml-2 flex-shrink-0">
-                {item?.count || 0}
+                {Number(item?.count || 0).toLocaleString()}
               </span>
             </div>
             <div className="w-full bg-secondary/30 rounded-full h-2 overflow-hidden">

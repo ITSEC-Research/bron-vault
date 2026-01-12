@@ -109,7 +109,7 @@ export default function BrowserVerticalBarChart({
         {yTicks.slice().reverse().map((tick, i) => (
           <div key={i} className="flex items-center h-0.5">
             <span className="text-xs w-12 text-right pr-2 select-none" style={{ minWidth: 40, color: textColor }}>
-              {tick}
+              {Number(tick).toLocaleString()}
             </span>
             <div className="flex-1 border-t border-dashed" style={{ borderColor: gridColor }} />
           </div>
@@ -181,7 +181,7 @@ export default function BrowserVerticalBarChart({
                   animate={{ opacity: hoveredIndex === idx ? 1 : 0, scale: hoveredIndex === idx ? 1 : 0.8 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {item?.browser || 'Unknown'} <span className="font-bold">({item?.count || 0})</span>
+                  {item?.browser || 'Unknown'} <span className="font-bold">({Number(item?.count || 0).toLocaleString()})</span>
                 </motion.div>
               </motion.div>
             </div>
