@@ -83,6 +83,7 @@ export function TimelineChart({ data: initialData, targetDomain: _targetDomain, 
             tickLine={false}
             axisLine={false}
             dx={-10}
+            tickFormatter={(value: number) => value.toLocaleString()}
           />
           <Tooltip
             contentStyle={{
@@ -94,6 +95,7 @@ export function TimelineChart({ data: initialData, targetDomain: _targetDomain, 
             itemStyle={{ color: "#fca5a5" }}
             labelStyle={{ color: "#a1a1aa", marginBottom: "0.25rem" }}
             cursor={{ stroke: "#dc2626", strokeWidth: 1, strokeDasharray: "4 4" }}
+            formatter={(value: number) => value.toLocaleString()}
           />
           <Area
             type="monotone"
