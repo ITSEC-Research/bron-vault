@@ -36,8 +36,44 @@ fi
 echo -e "${CYAN}🚀 Starting Bron Vault Services...${NC}"
 echo ""
 
+# Ensure uploads directory exists with proper structure
+echo -e "${BLUE}ℹ️  Ensuring uploads directory exists...${NC}"
+mkdir -p ./uploads/chunks
+mkdir -p ./uploads/extracted_files
+
+# Get current user's UID and GID
+# Note: UID is a readonly variable in bash, so we use HOST_UID and HOST_GID
+# If running with sudo, get the original user's UID/GID instead of root (0)
+if [ -n "$SUDO_USER" ]; then
+  # Running with sudo, use the original user's UID/GID
+  export HOST_UID=$(id -u "$SUDO_USER")
+  export HOST_GID=$(id -g "$SUDO_USER")
+  echo -e "${BLUE}ℹ️  Running with sudo, using original user's UID:GID ${HOST_UID}:${HOST_GID}${NC}"
+else
+  # Not running with sudo, use current user's UID/GID
+  export HOST_UID=$(id -u)
+  export HOST_GID=$(id -g)
+  echo -e "${BLUE}ℹ️  Using UID:GID ${HOST_UID}:${HOST_GID} for container user${NC}"
+fi
+
+# Set proper permissions (rwx for owner and group, r-x for others)
+# This ensures the container can write to the directories
+chmod -R 775 ./uploads 2>/dev/null || true
+
+# Note: chown might fail if running without sudo, but that's okay
+# The important thing is that the container will run with matching UID/GID
+chown -R ${HOST_UID}:${HOST_GID} ./uploads 2>/dev/null || {
+  echo -e "${YELLOW}⚠️  Warning: Could not change ownership of ./uploads directory${NC}"
+  echo -e "${YELLOW}   This is okay if you have proper permissions. Container will use UID:GID ${HOST_UID}:${HOST_GID}${NC}"
+}
+
+echo -e "${GREEN}✅ Uploads directory ready${NC}"
+echo ""
+
 # Always use --build but Docker will use cache for unchanged layers
 # This ensures code updates are picked up while staying fast due to caching
+# UID and GID are exported and will be used by docker-compose.yml
+echo -e "${BLUE}ℹ️  Building with UID: ${HOST_UID}, GID: ${HOST_GID}${NC}"
 echo -e "${BLUE}ℹ️  Building and starting services (using cache for unchanged layers)...${NC}"
 docker-compose up -d --build
 

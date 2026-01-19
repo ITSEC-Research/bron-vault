@@ -133,10 +133,10 @@ This application has been successfully tested on the following operating systems
 3.  **Start all services:**
 
     **For Linux/macOS:**
-    Run the script with elevated privileges:
+    Run the script with or without elevated privileges, depending on your Docker setup:
 
     ```bash
-    sudo bash docker-start.sh
+    bash docker-start.sh
     ```
 
     As a note, this script will:
