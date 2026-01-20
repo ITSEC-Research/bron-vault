@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, Plus, Pencil, Trash2, Shield, Eye, AlertCircle, ShieldAlert } from "lucide-react"
+import { Users, Plus, Pencil, Trash2, Shield, Eye, AlertCircle, ShieldAlert, UserCheck, UserX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Switch } from "@/components/ui/switch"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,6 +52,7 @@ interface User {
   email: string
   name: string
   role: UserRole
+  is_active: boolean | number
   created_at: string
   updated_at: string
 }
@@ -70,6 +72,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [togglingUserId, setTogglingUserId] = useState<number | null>(null)
   
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -279,6 +282,57 @@ export default function UsersPage() {
     }
   }
 
+  const handleToggleStatus = async (user: User) => {
+    // Prevent toggling your own status
+    if (currentUser && user.id === currentUser.id) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You cannot change your own account status"
+      })
+      return
+    }
+
+    try {
+      setTogglingUserId(user.id)
+      const newStatus = !(user.is_active === true || user.is_active === 1)
+      
+      const response = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          id: user.id,
+          is_active: newStatus
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: `User ${newStatus ? 'activated' : 'deactivated'} successfully`
+        })
+        loadUsers()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: data.error || "Failed to update user status"
+        })
+      }
+    } catch (_error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update user status"
+      })
+    } finally {
+      setTogglingUserId(null)
+    }
+  }
+
   const openEditDialog = (user: User) => {
     setSelectedUser(user)
     setFormData({
@@ -409,6 +463,7 @@ export default function UsersPage() {
                     <TableHead className="text-muted-foreground">Name</TableHead>
                     <TableHead className="text-muted-foreground">Email</TableHead>
                     <TableHead className="text-muted-foreground">Role</TableHead>
+                    <TableHead className="text-muted-foreground">Status</TableHead>
                     <TableHead className="text-muted-foreground">Created</TableHead>
                     <TableHead className="text-muted-foreground text-right">Actions</TableHead>
                   </TableRow>
@@ -438,6 +493,30 @@ export default function UsersPage() {
                             <><Eye className="w-3 h-3 mr-1" />Analyst</>
                           )}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={user.is_active === true || user.is_active === 1}
+                            onCheckedChange={() => handleToggleStatus(user)}
+                            disabled={togglingUserId === user.id || !!(currentUser && user.id === currentUser.id)}
+                            className="data-[state=checked]:bg-green-500"
+                          />
+                          <Badge 
+                            variant="outline"
+                            className={`text-xs transition-colors ${
+                              (user.is_active === true || user.is_active === 1)
+                                ? 'bg-green-500/20 text-green-400 border-green-500/30' 
+                                : 'bg-red-500/20 text-red-400 border-red-500/30'
+                            }`}
+                          >
+                            {(user.is_active === true || user.is_active === 1) ? (
+                              <><UserCheck className="w-3 h-3 mr-1" />Active</>
+                            ) : (
+                              <><UserX className="w-3 h-3 mr-1" />Inactive</>
+                            )}
+                          </Badge>
+                        </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {formatDate(user.created_at)}

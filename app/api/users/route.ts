@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, name, role, created_at, updated_at FROM users ORDER BY created_at DESC"
+      "SELECT id, email, name, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC"
     )
 
     return NextResponse.json({
@@ -166,7 +166,7 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    const { id, email, name, role, password } = await request.json()
+    const { id, email, name, role, password, is_active } = await request.json()
 
     if (!id) {
       return NextResponse.json({ 
@@ -264,6 +264,44 @@ export async function PUT(request: NextRequest) {
       const hashedPassword = await bcrypt.hash(password, 12)
       updates.push("password_hash = ?")
       values.push(hashedPassword)
+    }
+
+    // Handle is_active toggle
+    if (typeof is_active === 'boolean') {
+      // Prevent deactivating your own account
+      if (String(id) === user.userId && is_active === false) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "You cannot deactivate your own account" 
+        }, { status: 400 })
+      }
+      
+      // Prevent deactivating the last active admin
+      if (is_active === false) {
+        const [adminCount] = await pool.query<RowDataPacket[]>(
+          "SELECT COUNT(*) as count FROM users WHERE role = 'admin' AND is_active = true"
+        )
+        const [userToUpdate] = await pool.query<RowDataPacket[]>(
+          "SELECT role, is_active FROM users WHERE id = ? LIMIT 1",
+          [id]
+        )
+        
+        if (
+          Array.isArray(adminCount) && adminCount.length > 0 && 
+          adminCount[0].count <= 1 &&
+          Array.isArray(userToUpdate) && userToUpdate.length > 0 &&
+          userToUpdate[0].role === 'admin' &&
+          userToUpdate[0].is_active === 1
+        ) {
+          return NextResponse.json({ 
+            success: false, 
+            error: "Cannot deactivate the last active admin user" 
+          }, { status: 400 })
+        }
+      }
+      
+      updates.push("is_active = ?")
+      values.push(is_active)
     }
 
     if (updates.length === 0) {

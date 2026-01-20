@@ -8,9 +8,9 @@ export async function POST(request: NextRequest) {
   const { email, password } = await request.json()
 
   try {
-    // Query includes role and TOTP fields
+    // Query includes role, is_active and TOTP fields
     const [users] = await pool.query<RowDataPacket[]>(
-      "SELECT id, email, password_hash, name, role, totp_enabled FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, email, password_hash, name, role, is_active, totp_enabled FROM users WHERE email = ? LIMIT 1",
       [email]
     )
 
@@ -24,6 +24,14 @@ export async function POST(request: NextRequest) {
     const match = await bcrypt.compare(password, user.password_hash || "")
     if (!match) {
       return NextResponse.json({ success: false, error: "Invalid email or password." }, { status: 401 })
+    }
+
+    // Check if user account is active
+    if (user.is_active === false || user.is_active === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Your account has been deactivated. Please contact an administrator." 
+      }, { status: 403 })
     }
 
     // Check if 2FA is enabled
