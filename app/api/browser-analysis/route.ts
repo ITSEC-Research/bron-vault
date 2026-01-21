@@ -40,28 +40,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Optimized query: Get unique browsers per device_id directly with COUNT
-    // This processes much less data than fetching all rows
-    // ClickHouse: Convert COUNT(DISTINCT device_id) -> uniq(device_id)
+    // Get all (device_id, browser) pairs to properly count unique devices per normalized browser
+    // This ensures that if a device has multiple browser versions, it's only counted once per normalized browser name
     const results = await executeClickHouseQuery(`
       SELECT 
-        browser,
-        uniq(device_id) as device_count
+        device_id,
+        browser
       FROM credentials 
       WHERE browser IS NOT NULL AND browser != ''
-      GROUP BY browser
     `) as any[];
 
     if (!Array.isArray(results)) {
       return NextResponse.json({ success: false, error: "Invalid data format" }, { status: 500 });
     }
 
-    // Process and normalize browser names
-    const browserCounts: { [key: string]: number } = {};
-    
-    results.forEach((row) => {
-      const originalBrowser = row.browser;
-      if (!originalBrowser) return;
+    // Helper function to normalize browser name
+    const normalizeBrowserName = (originalBrowser: string): string => {
+      if (!originalBrowser) return '';
 
       // Normalize browser name
       let normalizedBrowser = originalBrowser
@@ -95,10 +90,34 @@ export async function GET(request: NextRequest) {
           .join(' ');
       }
 
-      // Aggregate counts for normalized browser names
+      return normalizedBrowser;
+    };
+
+    // Track unique device_id per normalized browser name using Map
+    // Key: normalized browser name, Value: Set of device_id
+    const browserDeviceMap = new Map<string, Set<string>>();
+    
+    results.forEach((row) => {
+      const deviceId = String(row.device_id || '');
+      const originalBrowser = String(row.browser || '');
+      
+      if (!deviceId || !originalBrowser) return;
+
+      const normalizedBrowser = normalizeBrowserName(originalBrowser);
+      
       if (normalizedBrowser) {
-        browserCounts[normalizedBrowser] = (browserCounts[normalizedBrowser] || 0) + Number(row.device_count);
+        if (!browserDeviceMap.has(normalizedBrowser)) {
+          browserDeviceMap.set(normalizedBrowser, new Set());
+        }
+        // Add device_id to the set (Set automatically handles duplicates)
+        browserDeviceMap.get(normalizedBrowser)!.add(deviceId);
       }
+    });
+
+    // Convert Map to array with count of unique devices
+    const browserCounts: { [key: string]: number } = {};
+    browserDeviceMap.forEach((deviceSet, normalizedBrowser) => {
+      browserCounts[normalizedBrowser] = deviceSet.size;
     });
 
     // Convert to array and sort by count
