@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 import { useState, useEffect } from "react"
-import { TrendingUp, Globe, Key, ExternalLink, HardDrive, Link, Database, Monitor, Package } from "lucide-react"
+import { Globe, Key, HardDrive, Link, Database, Monitor, Package } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -19,6 +19,7 @@ const BrowserVerticalBarChart = nextDynamic(
 import { AuthGuard } from "@/components/auth-guard"
 import { AnimatedStatCard } from "@/components/animated-stat-card"
 import { AnimatedSoftwareList } from "@/components/animated-software-list"
+import { CountryHeatmap } from "@/components/country-heatmap"
 import ErrorBoundary from "@/components/error-boundary"
 import { LoadingState, LoadingChart, LoadingCard } from "@/components/ui/loading"
 
@@ -72,8 +73,8 @@ export default function DashboardPage() {
 function DashboardContent() {
   const [topPasswords, setTopPasswords] = useState<TopPassword[]>([])
   const [topTLDs, setTopTLDs] = useState<TopTLD[]>([])
-  const [rssItems, setRssItems] = useState<RSSItem[]>([])
-  const [ransomwareItems, setRansomwareItems] = useState<RSSItem[]>([])
+  const [_rssItems, setRssItems] = useState<RSSItem[]>([])
+  const [_ransomwareItems, setRansomwareItems] = useState<RSSItem[]>([])
   const [browserData, setBrowserData] = useState<BrowserData[]>([])
   const [softwareData, setSoftwareData] = useState<SoftwareData[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -201,7 +202,7 @@ function DashboardContent() {
     }
   }
 
-  const formatDate = (dateString: string) => {
+  const _formatDate = (dateString: string) => {
     if (!dateString) return "Unknown date"
     try {
       return new Date(dateString).toLocaleDateString("en-US", {
@@ -256,7 +257,7 @@ function DashboardContent() {
         <div className="max-w-7xl mx-auto space-y-4">
           {/* Statistic Boxes - Layer 1 */}
           <ErrorBoundary context="Dashboard Stats Layer 1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <AnimatedStatCard
                 icon={HardDrive}
                 value={stats.totalDevices}
@@ -275,7 +276,7 @@ function DashboardContent() {
           </ErrorBoundary>
 
           {/* Statistic Boxes - Layer 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
             <AnimatedStatCard
               icon={Database}
               value={stats.totalFiles}
@@ -310,7 +311,7 @@ function DashboardContent() {
           )}
           {/* Top Passwords */}
           <Card className="glass-card">
-            <CardHeader className="!p-4 border-b border-white/5">
+            <CardHeader className="!p-4 border-b-[2px] border-border">
               <CardTitle className="flex items-center text-foreground text-lg">
                 <Key className="h-4 w-4 mr-2 text-primary" />
                 Top 5 Most Used Passwords
@@ -321,7 +322,7 @@ function DashboardContent() {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                   {topPasswords.map((passwordData, index) => (
                     <div key={index} className="text-center group">
-                      <div className="glass text-base font-bold text-primary font-mono p-3 rounded-lg border border-white/5 group-hover:border-primary/50 group-hover:bg-primary/10 transition-all duration-300">
+                      <div className="glass text-base font-bold text-primary font-mono p-3 rounded-lg border-[2px] border-border group-hover:border-primary/50 group-hover:bg-primary/10 transition-all duration-300">
                         {passwordData.password.length > 15
                           ? passwordData.password.substring(0, 15) + "..."
                           : passwordData.password}
@@ -348,22 +349,22 @@ function DashboardContent() {
             </CardContent>
           </Card>
 
-          {/* Top TLDs, Malware Traffic Analysis, and Ransomware Live - Responsive Flex Layout */}
+          {/* Top TLDs and Country Heatmap - Responsive Flex Layout */}
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Top TLDs */}
             <Card className="flex-1 lg:basis-[2.5/12] glass-card">
-              <CardHeader className="!p-4 border-b border-white/5">
+              <CardHeader className="!p-4 border-b-[2px] border-border">
                 <CardTitle className="flex items-center text-foreground text-lg">
                   <Globe className="h-4 w-4 mr-2 text-blue-500" />
                   Top 10 TLDs
                 </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 pt-4 h-[490px] pr-2 flex flex-col"> {/* Updated height and added flex-col */}
+              <CardContent className="!p-4 pt-4 h-[505px] pr-2 flex flex-col"> {/* Updated height and added flex-col */}
                 {topTLDs.length > 0 ? (
                   <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
                     <div className="space-y-2"> {/* Changed to space-y for vertical layout */}
                       {topTLDs.slice(0, 10).map((tldData, index) => (
-                        <div key={index} className="flex items-center justify-between p-2 rounded-lg glass hover:border-primary/50 hover:bg-primary/10 transition-all duration-300">
+                        <div key={index} className="flex items-center justify-between p-2 rounded-lg glass border-[1.5px] hover:border-primary/50 hover:bg-primary/10 transition-all duration-300">
                           <span className="text-sm font-bold text-blue-500">
                             #{index + 1}
                           </span>
@@ -387,107 +388,42 @@ function DashboardContent() {
               </CardContent>
             </Card>
 
-            {/* Malware Traffic Analysis */}
-            <Card className="flex-1 lg:basis-[4.75/12] glass-card">
-              <CardHeader className="!p-4 border-b border-white/5">
-                <CardTitle className="flex items-center text-foreground text-lg">
-                  <TrendingUp className="h-4 w-4 mr-2 text-emerald-500" />
-                  Malware Traffic Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="!p-4 pt-4 h-[490px] flex flex-col"> {/* Updated height and added flex-col */}
-                {rssItems.length > 0 ? (
-                  <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
-                    <div className="space-y-3">
-                      {rssItems.map((item, index) => (
-                        <div key={index} className="border-b border-border/40 pb-3 last:border-b-0">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="text-sm font-medium text-foreground hover:text-blue-500 transition-colors">
-                                <a
-                                  href={item.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center"
-                                >
-                                  {item.title}
-                                  <ExternalLink className="h-3 w-3 ml-1" />
-                                </a>
-                              </h3>
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
-                              <p className="text-[10px] text-muted-foreground/70 mt-1">{formatDate(item.pubDate)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+            {/* Country Heatmap - Replaces Malware Traffic Analysis and Recent Ransomware Cases */}
+            <ErrorBoundary
+              context="Country Heatmap"
+              fallback={
+                <Card className="flex-[2] lg:basis-[9.5/12] glass-card">
+                  <CardHeader className="!p-4 border-b-[2px] border-border">
+                    <CardTitle className="flex items-center text-foreground text-lg">
+                      <Globe className="h-4 w-4 mr-2 text-blue-500" />
+                      Compromised Devices by Country
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="!p-4 pt-4">
+                    <div className="text-center py-8">
+                      <p className="text-red-500 text-sm">Failed to load heatmap</p>
+                      <p className="text-xs text-muted-foreground mt-1">Please try refreshing the page</p>
                     </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No RSS feed data available</p>
-                    <p className="text-xs text-muted-foreground mt-2">Unable to fetch malware traffic analysis news</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Ransomware Cases */}
-            <Card className="flex-1 lg:basis-[4.75/12] glass-card">
-              <CardHeader className="!p-4 border-b border-white/5">
-                <CardTitle className="flex items-center text-foreground text-lg">
-                  <TrendingUp className="h-4 w-4 mr-2 text-primary" />
-                  Recent Ransomware Cases
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="!p-4 pt-4 h-[490px] flex flex-col"> {/* Updated height and added flex-col */}
-                {ransomwareItems.length > 0 ? (
-                  <ScrollArea className="h-full flex-grow"> {/* Make ScrollArea fill parent height and grow */}
-                    <div className="space-y-3">
-                      {ransomwareItems.map((item, index) => (
-                        <div key={index} className="border-b border-border/40 pb-3 last:border-b-0">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                                <a
-                                  href={item.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center"
-                                >
-                                  {item.title}
-                                  <ExternalLink className="h-3 w-3 ml-1" />
-                                </a>
-                              </h3>
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
-                              <p className="text-[10px] text-muted-foreground/70 mt-1">{formatDate(item.pubDate)}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No RSS feed data available</p>
-                    <p className="text-xs text-muted-foreground mt-2">Unable to fetch ransomware live news</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              }
+            >
+              <CountryHeatmap className="flex-[2] lg:basis-[9.5/12]" />
+            </ErrorBoundary>
           </div>
 
           {/* Browser Analysis and Software Analysis - Side by Side */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Browser Analysis */}
-            <Card className="col-span-1 lg:col-span-2 glass-card">
-              <CardHeader className="!p-4 border-b border-white/5">
+            <Card className="col-span-1 lg:col-span-2 glass-card overflow-visible">
+              <CardHeader className="!p-4 border-b-[2px] border-border">
                 <CardTitle className="flex items-center text-foreground text-lg">
                   <Monitor className="h-4 w-4 mr-2 text-violet-500" />
                   Top Browsers Used by Infected Devices
                 </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 pt-6">
-                <div className="w-full h-[500px] flex items-end justify-center mt-4">
+              <CardContent className="!p-4 pt-6 overflow-visible">
+                <div className="w-full h-[500px] flex items-end justify-center mt-4 overflow-visible">
                   <ErrorBoundary
                     context="Browser Chart"
                     fallback={
@@ -507,7 +443,7 @@ function DashboardContent() {
 
             {/* Software Analysis */}
             <Card className="col-span-1 lg:col-span-2 glass-card">
-              <CardHeader className="!p-4 border-b border-white/5">
+              <CardHeader className="!p-4 border-b-[2px] border-border">
                 <CardTitle className="flex items-center text-foreground text-lg">
                   <Package className="h-4 w-4 mr-2 text-emerald-500" />
                   Most Common Software Found in Logs
