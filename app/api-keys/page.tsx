@@ -12,9 +12,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Copy, Key, Plus, Trash2, RefreshCw, EyeOff, Code, ShieldAlert, AlertCircle, CheckCircle2, Zap, Clock, Shield, ExternalLink } from "lucide-react"
+import { Copy, Key, Plus, Trash2, RefreshCw, EyeOff, ShieldAlert, AlertCircle, CheckCircle2, Zap, Clock, Shield } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
 
 interface ApiKey {
   id: number
@@ -477,92 +476,6 @@ export default function ApiKeysPage() {
                 </Table>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Quick Start Guide - Redesigned */}
-        <Card className="glass-card border-border/50">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/10">
-                  <Code className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <CardTitle className="text-foreground">Quick Start</CardTitle>
-                  <CardDescription className="text-muted-foreground">How to use your API key</CardDescription>
-                </div>
-              </div>
-              <Link href="/docs">
-                <Button variant="outline" size="sm" className="glass-card border-border/50">
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Full Documentation
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <h4 className="font-medium mb-3 text-foreground flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">1</Badge>
-                Authentication
-              </h4>
-              <p className="text-sm text-muted-foreground mb-3">
-                Include your API key in the <code className="bg-muted/50 px-1.5 py-0.5 rounded text-xs">X-API-Key</code> header:
-              </p>
-              <div className="relative group">
-                <pre className="bg-muted/30 border border-border/50 p-4 rounded-lg text-sm overflow-x-auto font-mono">
-{`curl -H "X-API-Key: bv_your_api_key_here" \\
-     https://your-domain.com/api/v1/search/credentials`}
-                </pre>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => copyToClipboard(`curl -H "X-API-Key: bv_your_api_key_here" \\
-     https://your-domain.com/api/v1/search/credentials`)}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-medium mb-3 text-foreground flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">2</Badge>
-                Available Endpoints
-              </h4>
-              <div className="grid gap-2">
-                {[
-                  { method: "POST", path: "/api/v1/search/credentials", desc: "Search credentials" },
-                  { method: "POST", path: "/api/v1/search/domain", desc: "Search by domain" },
-                  { method: "POST", path: "/api/v1/search/bulk", desc: "Bulk search" },
-                  { method: "GET", path: "/api/v1/lookup?email=...", desc: "Quick email lookup" },
-                  { method: "GET", path: "/api/v1/lookup?domain=...", desc: "Quick domain lookup" },
-                  { method: "POST", path: "/api/v1/upload", desc: "Upload stealer logs", admin: true },
-                ].map((endpoint, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/20 border border-border/30">
-                    <Badge 
-                      variant="outline" 
-                      className={`text-xs font-mono shrink-0 ${
-                        endpoint.method === "GET" 
-                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" 
-                          : "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                      }`}
-                    >
-                      {endpoint.method}
-                    </Badge>
-                    <code className="text-xs font-mono text-foreground flex-1 truncate">{endpoint.path}</code>
-                    <span className="text-xs text-muted-foreground shrink-0">{endpoint.desc}</span>
-                    {endpoint.admin && (
-                      <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/30 shrink-0">
-                        Admin
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
 

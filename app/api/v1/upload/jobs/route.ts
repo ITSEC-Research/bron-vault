@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
         query += ' WHERE uj.status = ?'
         params.push(status)
       }
-      query += ' ORDER BY uj.created_at DESC LIMIT ?'
-      params.push(limit)
+      // Use template literal for LIMIT to avoid MySQL prepared statement issue
+      query += ` ORDER BY uj.created_at DESC LIMIT ${limit}`
     } else {
       // Others can only see their own jobs
       query = `
@@ -60,8 +60,8 @@ export async function GET(request: NextRequest) {
         query += ' AND uj.status = ?'
         params.push(status)
       }
-      query += ' ORDER BY uj.created_at DESC LIMIT ?'
-      params.push(limit)
+      // Use template literal for LIMIT to avoid MySQL prepared statement issue
+      query += ` ORDER BY uj.created_at DESC LIMIT ${limit}`
     }
 
     const results = await executeQuery(query, params) as any[]

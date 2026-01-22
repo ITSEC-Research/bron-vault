@@ -1,0 +1,12 @@
+# Data folders - contain uploaded stealer logs with .ts files
+uploads/
+clickhouse-data/
+mysql-data/
+
+# Build outputs
+.next/
+out/
+dist/
+
+# Dependencies
+node_modules/

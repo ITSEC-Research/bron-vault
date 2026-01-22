@@ -1,10 +1,33 @@
 /** @type {import('next').NextConfig} */
+import path from 'path'
+
 const isDev = process.env.NODE_ENV === 'development'
 
 const nextConfig = {
   // Enable instrumentation hook for global error handlers
   experimental: {
-    instrumentationHook: true, // Enable instrumentation.ts
+    instrumentationHook: true,
+    webpackBuildWorker: true, // Use separate worker process for faster builds
+  },
+  // Exclude data folders from webpack processing (these contain stealer logs with .ts files)
+  webpack: (config, { isServer }) => {
+    // Ignore data directories from module resolution
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/uploads/**', '**/clickhouse-data/**', '**/mysql-data/**', '**/node_modules/**'],
+    };
+    
+    // Add rule to completely ignore data folders
+    config.module.rules.push({
+      test: /\.(ts|tsx|js|jsx|json)$/,
+      exclude: [
+        /uploads/,
+        /clickhouse-data/,
+        /mysql-data/,
+      ],
+    });
+    
+    return config;
   },
   // Enable standalone output for smaller Docker images (production only)
   ...(isDev ? {} : { output: 'standalone' }),

@@ -5,6 +5,14 @@
  * Upload stealer logs ZIP file via API
  * 
  * ADMIN ONLY: Only API keys with 'admin' role can upload
+ * 
+ * Default behavior: ASYNC (returns immediately with job ID)
+ * - Response includes job ID and status URL for tracking
+ * - Use GET /api/v1/upload/status/{jobId} to check progress
+ * 
+ * Optional: ?sync=true for synchronous processing (waits for completion)
+ * - Not recommended for large files (>100MB)
+ * - May timeout for very large uploads
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -57,13 +65,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file size (max 500MB)
-    const maxSize = 500 * 1024 * 1024 // 500MB
+    // Validate file size (max 10GB for async processing)
+    // Note: For very large files, consider using chunked upload endpoint instead
+    const maxSize = 10 * 1024 * 1024 * 1024 // 10GB
     if (file.size > maxSize) {
       return NextResponse.json(
         { 
           success: false, 
-          error: "File too large. Maximum size is 500MB", 
+          error: "File too large. Maximum size is 10GB", 
           code: "FILE_TOO_LARGE",
           maxSize: maxSize,
           actualSize: file.size
@@ -83,12 +92,12 @@ export async function POST(request: NextRequest) {
 
     addUploadJobLog(jobId, 'info', 'Upload job created', { filename: file.name, size: file.size })
 
-    // Return job ID immediately for async processing
-    // The actual processing will update the job status
-    const returnImmediately = formData.get("async") === "true"
+    // By default, process asynchronously (return immediately)
+    // Use ?sync=true to wait for processing to complete (not recommended for large files)
+    const processSync = formData.get("sync") === "true"
     
-    if (returnImmediately) {
-      // Start processing in background (fire and forget)
+    if (!processSync) {
+      // Start processing in background (fire and forget) - DEFAULT BEHAVIOR
       processUploadInBackground(jobId, file, payload.keyId)
       
       const response = NextResponse.json({
@@ -97,11 +106,26 @@ export async function POST(request: NextRequest) {
         data: {
           jobId: jobId,
           status: 'pending',
-          statusUrl: `/api/v1/upload/status/${jobId}`
+          statusUrl: `/api/v1/upload/status/${jobId}`,
+          filename: file.name,
+          fileSize: file.size
         }
       })
       
       addRateLimitHeaders(response, payload)
+      
+      // Log API request
+      logApiRequest({
+        apiKeyId: payload.keyId,
+        endpoint: '/api/v1/upload',
+        method: 'POST',
+        statusCode: 202, // Accepted
+        requestSize: file.size,
+        duration: Date.now() - startTime,
+        ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+        userAgent: request.headers.get('user-agent') || undefined
+      })
+      
       return response
     }
 
@@ -119,11 +143,18 @@ export async function POST(request: NextRequest) {
     const result = await processFileUpload(file, jobId, logWithJobUpdate)
 
     if (result.success) {
+      // Extract stats from result.details
+      // The zip processors return: devicesFound, devicesProcessed, totalCredentials, totalFiles
+      const details = result.details || {}
+      const totalDevices = details.devicesFound || details.devicesProcessed || 0
+      const totalCredentials = details.totalCredentials || 0
+      const totalFiles = details.totalFiles || 0
+      
       // Update job with success
       await completeUploadJob(jobId, {
-        totalDevices: result.details?.deviceCount || 0,
-        totalCredentials: result.details?.credentialCount || 0,
-        totalFiles: result.details?.fileCount || 0
+        totalDevices,
+        totalCredentials,
+        totalFiles
       })
 
       const response = NextResponse.json({
@@ -133,9 +164,9 @@ export async function POST(request: NextRequest) {
           jobId: jobId,
           status: 'completed',
           stats: {
-            totalDevices: result.details?.deviceCount || 0,
-            totalCredentials: result.details?.credentialCount || 0,
-            totalFiles: result.details?.fileCount || 0,
+            totalDevices,
+            totalCredentials,
+            totalFiles,
             processingTime: Date.now() - startTime
           }
         }
@@ -222,10 +253,13 @@ async function processUploadInBackground(jobId: string, file: File, _apiKeyId: s
     const result = await processFileUpload(file, jobId, logWithJobUpdate)
 
     if (result.success) {
+      // Extract stats from result.details
+      // The zip processors return: devicesFound, devicesProcessed, totalCredentials, totalFiles
+      const details = result.details || {}
       await completeUploadJob(jobId, {
-        totalDevices: result.details?.deviceCount || 0,
-        totalCredentials: result.details?.credentialCount || 0,
-        totalFiles: result.details?.fileCount || 0
+        totalDevices: details.devicesFound || details.devicesProcessed || 0,
+        totalCredentials: details.totalCredentials || 0,
+        totalFiles: details.totalFiles || 0
       })
       await addUploadJobLog(jobId, 'info', 'Processing completed successfully', result.details)
     } else {

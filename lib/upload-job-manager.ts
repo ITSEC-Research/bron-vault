@@ -117,9 +117,11 @@ export async function getUploadJobById(id: number): Promise<UploadJob | null> {
  * Get upload jobs by user ID
  */
 export async function getUploadJobsByUser(userId: number, limit = 50): Promise<UploadJob[]> {
+  // Ensure limit is a valid integer for MySQL prepared statement
+  const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 50))
   const results = await executeQuery(
-    `SELECT * FROM upload_jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`,
-    [userId, limit]
+    `SELECT * FROM upload_jobs WHERE user_id = ? ORDER BY created_at DESC LIMIT ${safeLimit}`,
+    [userId]
   ) as any[]
   
   return results.map(mapRowToJob)
@@ -129,9 +131,11 @@ export async function getUploadJobsByUser(userId: number, limit = 50): Promise<U
  * Get upload jobs by API key ID
  */
 export async function getUploadJobsByApiKey(apiKeyId: number, limit = 50): Promise<UploadJob[]> {
+  // Ensure limit is a valid integer for MySQL prepared statement
+  const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 50))
   const results = await executeQuery(
-    `SELECT * FROM upload_jobs WHERE api_key_id = ? ORDER BY created_at DESC LIMIT ?`,
-    [apiKeyId, limit]
+    `SELECT * FROM upload_jobs WHERE api_key_id = ? ORDER BY created_at DESC LIMIT ${safeLimit}`,
+    [apiKeyId]
   ) as any[]
   
   return results.map(mapRowToJob)
@@ -210,6 +214,7 @@ export async function updateUploadJob(jobId: string, params: UpdateUploadJobPara
 
 /**
  * Add log entry for upload job
+ * Message is truncated to 65535 bytes (TEXT column limit) to prevent MySQL errors
  */
 export async function addUploadJobLog(
   jobId: string, 
@@ -218,10 +223,23 @@ export async function addUploadJobLog(
   metadata?: Record<string, any>
 ): Promise<void> {
   try {
+    // Truncate message to prevent "Data too long for column 'message'" error
+    // TEXT column in MySQL has a max of 65,535 bytes
+    const maxMessageLength = 60000 // Leave some buffer for UTF-8 multi-byte characters
+    const truncatedMessage = message.length > maxMessageLength 
+      ? message.substring(0, maxMessageLength) + '... [truncated]'
+      : message
+    
+    // Also truncate metadata JSON if it's too long
+    let metadataJson = metadata ? JSON.stringify(metadata) : '{}'
+    if (metadataJson.length > maxMessageLength) {
+      metadataJson = JSON.stringify({ truncated: true, reason: 'metadata too large' })
+    }
+    
     await executeQuery(
       `INSERT INTO upload_job_logs (job_id, log_level, message, metadata)
        VALUES (?, ?, ?, ?)`,
-      [jobId, level, message, metadata ? JSON.stringify(metadata) : '{}']
+      [jobId, level, truncatedMessage, metadataJson]
     )
   } catch (error) {
     console.error('Failed to add upload job log:', error)
@@ -238,9 +256,11 @@ export async function getUploadJobLogs(jobId: string, limit = 100): Promise<Arra
   metadata: Record<string, any> | null
   createdAt: Date
 }>> {
+  // Ensure limit is a valid integer for MySQL prepared statement
+  const safeLimit = Math.max(1, Math.min(1000, Number(limit) || 100))
   const results = await executeQuery(
-    `SELECT * FROM upload_job_logs WHERE job_id = ? ORDER BY created_at ASC LIMIT ?`,
-    [jobId, limit]
+    `SELECT * FROM upload_job_logs WHERE job_id = ? ORDER BY created_at ASC LIMIT ${safeLimit}`,
+    [jobId]
   ) as any[]
   
   return results.map(row => ({
