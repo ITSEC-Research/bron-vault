@@ -116,7 +116,6 @@ export default function DocsPage() {
   const sections = [
     { id: "search-credentials", label: "Search Credentials", icon: Search, method: "POST" },
     { id: "search-domain", label: "Search Domain", icon: Search, method: "POST" },
-    { id: "search-bulk", label: "Bulk Search", icon: Search, method: "POST" },
     { id: "lookup", label: "Lookup", icon: Database, method: "GET" },
     { id: "upload", label: "Upload", icon: Upload, method: "POST" },
     { id: "api-keys", label: "API Keys", icon: Key, method: "CRUD" },
@@ -206,28 +205,35 @@ export default function DocsPage() {
         <Card className="glass-card border-border/50">
           <CardContent className="p-3">
             <div className="flex flex-wrap gap-2">
-              {sections.map((section) => (
-                <Button 
-                  key={section.id}
-                  variant={activeSection === section.id ? "default" : "outline"} 
-                  size="sm"
-                  onClick={() => setActiveSection(section.id)}
-                  className={activeSection === section.id ? "bg-primary text-primary-foreground" : "glass-card border-border/50"}
-                >
-                  <section.icon className="h-4 w-4 mr-2" />
-                  {section.label}
-                  <Badge 
-                    variant="outline" 
-                    className={`ml-2 text-xs ${
-                      section.method === "GET" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" :
-                      section.method === "POST" ? "bg-blue-500/10 text-blue-400 border-blue-500/30" :
-                      "bg-purple-500/10 text-purple-400 border-purple-500/30"
-                    }`}
+              {sections.map((section) => {
+                const isActive = activeSection === section.id
+                return (
+                  <Button 
+                    key={section.id}
+                    variant={isActive ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => setActiveSection(section.id)}
+                    className={isActive ? "bg-primary text-primary-foreground" : "glass-card border-border/50"}
                   >
-                    {section.method}
-                  </Badge>
-                </Button>
-              ))}
+                    <section.icon className="h-4 w-4 mr-2" />
+                    {section.label}
+                    <Badge 
+                      variant="outline" 
+                      className={`ml-2 text-xs ${
+                        isActive 
+                          ? "bg-white/20 text-white border-white/30"
+                          : section.method === "GET" 
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" 
+                            : section.method === "POST" 
+                              ? "bg-blue-500/10 text-blue-400 border-blue-500/30" 
+                              : "bg-purple-500/10 text-purple-400 border-purple-500/30"
+                      }`}
+                    >
+                      {section.method}
+                    </Badge>
+                  </Button>
+                )
+              })}
             </div>
           </CardContent>
         </Card>
@@ -392,89 +398,6 @@ export default function DocsPage() {
       "total": 75,
       "totalPages": 2,
       "hasMore": true
-    }
-  }
-}`}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Bulk Search Section */}
-        {activeSection === "search-bulk" && (
-          <div className="space-y-6">
-            <Card className="glass-card border-border/50">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 font-mono">POST</Badge>
-                  <code className="text-lg font-mono text-foreground">/api/v1/search/bulk</code>
-                </div>
-                <CardDescription className="text-muted-foreground mt-2">
-                  Search for multiple queries in a single request. Useful for batch processing.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Parameters */}
-                <div>
-                  <h4 className="font-semibold mb-3 text-foreground">Request Body Parameters</h4>
-                  <ParameterTable params={[
-                    { name: "queries", type: "array", required: true, description: "Array of search objects with query and type" },
-                    { name: "queries[].query", type: "string", required: true, description: "The search query" },
-                    { name: "queries[].type", type: "string", required: false, description: "Search type: email, username, password, or any", default: "any" },
-                    { name: "limit", type: "number", required: false, description: "Max results per query (max 50)", default: "10" },
-                  ]} />
-                </div>
-
-                {/* Example Request */}
-                <div>
-                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
-                  <CodeBlock code={`curl -X POST "${baseUrl}/api/v1/search/bulk" \\
-  -H "X-API-Key: bv_your_api_key" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "queries": [
-      {"query": "john@example.com", "type": "email"},
-      {"query": "jane@example.com", "type": "email"},
-      {"query": "admin", "type": "username"}
-    ],
-    "limit": 10
-  }'`} />
-                </div>
-
-                {/* Response */}
-                <div>
-                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    Success Response
-                    <Badge variant="outline" className="text-xs">200 OK</Badge>
-                  </h4>
-                  <CodeBlock 
-                    language="json"
-                    code={`{
-  "success": true,
-  "data": {
-    "results": [
-      {
-        "query": "john@example.com",
-        "type": "email",
-        "found": true,
-        "count": 5,
-        "credentials": [...]
-      },
-      {
-        "query": "jane@example.com",
-        "type": "email",
-        "found": false,
-        "count": 0,
-        "credentials": []
-      }
-    ],
-    "summary": {
-      "totalQueries": 3,
-      "queriesWithResults": 2,
-      "totalCredentials": 12
     }
   }
 }`}

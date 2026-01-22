@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion"
 const MAP_COLORS = {
   defaultFill: "#1e293b",              // Match lowest density (Darker Blue - blue-900)
   defaultStroke: "hsl(0 0% 50%)",       // Brighter border (Gray-300 equivalent) for better definition
-  hoverFill: "#facc15",                 // blue-500
+  hoverFill: "#ff3300",
   // Blue (Low) -> Red (High) scale for better visual distinction
   heatScale: [
     "#1e293b",    // Lowest (Darker Blue - blue-900)

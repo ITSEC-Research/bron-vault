@@ -18,7 +18,7 @@ interface SearchDomainRequest {
   includeSubdomains?: boolean // Default true
   page?: number
   limit?: number
-  includePasswords?: boolean // Default false for security
+  maskPasswords?: boolean // Default false - show plain passwords
 }
 
 interface DomainSearchResult {
@@ -27,8 +27,7 @@ interface DomainSearchResult {
   url: string
   domain: string
   username: string
-  password?: string
-  passwordMasked: string
+  password: string // Always included
   browser: string
   country?: string
   uploadDate: string
@@ -96,7 +95,7 @@ export async function POST(request: NextRequest) {
       includeSubdomains = true, 
       page = 1, 
       limit = 50, 
-      includePasswords = false 
+      maskPasswords = false 
     } = body
 
     // Validate input
@@ -153,7 +152,7 @@ export async function POST(request: NextRequest) {
         c.url,
         c.domain,
         c.username,
-        ${includePasswords ? 'c.password,' : ''}
+        c.password,
         c.browser,
         d.upload_date,
         si.country
@@ -178,14 +177,10 @@ export async function POST(request: NextRequest) {
         url: row.url || '',
         domain: row.domain || '',
         username: row.username || '',
-        passwordMasked: maskPassword(row.password),
+        password: maskPasswords ? maskPassword(row.password) : (row.password || ''),
         browser: row.browser || 'Unknown',
         country: row.country || undefined,
         uploadDate: row.upload_date,
-      }
-      
-      if (includePasswords && row.password) {
-        result.password = row.password
       }
       
       return result

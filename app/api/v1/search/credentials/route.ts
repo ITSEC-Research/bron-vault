@@ -18,7 +18,7 @@ interface SearchCredentialsRequest {
   type: 'email' | 'username' | 'password' | 'any'
   page?: number
   limit?: number
-  includePasswords?: boolean // Default false for security
+  maskPasswords?: boolean // Default false - show plain passwords
 }
 
 interface CredentialResult {
@@ -28,8 +28,7 @@ interface CredentialResult {
   domain: string
   tld: string
   username: string
-  password?: string // Only included if includePasswords is true
-  passwordMasked: string
+  password: string // Always included
   browser: string
   country?: string
   uploadDate: string
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: SearchCredentialsRequest = await request.json()
-    const { query, type = 'any', page = 1, limit = 50, includePasswords = false } = body
+    const { query, type = 'any', page = 1, limit = 50, maskPasswords = false } = body
 
     // Validate input
     if (!query || typeof query !== 'string') {
@@ -126,7 +125,7 @@ export async function POST(request: NextRequest) {
         c.domain,
         c.tld,
         c.username,
-        ${includePasswords ? 'c.password,' : ''}
+        c.password,
         c.browser,
         d.upload_date,
         si.country
@@ -156,15 +155,10 @@ export async function POST(request: NextRequest) {
         domain: row.domain || '',
         tld: row.tld || '',
         username: row.username || '',
-        passwordMasked: maskPassword(row.password),
+        password: maskPasswords ? maskPassword(row.password) : (row.password || ''),
         browser: row.browser || 'Unknown',
         country: row.country || undefined,
         uploadDate: row.upload_date,
-      }
-      
-      // Only include actual password if requested and user has permission
-      if (includePasswords && row.password) {
-        result.password = row.password
       }
       
       return result
