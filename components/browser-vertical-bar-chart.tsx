@@ -185,11 +185,21 @@ export default function BrowserVerticalBarChart({
                   stiffness: 80,
                   damping: 15
                 }}
-                style={{
-                  background: "linear-gradient(to top, rgba(255, 51, 51, 0.5), rgba(255, 51, 51, 0.1))",
-                  border: "1px solid rgba(255, 51, 51, 0.3)",
-                  boxShadow: "0 0 20px rgba(255, 51, 51, 0.15)",
-                }}
+                style={
+                  idx === 0
+                    ? {
+                        // First bar: Amber gradient (matching --bron-accent-yellow: #F59E0B)
+                        background: "linear-gradient(to top, rgba(245, 158, 11, 0.5), rgba(245, 158, 11, 0.1))",
+                        border: "1px solid rgba(245, 158, 11, 0.3)",
+                        boxShadow: "0 0 20px rgba(245, 158, 11, 0.15)",
+                      }
+                    : {
+                        // Remaining bars: Blue gradient (matching theme --bron-accent-blue: #3B82F6)
+                        background: "linear-gradient(to top, rgba(59, 130, 246, 0.5), rgba(59, 130, 246, 0.1))",
+                        border: "1px solid rgba(59, 130, 246, 0.3)",
+                        boxShadow: "0 0 20px rgba(59, 130, 246, 0.15)",
+                      }
+                }
               />
             </div>
           );

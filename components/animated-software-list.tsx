@@ -45,7 +45,16 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 min-w-0 flex-1">
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-500 ring-1 ring-emerald-500/50 text-xs font-bold flex-shrink-0">
+                <div 
+                  className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 relative"
+                  style={{
+                    background: index < 3 
+                      ? "linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(16, 185, 129, 0.15))"
+                      : "linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1))",
+                    border: `1.5px solid ${index < 3 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(16, 185, 129, 0.4)'}`,
+                    color: index < 3 ? "rgb(16, 185, 129)" : "rgba(16, 185, 129, 0.9)"
+                  }}
+                >
                   #{index + 1}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -65,9 +74,14 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
                 {Number(item?.count || 0).toLocaleString()}
               </span>
             </div>
-            <div className="w-full bg-secondary/30 rounded-full h-2 overflow-hidden">
+            <div className="w-full bg-secondary/30 rounded-full h-2.5 overflow-hidden border border-border/30">
               <motion.div
-                className="bg-primary/60 h-2 rounded-full shadow-[0_0_15px_rgba(255,51,51,0.25)]"
+                className="h-full rounded-full relative"
+                style={{
+                  background: "linear-gradient(to right, rgba(30, 58, 138, 0.85), rgba(30, 58, 138, 0.65), rgba(30, 58, 138, 0.5))",
+                  boxShadow: "0 0 12px rgba(30, 58, 138, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+                  border: "1px solid rgba(30, 58, 138, 0.4)"
+                }}
                 initial={{ width: 0 }}
                 animate={isInView ? { width: `${percentage}%` } : { width: 0 }}
                 transition={{
@@ -76,7 +90,10 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
                   type: "spring",
                   stiffness: 80
                 }}
-              />
+              >
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-full" />
+              </motion.div>
             </div>
           </div>
         )

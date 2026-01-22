@@ -294,14 +294,14 @@ function DashboardContent() {
               icon={Database}
               value={stats.totalFiles}
               label="Files Extracted"
-              iconColor="text-emerald-500"
+              iconColor="text-cyan-500"
               delay={0.4}
             />
             <AnimatedStatCard
               icon={Globe}
               value={stats.totalDomains}
               label="Total Domains"
-              iconColor="text-blue-500"
+              iconColor="text-violet-500"
               delay={0.6}
             />
             <AnimatedStatCard
@@ -437,7 +437,7 @@ function DashboardContent() {
             <Card className="col-span-1 lg:col-span-2 glass-card overflow-visible">
               <CardHeader className="!p-4 border-b-[2px] border-border">
                 <CardTitle className="flex items-center text-foreground text-lg">
-                  <Monitor className="h-4 w-4 mr-2 text-violet-500" />
+                  <Monitor className="h-4 w-4 mr-2 text-amber-500" />
                   Top Browsers Used by Infected Devices
                 </CardTitle>
               </CardHeader>
@@ -468,7 +468,7 @@ function DashboardContent() {
                   Most Common Software Found in Logs
                 </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 pt-6 h-[500px] flex flex-col">
+              <CardContent className="!p-4 pt-6 flex flex-col" style={{ height: '560px', minHeight: '560px' }}>
                 <ErrorBoundary fallback={<div className="text-red-500 text-sm">Software list error</div>}>
                   <AnimatedSoftwareList softwareData={softwareData} />
                 </ErrorBoundary>

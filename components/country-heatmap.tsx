@@ -10,17 +10,16 @@ import { motion, AnimatePresence } from "framer-motion"
 
 // Map color constants - aligned with existing theme
 const MAP_COLORS = {
-  defaultFill: "#450a0a",              // Match lowest density (Deep Red, not Black-Red)
+  defaultFill: "#1e293b",              // Match lowest density (Darker Blue - blue-900)
   defaultStroke: "hsl(0 0% 50%)",       // Brighter border (Gray-300 equivalent) for better definition
   hoverFill: "#facc15",                 // blue-500
-  // "Magma V2" - Brighter Base for visibility
-  // Deep Red -> Rich Red -> Neon (No longer "Near Black" at bottom)
+  // Blue (Low) -> Red (High) scale for better visual distinction
   heatScale: [
-    "#450a0a",    // Lowest (Deep Red - Visible)
-    "#7f1d1d",    // Low (Dark Ruby)
-    "#b91c1c",    // Medium (Firebrick)
-    "#ef4444",    // High (Bright Red)
-    "#f87171",    // Highest (Neon Red-Orange)
+    "#1e293b",    // Lowest (Darker Blue - blue-900)
+    "#1e3a8a",    // Low (Dark Blue - blue-800)
+    "#450a0a",    // Medium (Firebrick Red)
+    "#7f1d1d",    // High (Bright Red)
+    "#991b1b",    // Highest (Neon Red-Orange)
   ],
 }
 
