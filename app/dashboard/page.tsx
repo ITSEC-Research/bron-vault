@@ -20,8 +20,12 @@ import { AuthGuard } from "@/components/auth-guard"
 import { AnimatedStatCard } from "@/components/animated-stat-card"
 import { AnimatedSoftwareList } from "@/components/animated-software-list"
 import { CountryHeatmap } from "@/components/country-heatmap"
+import { DashboardDateRange } from "@/components/dashboard-date-range"
+import { DashboardExport } from "@/components/dashboard-export"
 import ErrorBoundary from "@/components/error-boundary"
 import { LoadingState, LoadingChart, LoadingCard } from "@/components/ui/loading"
+import { DateRangeType, dateRangeToQueryParams } from "@/lib/date-range-utils"
+import { DashboardExportData } from "@/lib/export-utils"
 
 interface TopPassword {
   password: string
@@ -31,13 +35,6 @@ interface TopPassword {
 interface TopTLD {
   tld: string
   count: number
-}
-
-interface RSSItem {
-  title: string
-  link: string
-  pubDate: string
-  description: string
 }
 
 interface BrowserData {
@@ -73,11 +70,11 @@ export default function DashboardPage() {
 function DashboardContent() {
   const [topPasswords, setTopPasswords] = useState<TopPassword[]>([])
   const [topTLDs, setTopTLDs] = useState<TopTLD[]>([])
-  const [_rssItems, setRssItems] = useState<RSSItem[]>([])
-  const [_ransomwareItems, setRansomwareItems] = useState<RSSItem[]>([])
   const [browserData, setBrowserData] = useState<BrowserData[]>([])
   const [softwareData, setSoftwareData] = useState<SoftwareData[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [dateRange, setDateRange] = useState<DateRangeType | null>(null)
+  const [countryStats, setCountryStats] = useState<any>(null)
   const [stats, setStats] = useState<Stats>({
     totalDevices: 0,
     uniqueDeviceNames: 0,
@@ -90,26 +87,33 @@ function DashboardContent() {
 
   useEffect(() => {
     loadDashboardData()
-  }, [])
+  }, [dateRange])
 
   const loadDashboardData = async () => {
     setIsLoading(true)
     try {
+      // Build query params for date range
+      const dateParams = dateRangeToQueryParams(dateRange)
+      const queryString = new URLSearchParams(dateParams).toString()
+      const apiSuffix = queryString ? `?${queryString}` : ""
+      
+      console.log("📊 Dashboard: Loading data with date range:", dateRange)
+      console.log("📊 Dashboard: Date params:", dateParams)
+      console.log("📊 Dashboard: API suffix:", apiSuffix)
+
       // Load all data in parallel for faster loading
       const [
         statsResponse,
         tldsResponse,
-        rssResponse,
-        ransomwareResponse,
         browserResponse,
-        softwareResponse
+        softwareResponse,
+        countryStatsResponse
       ] = await Promise.all([
-        fetch("/api/stats"),
-        fetch("/api/top-tlds"),
-        fetch("/api/rss-feeds?source=malware-traffic"),
-        fetch("/api/rss-feeds?source=ransomware-live"),
-        fetch("/api/browser-analysis"),
-        fetch("/api/software-analysis")
+        fetch(`/api/stats${apiSuffix}`),
+        fetch(`/api/top-tlds${apiSuffix}`),
+        fetch(`/api/browser-analysis${apiSuffix}`),
+        fetch(`/api/software-analysis${apiSuffix}`),
+        fetch(`/api/country-stats${apiSuffix}`)
       ])
 
       // Process stats response (contains both stats and top passwords)
@@ -132,40 +136,6 @@ function DashboardContent() {
           console.warn("Unexpected TLDs response structure:", tldsData)
           setTopTLDs([])
         }
-      }
-
-      // Process RSS feeds response
-      if (rssResponse.ok) {
-        const rssData = await rssResponse.json()
-        console.log("📡 RSS API Response:", rssData)
-        // Handle the response structure properly
-        if (rssData.success && rssData.feed && rssData.feed.items) {
-          setRssItems(rssData.feed.items.slice(0, 7))
-        } else if (rssData.items) {
-          setRssItems(rssData.items.slice(0, 7))
-        } else {
-          console.warn("Unexpected RSS response structure:", rssData)
-          setRssItems([])
-        }
-      } else {
-        console.error("RSS API failed:", rssResponse.status)
-      }
-
-      // Process Ransomware Live RSS feeds response
-      if (ransomwareResponse.ok) {
-        const ransomwareData = await ransomwareResponse.json()
-        console.log("🔒 Ransomware RSS API Response:", ransomwareData)
-        // Handle the response structure properly
-        if (ransomwareData.success && ransomwareData.feed && ransomwareData.feed.items) {
-          setRansomwareItems(ransomwareData.feed.items.slice(0, 7))
-        } else if (ransomwareData.items) {
-          setRansomwareItems(ransomwareData.items.slice(0, 7))
-        } else {
-          console.warn("Unexpected Ransomware RSS response structure:", ransomwareData)
-          setRansomwareItems([])
-        }
-      } else {
-        console.error("Ransomware RSS API failed:", ransomwareResponse.status)
       }
 
       // Process browser analysis response
@@ -195,11 +165,40 @@ function DashboardContent() {
       } else {
         console.error("Software Analysis API failed:", softwareResponse.status)
       }
+
+      // Process country stats response
+      if (countryStatsResponse.ok) {
+        const countryData = await countryStatsResponse.json()
+        console.log("🌍 Country Stats API Response:", countryData)
+        if (countryData.success) {
+          setCountryStats(countryData)
+        } else {
+          console.warn("Unexpected country stats response structure:", countryData)
+          setCountryStats(null)
+        }
+      } else {
+        console.error("Country Stats API failed:", countryStatsResponse.status)
+      }
     } catch (error) {
       console.error("Failed to load dashboard data:", error)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Prepare export data
+  const exportData: DashboardExportData = {
+    stats,
+    topPasswords,
+    topTLDs,
+    browserData,
+    softwareData,
+    countryStats: countryStats ? {
+      summary: countryStats.summary,
+      topCountries: countryStats.topCountries,
+    } : undefined,
+    dateRange,
+    exportDate: new Date(),
   }
 
   const _formatDate = (dateString: string) => {
@@ -254,7 +253,21 @@ function DashboardContent() {
   return (
     <div className="flex flex-col min-h-screen bg-transparent">
       <main className="flex-1 p-4 bg-transparent">
-        <div className="max-w-7xl mx-auto space-y-4">
+        <div className="max-w-7xl mx-auto">
+          {/* Dashboard Controls - Date Range & Export */}
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <DashboardDateRange
+              value={dateRange}
+              onChange={setDateRange}
+            />
+            <DashboardExport
+              exportData={exportData}
+              dashboardElementId="dashboard-content"
+            />
+          </div>
+
+          {/* Dashboard Content - Wrapped in div for PDF export */}
+          <div id="dashboard-content" className="space-y-4">
           {/* Statistic Boxes - Layer 1 */}
           <ErrorBoundary context="Dashboard Stats Layer 1">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -276,7 +289,7 @@ function DashboardContent() {
           </ErrorBoundary>
 
           {/* Statistic Boxes - Layer 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
             <AnimatedStatCard
               icon={Database}
               value={stats.totalFiles}
@@ -309,6 +322,7 @@ function DashboardContent() {
               </AlertDescription>
             </Alert>
           )}
+          
           {/* Top Passwords */}
           <Card className="glass-card">
             <CardHeader className="!p-4 border-b-[2px] border-border">
@@ -380,9 +394,11 @@ function DashboardContent() {
                     </div>
                   </ScrollArea>
                 ) : (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground">No TLD data available</p>
-                    <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see domain statistics</p>
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <p className="text-muted-foreground">No TLD data available</p>
+                      <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see domain statistics</p>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -408,7 +424,10 @@ function DashboardContent() {
                 </Card>
               }
             >
-              <CountryHeatmap className="flex-[2] lg:basis-[9.5/12]" />
+              <CountryHeatmap 
+                className="flex-[2] lg:basis-[9.5/12]"
+                dateRange={dateRangeToQueryParams(dateRange)}
+              />
             </ErrorBoundary>
           </div>
 
@@ -423,7 +442,7 @@ function DashboardContent() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="!p-4 pt-6 overflow-visible">
-                <div className="w-full h-[500px] flex items-end justify-center mt-4 overflow-visible">
+                <div className={`w-full h-[500px] flex justify-center mt-4 overflow-visible ${browserData.length > 0 ? 'items-end' : 'items-center'}`}>
                   <ErrorBoundary
                     context="Browser Chart"
                     fallback={
@@ -449,13 +468,15 @@ function DashboardContent() {
                   Most Common Software Found in Logs
                 </CardTitle>
               </CardHeader>
-              <CardContent className="!p-4 pt-6">
+              <CardContent className="!p-4 pt-6 h-[500px] flex flex-col">
                 <ErrorBoundary fallback={<div className="text-red-500 text-sm">Software list error</div>}>
                   <AnimatedSoftwareList softwareData={softwareData} />
                 </ErrorBoundary>
               </CardContent>
             </Card>
           </div>
+          </div>
+          {/* End Dashboard Content */}
 
         </div>
       </main>

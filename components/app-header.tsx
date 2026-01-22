@@ -18,7 +18,7 @@ export default function AppHeader({ title }: AppHeaderProps) {
       <div className="relative flex h-16 items-center justify-between px-4">
         <div className="flex items-center">
           <SidebarTrigger className="text-muted-foreground hover:text-foreground hover:bg-white/10 mr-4" />
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{title || 'broń Vault'}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">{title || 'Broń Vault'}</h1>
         </div>
         <div className="flex items-center">
           <ForceRefreshWrapper refreshKey={title}>

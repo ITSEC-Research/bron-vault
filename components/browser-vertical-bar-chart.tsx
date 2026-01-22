@@ -47,8 +47,11 @@ export default function BrowserVerticalBarChart({
 
   if (safeBrowserData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[200px]">
-        <span className="text-muted-foreground">No browser data available</span>
+      <div className="flex items-center justify-center h-full min-h-[450px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">No browser data available</p>
+          <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see browser statistics</p>
+        </div>
       </div>
     );
   }

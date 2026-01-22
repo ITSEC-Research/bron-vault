@@ -13,11 +13,11 @@ export default function ClientLayoutWithSidebar({ children }: { children: React.
   }, [pathname]);
 
   // Determine page title based on pathname
-  let title = "broń Vault";
-  if (pathname === "/dashboard") title = "broń Vault - Dashboard";
-  else if (pathname === "/") title = "broń Vault - Search";
-  else if (pathname === "/upload") title = "broń Vault - Upload";
-  else if (pathname === "/debug-zip") title = "broń Vault - Debug ZIP";
+  let title = "Broń Vault";
+  if (pathname === "/dashboard") title = "Broń Vault - Dashboard";
+  else if (pathname === "/") title = "Broń Vault - Search";
+  else if (pathname === "/upload") title = "Broń Vault - Upload";
+  else if (pathname === "/debug-zip") title = "Broń Vault - Debug ZIP";
 
   // Don't render sidebar/header if on login or db-sync page
   if (pathname === "/login" || pathname === "/db-sync") {

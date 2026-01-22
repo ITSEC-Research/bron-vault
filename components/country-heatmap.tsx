@@ -97,9 +97,10 @@ interface TooltipData {
 
 interface CountryHeatmapProps {
   className?: string
+  dateRange?: { startDate?: string; endDate?: string } | null
 }
 
-export function CountryHeatmap({ className }: CountryHeatmapProps) {
+export function CountryHeatmap({ className, dateRange }: CountryHeatmapProps) {
   const [data, setData] = useState<CountryStatsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -119,7 +120,13 @@ export function CountryHeatmap({ className }: CountryHeatmapProps) {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await fetch("/api/country-stats")
+        const params = new URLSearchParams()
+        if (dateRange?.startDate) params.set("startDate", dateRange.startDate)
+        if (dateRange?.endDate) params.set("endDate", dateRange.endDate)
+        const queryString = params.toString()
+        const url = `/api/country-stats${queryString ? `?${queryString}` : ""}`
+        
+        const response = await fetch(url)
         if (!response.ok) {
           throw new Error("Failed to fetch country statistics")
         }
@@ -134,7 +141,7 @@ export function CountryHeatmap({ className }: CountryHeatmapProps) {
     }
 
     fetchCountryStats()
-  }, [])
+  }, [dateRange])
 
   // Create lookup maps for fast access
   const statsByAlpha3 = useMemo(() => {
@@ -443,8 +450,8 @@ export function CountryHeatmap({ className }: CountryHeatmapProps) {
 
   return (
     <Card className={`glass-card ${className || ""}`}>
-      <CardHeader className="!p-4 border-b-[2px] border-border !flex-row !items-center justify-between space-y-0 min-h-0">
-        <CardTitle className="flex items-center text-foreground text-lg leading-none">
+      <CardHeader className="!p-4 border-b-[2px] border-border !flex-row !items-center justify-between space-y-0">
+        <CardTitle className="flex items-center text-foreground text-lg">
           <Globe className="h-4 w-4 mr-2 text-blue-500 shrink-0" />
           Global Infection Map
         </CardTitle>

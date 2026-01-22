@@ -3,6 +3,10 @@ import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 import { normalizeCountryToCode } from "@/lib/system-information-parser/country-mapping"
 import { getCountryName, createAlpha2ToAlpha3Map } from "@/lib/country-iso-utils"
+import {
+  parseDateFilterFromRequest,
+  buildSystemInfoDateFilter,
+} from "@/lib/date-filter-utils"
 
 export async function GET(request: NextRequest) {
   // Validate authentication
@@ -12,6 +16,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Parse date filter params
+    const searchParams = request.nextUrl.searchParams
+    const dateFilter = parseDateFilterFromRequest(searchParams)
+    const { whereClause: dateWhereClause, hasFilter } = buildSystemInfoDateFilter(dateFilter)
+
+    // Build WHERE clause - combine country filter with date filter
+    let whereClause = `WHERE si.country IS NOT NULL 
+        AND si.country != ''
+        AND length(trimBoth(si.country)) > 0`
+    
+    if (hasFilter) {
+      // Add date filter conditions
+      const dateConditions = dateWhereClause.replace('WHERE ', '')
+      whereClause += ` AND ${dateConditions}`
+    }
+
     // Query ClickHouse untuk aggregasi devices dan credentials per country
     // Join systeminformation dengan devices untuk mendapatkan total credentials
     const countryStatsResult = (await executeClickHouseQuery(`
@@ -21,9 +41,7 @@ export async function GET(request: NextRequest) {
         sum(d.total_credentials) as total_credentials
       FROM systeminformation si
       INNER JOIN devices d ON si.device_id = d.device_id
-      WHERE si.country IS NOT NULL 
-        AND si.country != ''
-        AND length(trimBoth(si.country)) > 0
+      ${whereClause}
       GROUP BY si.country
       ORDER BY total_devices DESC
     `)) as any[]

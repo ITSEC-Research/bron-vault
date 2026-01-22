@@ -22,9 +22,11 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
 
   if (safeSoftwareData.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No software data available</p>
-        <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see software statistics</p>
+      <div className="flex items-center justify-center h-full min-h-[450px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">No software data available</p>
+          <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see software statistics</p>
+        </div>
       </div>
     )
   }
@@ -32,7 +34,7 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
   const maxCount = Math.max(...safeSoftwareData.map(s => s?.count || 0))
 
   return (
-    <div ref={ref} className="space-y-2.5">
+    <div ref={ref} className="space-y-2.5 h-full">
       {safeSoftwareData.map((item, index) => {
         const percentage = maxCount > 0 ? ((item?.count || 0) / maxCount) * 100 : 0
 
@@ -43,12 +45,12 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 min-w-0 flex-1">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-500 ring-1 ring-emerald-500/50 text-xs font-bold flex-shrink-0">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500/20 text-emerald-500 ring-1 ring-emerald-500/50 text-xs font-bold flex-shrink-0">
                   #{index + 1}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-foreground truncate">
+                    <span className="text-xs font-medium text-foreground truncate">
                       {item?.software_name || 'Unknown Software'}
                     </span>
                     {item?.version && (
@@ -59,7 +61,7 @@ export function AnimatedSoftwareList({ softwareData }: AnimatedSoftwareListProps
                   </div>
                 </div>
               </div>
-              <span className="text-sm text-muted-foreground font-mono ml-2 flex-shrink-0">
+              <span className="text-xs text-muted-foreground font-mono ml-2 flex-shrink-0">
                 {Number(item?.count || 0).toLocaleString()}
               </span>
             </div>
