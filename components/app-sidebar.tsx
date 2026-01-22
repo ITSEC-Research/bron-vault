@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -91,6 +91,18 @@ const menuGroups: MenuGroup[] = [
         url: "/users",
         icon: Users,
         adminOnly: true, // Only admins can manage users
+      },
+      {
+        title: "API Keys",
+        description: "Manage API Access",
+        url: "/api-keys",
+        icon: Key,
+      },
+      {
+        title: "API Docs",
+        description: "API Documentation",
+        url: "/docs",
+        icon: BookOpen,
       },
       {
         title: "Settings",

@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255) DEFAULT NULL,
     role ENUM('admin', 'analyst') NOT NULL DEFAULT 'admin',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
     totp_secret VARCHAR(255) DEFAULT NULL,
     totp_enabled BOOLEAN DEFAULT FALSE,
     backup_codes TEXT DEFAULT NULL,
@@ -204,6 +205,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),
     INDEX idx_users_role (role),
+    INDEX idx_users_is_active (is_active),
     INDEX idx_totp_enabled (totp_enabled)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -213,6 +215,106 @@ CREATE TABLE IF NOT EXISTS users (
 INSERT INTO users (email, password_hash, name, role) VALUES 
     ('admin@bronvault.local', '$2b$12$V3YGoZlvgABmhIbt7H0ZyeygLONKnSe1TKuvp8OwEvc4u7nFWUUd.', 'Admin', 'admin')
 ON DUPLICATE KEY UPDATE email=email;
+
+-- =====================================================
+-- Table: api_keys
+-- =====================================================
+-- API Keys for programmatic access
+-- key_prefix: First 10 chars for identification
+-- key_hash: SHA-256 hash of full key (never store plain key)
+CREATE TABLE IF NOT EXISTS api_keys (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    key_prefix VARCHAR(10) NOT NULL COMMENT 'First 10 chars for identification',
+    key_hash VARCHAR(64) NOT NULL UNIQUE COMMENT 'SHA-256 hash of full key',
+    name VARCHAR(255) NOT NULL COMMENT 'User-friendly name for the key',
+    role ENUM('admin', 'analyst') NOT NULL DEFAULT 'analyst',
+    rate_limit INT NOT NULL DEFAULT 100 COMMENT 'Max requests per window',
+    rate_limit_window INT NOT NULL DEFAULT 60 COMMENT 'Window in seconds',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    expires_at TIMESTAMP NULL,
+    last_used_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_api_keys_user_id (user_id),
+    INDEX idx_api_keys_is_active (is_active),
+    INDEX idx_api_keys_expires_at (expires_at),
+    INDEX idx_api_keys_role (role),
+    CONSTRAINT api_keys_ibfk_1 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Table: api_request_logs
+-- =====================================================
+-- Audit trail for API requests
+CREATE TABLE IF NOT EXISTS api_request_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    api_key_id INT NOT NULL,
+    endpoint VARCHAR(255) NOT NULL,
+    method VARCHAR(10) NOT NULL,
+    status_code INT NOT NULL,
+    request_size INT NULL,
+    response_size INT NULL,
+    duration_ms INT NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_api_request_logs_api_key_id (api_key_id),
+    INDEX idx_api_request_logs_endpoint (endpoint),
+    INDEX idx_api_request_logs_created_at (created_at),
+    INDEX idx_api_request_logs_status_code (status_code),
+    CONSTRAINT api_request_logs_ibfk_1 FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Table: upload_jobs
+-- =====================================================
+-- Track API upload jobs
+CREATE TABLE IF NOT EXISTS upload_jobs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    job_id VARCHAR(50) NOT NULL UNIQUE COMMENT 'Public job identifier',
+    api_key_id INT NOT NULL,
+    user_id INT NOT NULL,
+    status ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
+    progress INT NOT NULL DEFAULT 0 COMMENT 'Progress 0-100',
+    original_filename VARCHAR(500) NULL,
+    file_size BIGINT NULL,
+    file_path TEXT NULL,
+    total_devices INT NOT NULL DEFAULT 0,
+    processed_devices INT NOT NULL DEFAULT 0,
+    total_credentials INT NOT NULL DEFAULT 0,
+    total_files INT NOT NULL DEFAULT 0,
+    error_message TEXT NULL,
+    error_code VARCHAR(50) NULL,
+    started_at TIMESTAMP NULL,
+    completed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_upload_jobs_api_key_id (api_key_id),
+    INDEX idx_upload_jobs_user_id (user_id),
+    INDEX idx_upload_jobs_status (status),
+    INDEX idx_upload_jobs_created_at (created_at),
+    CONSTRAINT upload_jobs_ibfk_1 FOREIGN KEY (api_key_id) REFERENCES api_keys(id) ON DELETE CASCADE,
+    CONSTRAINT upload_jobs_ibfk_2 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Table: upload_job_logs
+-- =====================================================
+-- Detailed logs for upload jobs
+-- NOTE: metadata is TEXT NOT NULL (not JSON) for ClickHouse MaterializedMySQL compatibility
+CREATE TABLE IF NOT EXISTS upload_job_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    job_id VARCHAR(50) NOT NULL,
+    log_level ENUM('debug', 'info', 'warning', 'error') NOT NULL DEFAULT 'info',
+    message TEXT NOT NULL,
+    metadata TEXT NOT NULL COMMENT 'JSON string for additional data (TEXT for ClickHouse compatibility)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_upload_job_logs_job_id (job_id),
+    INDEX idx_upload_job_logs_log_level (log_level),
+    INDEX idx_upload_job_logs_created_at (created_at),
+    CONSTRAINT upload_job_logs_ibfk_1 FOREIGN KEY (job_id) REFERENCES upload_jobs(job_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
 -- Performance Indexes

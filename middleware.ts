@@ -9,6 +9,7 @@ const PUBLIC_PATHS = [
   "/api/auth/check-users",
   "/api/auth/register-first-user",
   "/api/db-sync",
+  "/api/v1", // API v1 uses API key authentication, not JWT
   "/_next",
   "/favicon.ico"
 ]
