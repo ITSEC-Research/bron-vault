@@ -7,7 +7,7 @@
  * Schema Version: 1.0.0
  */
 
-export const SCHEMA_VERSION = "1.0.0"
+export const SCHEMA_VERSION = "1.1.0"
 
 // Column definition type
 export interface ColumnDefinition {
@@ -314,6 +314,137 @@ export const USERS_TABLE: TableDefinition = {
   collate: 'utf8mb4_unicode_ci'
 }
 
+// API Keys Table - Store API keys for external access
+export const API_KEYS_TABLE: TableDefinition = {
+  name: 'api_keys',
+  columns: [
+    { name: 'id', type: 'int', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'user_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'key_prefix', type: 'varchar(10)', nullable: false, comment: 'First 10 chars for identification' },
+    { name: 'key_hash', type: 'varchar(64)', nullable: false, key: 'UNI', comment: 'SHA-256 hash of full key' },
+    { name: 'name', type: 'varchar(255)', nullable: false, comment: 'User-friendly name for the key' },
+    { name: 'role', type: "enum('admin','analyst')", nullable: false, default: "'analyst'" },
+    { name: 'rate_limit', type: 'int', nullable: false, default: '100', comment: 'Max requests per window' },
+    { name: 'rate_limit_window', type: 'int', nullable: false, default: '60', comment: 'Window in seconds' },
+    { name: 'is_active', type: 'tinyint(1)', nullable: false, default: '1' },
+    { name: 'expires_at', type: 'timestamp', nullable: true },
+    { name: 'last_used_at', type: 'timestamp', nullable: true },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+    { name: 'updated_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP', extra: 'on update CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'key_hash', columns: ['key_hash'], unique: true },
+    { name: 'idx_api_keys_user_id', columns: ['user_id'], unique: false },
+    { name: 'idx_api_keys_is_active', columns: ['is_active'], unique: false },
+    { name: 'idx_api_keys_expires_at', columns: ['expires_at'], unique: false },
+    { name: 'idx_api_keys_role', columns: ['role'], unique: false },
+  ],
+  foreignKeys: [
+    { name: 'api_keys_ibfk_1', column: 'user_id', referencedTable: 'users', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' }
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// API Request Logs Table - Audit trail for API requests
+export const API_REQUEST_LOGS_TABLE: TableDefinition = {
+  name: 'api_request_logs',
+  columns: [
+    { name: 'id', type: 'bigint', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'api_key_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'endpoint', type: 'varchar(255)', nullable: false },
+    { name: 'method', type: 'varchar(10)', nullable: false },
+    { name: 'status_code', type: 'int', nullable: false },
+    { name: 'request_size', type: 'int', nullable: true },
+    { name: 'response_size', type: 'int', nullable: true },
+    { name: 'duration_ms', type: 'int', nullable: true },
+    { name: 'ip_address', type: 'varchar(45)', nullable: true },
+    { name: 'user_agent', type: 'varchar(500)', nullable: true },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_api_request_logs_api_key_id', columns: ['api_key_id'], unique: false },
+    { name: 'idx_api_request_logs_endpoint', columns: ['endpoint'], unique: false },
+    { name: 'idx_api_request_logs_created_at', columns: ['created_at'], unique: false },
+    { name: 'idx_api_request_logs_status_code', columns: ['status_code'], unique: false },
+  ],
+  foreignKeys: [
+    { name: 'api_request_logs_ibfk_1', column: 'api_key_id', referencedTable: 'api_keys', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' }
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Upload Jobs Table - Track API upload jobs
+export const UPLOAD_JOBS_TABLE: TableDefinition = {
+  name: 'upload_jobs',
+  columns: [
+    { name: 'id', type: 'bigint', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'job_id', type: 'varchar(50)', nullable: false, key: 'UNI', comment: 'Public job identifier' },
+    { name: 'api_key_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'user_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'status', type: "enum('pending','processing','completed','failed','cancelled')", nullable: false, default: "'pending'" },
+    { name: 'progress', type: 'int', nullable: false, default: '0', comment: 'Progress 0-100' },
+    { name: 'original_filename', type: 'varchar(500)', nullable: true },
+    { name: 'file_size', type: 'bigint', nullable: true },
+    { name: 'file_path', type: 'text', nullable: true },
+    { name: 'total_devices', type: 'int', nullable: false, default: '0' },
+    { name: 'processed_devices', type: 'int', nullable: false, default: '0' },
+    { name: 'total_credentials', type: 'int', nullable: false, default: '0' },
+    { name: 'total_files', type: 'int', nullable: false, default: '0' },
+    { name: 'error_message', type: 'text', nullable: true },
+    { name: 'error_code', type: 'varchar(50)', nullable: true },
+    { name: 'started_at', type: 'timestamp', nullable: true },
+    { name: 'completed_at', type: 'timestamp', nullable: true },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+    { name: 'updated_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP', extra: 'on update CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'job_id', columns: ['job_id'], unique: true },
+    { name: 'idx_upload_jobs_api_key_id', columns: ['api_key_id'], unique: false },
+    { name: 'idx_upload_jobs_user_id', columns: ['user_id'], unique: false },
+    { name: 'idx_upload_jobs_status', columns: ['status'], unique: false },
+    { name: 'idx_upload_jobs_created_at', columns: ['created_at'], unique: false },
+  ],
+  foreignKeys: [
+    { name: 'upload_jobs_ibfk_1', column: 'api_key_id', referencedTable: 'api_keys', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' },
+    { name: 'upload_jobs_ibfk_2', column: 'user_id', referencedTable: 'users', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' }
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Upload Job Logs Table - Detailed logs for upload jobs
+export const UPLOAD_JOB_LOGS_TABLE: TableDefinition = {
+  name: 'upload_job_logs',
+  columns: [
+    { name: 'id', type: 'bigint', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'job_id', type: 'varchar(50)', nullable: false, key: 'MUL' },
+    { name: 'log_level', type: "enum('debug','info','warning','error')", nullable: false, default: "'info'" },
+    { name: 'message', type: 'text', nullable: false },
+    { name: 'metadata', type: 'text', nullable: false },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_upload_job_logs_job_id', columns: ['job_id'], unique: false },
+    { name: 'idx_upload_job_logs_log_level', columns: ['log_level'], unique: false },
+    { name: 'idx_upload_job_logs_created_at', columns: ['created_at'], unique: false },
+  ],
+  foreignKeys: [
+    { name: 'upload_job_logs_ibfk_1', column: 'job_id', referencedTable: 'upload_jobs', referencedColumn: 'job_id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' }
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
 // ===========================================
 // ALL TABLES (in creation order - respect FK dependencies)
 // ===========================================
@@ -327,6 +458,10 @@ export const ALL_TABLES: TableDefinition[] = [
   SYSTEMINFORMATION_TABLE,
   APP_SETTINGS_TABLE,
   USERS_TABLE,
+  API_KEYS_TABLE,
+  API_REQUEST_LOGS_TABLE,
+  UPLOAD_JOBS_TABLE,
+  UPLOAD_JOB_LOGS_TABLE,
 ]
 
 // ===========================================

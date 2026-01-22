@@ -38,7 +38,7 @@ services:
     volumes:
       - ./mysql-data:/var/lib/mysql
       # Auto-import SQL schema
-      - ./scripts/009_create_complete_schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/init-database.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "3306:3306"
     healthcheck:
