@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
+import { createPortal } from "react-dom";
 
 interface BrowserData {
   browser: string;
@@ -20,6 +21,7 @@ export default function BrowserVerticalBarChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState(height);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const themeContext = useTheme();
   const resolvedTheme = themeContext?.resolvedTheme;
   const isInView = useInView(containerRef, { once: true, margin: "-50px" });
@@ -45,8 +47,11 @@ export default function BrowserVerticalBarChart({
 
   if (safeBrowserData.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[200px]">
-        <span className="text-muted-foreground">No browser data available</span>
+      <div className="flex items-center justify-center h-full min-h-[450px]">
+        <div className="text-center">
+          <p className="text-muted-foreground">No browser data available</p>
+          <p className="text-xs text-muted-foreground mt-2">Upload some stealer logs to see browser statistics</p>
+        </div>
       </div>
     );
   }
@@ -133,8 +138,27 @@ export default function BrowserVerticalBarChart({
                 marginRight: idx < barCount - 1 ? `${gapPercentage}%` : "0",
                 minHeight: "20px", // Minimum hover area
               }}
-              onMouseEnter={() => setHoveredIndex(idx)}
-              onMouseLeave={() => setHoveredIndex(null)}
+              onMouseEnter={(e) => {
+                setHoveredIndex(idx);
+                const rect = e.currentTarget.getBoundingClientRect();
+                setTooltipPosition({
+                  x: rect.left + rect.width / 2,
+                  y: rect.top - 8
+                });
+              }}
+              onMouseMove={(e) => {
+                if (hoveredIndex === idx) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setTooltipPosition({
+                    x: rect.left + rect.width / 2,
+                    y: rect.top - 8
+                  });
+                }
+              }}
+              onMouseLeave={() => {
+                setHoveredIndex(null);
+                setTooltipPosition(null);
+              }}
             >
               {/* Invisible hover area for small bars */}
               <div
@@ -161,29 +185,22 @@ export default function BrowserVerticalBarChart({
                   stiffness: 80,
                   damping: 15
                 }}
-                style={{
-                  background: "linear-gradient(to top, rgba(255, 51, 51, 0.5), rgba(255, 51, 51, 0.1))",
-                  border: "1px solid rgba(255, 51, 51, 0.3)",
-                  boxShadow: "0 0 20px rgba(255, 51, 51, 0.15)",
-                }}
-              >
-                {/* Tooltip */}
-                <motion.div
-                  className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 rounded text-xs text-white border border-white/10 shadow z-30 whitespace-nowrap pointer-events-none transition-opacity duration-300 ease-in-out ${
-                    hoveredIndex === idx ? "opacity-100" : "opacity-0"
-                  }`}
-                  style={{
-                    backgroundColor: "rgba(0, 0, 0, 0.9)",
-                    backdropFilter: "blur(4px)",
-                    top: barHeight < 30 ? "-40px" : "-32px", // Adjust position for small bars
-                  }}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: hoveredIndex === idx ? 1 : 0, scale: hoveredIndex === idx ? 1 : 0.8 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {item?.browser || 'Unknown'} <span className="font-bold">({Number(item?.count || 0).toLocaleString()})</span>
-                </motion.div>
-              </motion.div>
+                style={
+                  idx === 0
+                    ? {
+                        // First bar: Amber gradient (matching --bron-accent-yellow: #F59E0B)
+                        background: "linear-gradient(to top, rgba(245, 158, 11, 0.5), rgba(245, 158, 11, 0.1))",
+                        border: "1px solid rgba(245, 158, 11, 0.3)",
+                        boxShadow: "0 0 20px rgba(245, 158, 11, 0.15)",
+                      }
+                    : {
+                        // Remaining bars: Blue gradient (matching theme --bron-accent-blue: #3B82F6)
+                        background: "linear-gradient(to top, rgba(59, 130, 246, 0.5), rgba(59, 130, 246, 0.1))",
+                        border: "1px solid rgba(59, 130, 246, 0.3)",
+                        boxShadow: "0 0 20px rgba(59, 130, 246, 0.15)",
+                      }
+                }
+              />
             </div>
           );
         })}
@@ -224,6 +241,34 @@ export default function BrowserVerticalBarChart({
           );
         })}
       </div>
+
+      {/* Tooltip with React Portal - ensures it's not clipped by overflow-hidden */}
+      {typeof window !== "undefined" && hoveredIndex !== null && tooltipPosition && createPortal(
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 5 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="fixed z-[9999] pointer-events-none"
+            style={{
+              left: `${tooltipPosition.x}px`,
+              top: `${tooltipPosition.y}px`,
+              transform: "translate(-50%, -100%)",
+            }}
+          >
+            <div className="px-2 py-1 rounded text-xs text-white border border-white/10 shadow-lg whitespace-nowrap"
+              style={{
+                backgroundColor: "rgba(0, 0, 0, 0.9)",
+                backdropFilter: "blur(4px)",
+              }}
+            >
+              {safeBrowserData[hoveredIndex]?.browser || 'Unknown'} <span className="font-bold">({Number(safeBrowserData[hoveredIndex]?.count || 0).toLocaleString()})</span>
+            </div>
+          </motion.div>
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

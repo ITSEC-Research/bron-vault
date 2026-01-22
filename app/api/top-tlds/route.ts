@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeMySQLQuery } from "@/lib/mysql"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
+import {
+  parseDateFilterFromRequest,
+  buildDeviceDateFilter,
+  buildSystemInfoDateFilter,
+} from "@/lib/date-filter-utils"
 
 export async function GET(request: NextRequest) {
   console.log("🔍 [TOP-TLDS] API called")
@@ -16,13 +21,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log("📊 [TOP-TLDS] Loading top TLDs for user:", (user as any).username || "<unknown>")
+    // Parse date filter params
+    const searchParams = request.nextUrl.searchParams
+    const dateFilter = parseDateFilterFromRequest(searchParams)
+    const hasDateFilter = !!(dateFilter.startDate || dateFilter.endDate)
 
-    // Check cache first (analytics_cache tetap di MySQL - operational table)
-    console.log("📊 [TOP-TLDS] Checking cache...")
-    const cacheResult = (await executeMySQLQuery(
-      "SELECT cache_data FROM analytics_cache WHERE cache_key = 'top_tlds' AND expires_at > NOW()",
-    )) as any[]
+    console.log("📊 [TOP-TLDS] Loading top TLDs for user:", (user as any).username || "<unknown>", hasDateFilter ? `(with date filter: ${dateFilter.startDate} to ${dateFilter.endDate})` : "(all time)")
+
+    // Only use cache if no date filter is applied (cache is for "all time" only)
+    let cacheResult: any[] = []
+    if (!hasDateFilter) {
+      // Check cache first (analytics_cache tetap di MySQL - operational table)
+      console.log("📊 [TOP-TLDS] Checking cache...")
+      cacheResult = (await executeMySQLQuery(
+        "SELECT cache_data FROM analytics_cache WHERE cache_key = 'top_tlds' AND expires_at > NOW()",
+      )) as any[]
+    }
 
     console.log("📊 [TOP-TLDS] Cache result length:", Array.isArray(cacheResult) ? cacheResult.length : "unexpected")
 
@@ -58,6 +72,43 @@ export async function GET(request: NextRequest) {
 
     console.log("📊 [TOP-TLDS] Calculating fresh top TLDs...")
 
+    // Build device filter for date range
+    let deviceFilter = ""
+    if (hasDateFilter) {
+      const { whereClause: deviceDateFilter } = buildDeviceDateFilter(dateFilter)
+      const { whereClause: systemInfoDateFilter } = buildSystemInfoDateFilter(dateFilter)
+      
+      // Get device_ids that match date range from both tables
+      const deviceIdsFromDevices = await executeClickHouseQuery(`
+        SELECT DISTINCT device_id FROM devices ${deviceDateFilter}
+      `) as any[]
+      
+      const deviceIdsFromSystemInfo = await executeClickHouseQuery(`
+        SELECT DISTINCT device_id FROM systeminformation ${systemInfoDateFilter}
+      `) as any[]
+      
+      // Combine and deduplicate
+      const allDeviceIds = new Set<string>()
+      deviceIdsFromDevices.forEach((r: any) => {
+        if (r.device_id) allDeviceIds.add(String(r.device_id))
+      })
+      deviceIdsFromSystemInfo.forEach((r: any) => {
+        if (r.device_id) allDeviceIds.add(String(r.device_id))
+      })
+      
+      const deviceIds = Array.from(allDeviceIds)
+      
+      if (deviceIds.length === 0) {
+        // No devices match the date range
+        console.log("📊 [TOP-TLDS] No devices match date range, returning empty array")
+        return NextResponse.json([])
+      }
+      
+      // Use array format for ClickHouse IN clause
+      const deviceIdsStr = deviceIds.map(id => `'${id.replace(/'/g, "''")}'`).join(', ')
+      deviceFilter = `AND device_id IN (${deviceIdsStr})`
+    }
+
     // Get top TLDs from credentials table (ClickHouse)
     // Convert: COUNT(DISTINCT device_id) -> uniq(device_id) untuk performa lebih baik
     const topTlds = await executeClickHouseQuery(`
@@ -72,6 +123,7 @@ export async function GET(request: NextRequest) {
         AND tld NOT LIKE '%127.0.0.1%'
         AND tld NOT LIKE '%192.168%'
         AND tld NOT LIKE '%10.%'
+        ${deviceFilter}
       GROUP BY tld 
       ORDER BY count DESC, affected_devices DESC
       LIMIT 10
@@ -91,17 +143,20 @@ export async function GET(request: NextRequest) {
       serialized = "[]" // fallback empty array
     }
 
-    // Cache for 10 minutes (upsert)
-    // analytics_cache tetap di MySQL (operational table)
-    console.log("📊 [TOP-TLDS] Caching results...")
-    await executeMySQLQuery(
-      `
-      INSERT INTO analytics_cache (cache_key, cache_data, expires_at)
-      VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))
-      ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)
-      `,
-      ["top_tlds", serialized],
-    )
+    // Only cache if no date filter is applied (cache is for "all time" only)
+    if (!hasDateFilter) {
+      // Cache for 10 minutes (upsert)
+      // analytics_cache tetap di MySQL (operational table)
+      console.log("📊 [TOP-TLDS] Caching results...")
+      await executeMySQLQuery(
+        `
+        INSERT INTO analytics_cache (cache_key, cache_data, expires_at)
+        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))
+        ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)
+        `,
+        ["top_tlds", serialized],
+      )
+    }
 
     console.log("📊 [TOP-TLDS] Returning fresh data")
     return NextResponse.json(topTlds)

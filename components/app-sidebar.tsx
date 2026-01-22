@@ -147,8 +147,8 @@ export function AppSidebar() {
     .filter(group => group.items.length > 0) // Remove empty groups
 
   return (
-    <Sidebar className="border-r border-white/5 bg-sidebar/80 backdrop-blur-xl transition-all duration-300">
-      <SidebarHeader className="border-b border-white/5 p-6 pb-8">
+    <Sidebar className="border-r-[2px] border-border bg-sidebar/80 backdrop-blur-xl transition-all duration-300">
+      <SidebarHeader className="border-b-[2px] border-border p-6 pb-8">
         <div className="flex flex-col items-center">
           <div className="relative mb-2">
             <div className="absolute -inset-1 rounded-full bg-primary/20 blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -204,7 +204,7 @@ export function AppSidebar() {
           ))}
         </div>
 
-        <div className="mt-auto px-4 py-4 border-t border-white/5">
+        <div className="mt-auto px-4 py-4 border-t-[2px] border-border">
           <div className="flex items-center justify-between rounded-xl bg-white/5 p-1 backdrop-blur-sm border border-white/5">
             <div className="flex items-center gap-2 px-2">
               <Sun className="h-3 w-3 text-amber-500" />

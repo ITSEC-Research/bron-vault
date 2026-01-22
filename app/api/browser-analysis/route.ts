@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { executeQuery as executeMySQLQuery } from "@/lib/mysql";
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse";
 import { validateRequest } from "@/lib/auth";
+import {
+  parseDateFilterFromRequest,
+  buildDeviceDateFilter,
+  buildSystemInfoDateFilter,
+} from "@/lib/date-filter-utils";
 
 interface BrowserData {
   browser: string;
@@ -16,10 +21,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Check cache first (analytics_cache tetap di MySQL - operational table)
-    const cacheResult = (await executeMySQLQuery(
-      "SELECT cache_data FROM analytics_cache WHERE cache_key = 'browser_analysis' AND expires_at > NOW()"
-    )) as any[]
+    // Parse date filter params
+    const searchParams = request.nextUrl.searchParams
+    const dateFilter = parseDateFilterFromRequest(searchParams)
+    const hasDateFilter = !!(dateFilter.startDate || dateFilter.endDate)
+
+    // Only use cache if no date filter is applied (cache is for "all time" only)
+    let cacheResult: any[] = []
+    if (!hasDateFilter) {
+      // Check cache first (analytics_cache tetap di MySQL - operational table)
+      cacheResult = (await executeMySQLQuery(
+        "SELECT cache_data FROM analytics_cache WHERE cache_key = 'browser_analysis' AND expires_at > NOW()"
+      )) as any[]
+    }
 
     if (Array.isArray(cacheResult) && cacheResult.length > 0) {
       const cached = cacheResult[0].cache_data
@@ -40,28 +54,60 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Optimized query: Get unique browsers per device_id directly with COUNT
-    // This processes much less data than fetching all rows
-    // ClickHouse: Convert COUNT(DISTINCT device_id) -> uniq(device_id)
-    const results = await executeClickHouseQuery(`
-      SELECT 
-        browser,
-        uniq(device_id) as device_count
+    // Build date filter - credentials are linked to devices, so we filter by device_id
+    // Get device_ids first, then use them in the query
+    let deviceFilter = ""
+    if (hasDateFilter) {
+      const { whereClause: deviceDateFilter } = buildDeviceDateFilter(dateFilter)
+      const { whereClause: systemInfoDateFilter } = buildSystemInfoDateFilter(dateFilter)
+      
+      // Get device_ids that match date range from both tables
+      const deviceIdsFromDevices = await executeClickHouseQuery(`
+        SELECT DISTINCT device_id FROM devices ${deviceDateFilter}
+      `) as any[]
+      
+      const deviceIdsFromSystemInfo = await executeClickHouseQuery(`
+        SELECT DISTINCT device_id FROM systeminformation ${systemInfoDateFilter}
+      `) as any[]
+      
+      // Combine and deduplicate
+      const allDeviceIds = new Set<string>()
+      deviceIdsFromDevices.forEach((r: any) => {
+        if (r.device_id) allDeviceIds.add(String(r.device_id))
+      })
+      deviceIdsFromSystemInfo.forEach((r: any) => {
+        if (r.device_id) allDeviceIds.add(String(r.device_id))
+      })
+      
+      const deviceIds = Array.from(allDeviceIds)
+      
+      if (deviceIds.length === 0) {
+        // No devices match the date range
+        return NextResponse.json({ success: true, browserAnalysis: [] })
+      }
+      
+      // Use array format for ClickHouse IN clause
+      const deviceIdsStr = deviceIds.map(id => `'${id.replace(/'/g, "''")}'`).join(', ')
+      deviceFilter = `AND device_id IN (${deviceIdsStr})`
+    }
+    
+    // Get all (device_id, browser) pairs to properly count unique devices per normalized browser
+    // This ensures that if a device has multiple browser versions, it's only counted once per normalized browser name
+    const baseQuery = `SELECT 
+        device_id,
+        browser
       FROM credentials 
-      WHERE browser IS NOT NULL AND browser != ''
-      GROUP BY browser
-    `) as any[];
+      WHERE browser IS NOT NULL AND browser != '' ${deviceFilter}`
+    
+    const results = await executeClickHouseQuery(baseQuery) as any[];
 
     if (!Array.isArray(results)) {
       return NextResponse.json({ success: false, error: "Invalid data format" }, { status: 500 });
     }
 
-    // Process and normalize browser names
-    const browserCounts: { [key: string]: number } = {};
-    
-    results.forEach((row) => {
-      const originalBrowser = row.browser;
-      if (!originalBrowser) return;
+    // Helper function to normalize browser name
+    const normalizeBrowserName = (originalBrowser: string): string => {
+      if (!originalBrowser) return '';
 
       // Normalize browser name
       let normalizedBrowser = originalBrowser
@@ -95,10 +141,34 @@ export async function GET(request: NextRequest) {
           .join(' ');
       }
 
-      // Aggregate counts for normalized browser names
+      return normalizedBrowser;
+    };
+
+    // Track unique device_id per normalized browser name using Map
+    // Key: normalized browser name, Value: Set of device_id
+    const browserDeviceMap = new Map<string, Set<string>>();
+    
+    results.forEach((row) => {
+      const deviceId = String(row.device_id || '');
+      const originalBrowser = String(row.browser || '');
+      
+      if (!deviceId || !originalBrowser) return;
+
+      const normalizedBrowser = normalizeBrowserName(originalBrowser);
+      
       if (normalizedBrowser) {
-        browserCounts[normalizedBrowser] = (browserCounts[normalizedBrowser] || 0) + Number(row.device_count);
+        if (!browserDeviceMap.has(normalizedBrowser)) {
+          browserDeviceMap.set(normalizedBrowser, new Set());
+        }
+        // Add device_id to the set (Set automatically handles duplicates)
+        browserDeviceMap.get(normalizedBrowser)!.add(deviceId);
       }
+    });
+
+    // Convert Map to array with count of unique devices
+    const browserCounts: { [key: string]: number } = {};
+    browserDeviceMap.forEach((deviceSet, normalizedBrowser) => {
+      browserCounts[normalizedBrowser] = deviceSet.size;
     });
 
     // Convert to array and sort by count
@@ -112,12 +182,15 @@ export async function GET(request: NextRequest) {
       browserAnalysis 
     };
 
-    // Cache for 10 minutes
-    // analytics_cache tetap di MySQL (operational table)
-    await executeMySQLQuery(
-      "INSERT INTO analytics_cache (cache_key, cache_data, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE)) ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)",
-      ["browser_analysis", JSON.stringify(result)]
-    );
+    // Only cache if no date filter is applied (cache is for "all time" only)
+    if (!hasDateFilter) {
+      // Cache for 10 minutes
+      // analytics_cache tetap di MySQL (operational table)
+      await executeMySQLQuery(
+        "INSERT INTO analytics_cache (cache_key, cache_data, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE)) ON DUPLICATE KEY UPDATE cache_data = VALUES(cache_data), expires_at = VALUES(expires_at)",
+        ["browser_analysis", JSON.stringify(result)]
+      );
+    }
 
     return NextResponse.json(result);
 

@@ -32,7 +32,7 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 16%; /* #292929 - Subtle border */
+    --border: 0 0% 30%; /* #4d4d4d - More visible border for standard monitors */
     --input: 0 0% 16%;
     --ring: 3 100% 60%;
 
@@ -130,7 +130,7 @@ html[data-theme='light'] *,
   --primary: 3 100% 60%;
   --secondary: 0 0% 12%; 
   --muted: 0 0% 12%;
-  --border: 0 0% 16%;
+    --border: 0 0% 30%;
   --input: 0 0% 16%;
   
   --bron-bg-primary: #0a0a0a;
@@ -155,12 +155,12 @@ html[data-theme='light'] *,
 @layer utilities {
   /* Base glass effect for small elements (badges, chips, etc) */
   .glass {
-    @apply bg-card/40 backdrop-blur-md border border-border/50 shadow-sm;
+    @apply bg-card/40 backdrop-blur-md border-[2px] border-border/80 shadow-sm;
   }
   
   /* Glass card effect - main container cards */
   .glass-card {
-    @apply bg-card/60 backdrop-blur-sm border border-border shadow-sm transition-all duration-300 hover:bg-card/80;
+    @apply bg-card/60 backdrop-blur-sm border-[2px] border-border shadow-sm transition-all duration-300 hover:bg-card/80;
   }
   
   /* Glass input/field effect */
