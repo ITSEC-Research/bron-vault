@@ -86,15 +86,13 @@ export async function POST(request: NextRequest) {
     })
 
     // Log successful login (without 2FA)
-    console.log('[DEBUG] About to call logUserAction for successful login')
-    const logResult = await logUserAction(
+    await logUserAction(
       'user.login',
       { id: user.id, email: user.email },
       user.id,
       { method: 'password_only', role: userRole },
       request
     )
-    console.log('[DEBUG] logUserAction result:', logResult)
 
     // Set secure cookie with JWT token
     const response = NextResponse.json({
