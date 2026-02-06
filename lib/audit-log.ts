@@ -84,6 +84,7 @@ export interface ImportLogEntry {
  * Create an audit log entry
  */
 export async function createAuditLog(entry: Omit<AuditLogEntry, 'id' | 'created_at'>): Promise<number> {
+  console.log('[DEBUG] createAuditLog called with:', JSON.stringify(entry, null, 2))
   try {
     const [result] = await pool.query<ResultSetHeader>(
       `INSERT INTO audit_logs (user_id, user_email, action, resource_type, resource_id, details, ip_address, user_agent)
@@ -99,9 +100,10 @@ export async function createAuditLog(entry: Omit<AuditLogEntry, 'id' | 'created_
         entry.user_agent
       ]
     )
+    console.log('[DEBUG] createAuditLog INSERT success, insertId:', result.insertId)
     return result.insertId
   } catch (error) {
-    console.error('Failed to create audit log:', error)
+    console.error('[DEBUG] createAuditLog FAILED with error:', error)
     // Don't throw - audit logging should not break the main flow
     return -1
   }

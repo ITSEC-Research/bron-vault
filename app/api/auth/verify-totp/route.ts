@@ -13,6 +13,7 @@ import { pool } from "@/lib/mysql"
 import { generateToken, getSecureCookieOptions, UserRole, verifyPending2FAToken } from "@/lib/auth"
 import { verifyTOTP, verifyBackupCode } from "@/lib/totp"
 import type { RowDataPacket } from "mysql2"
+import { logUserAction } from "@/lib/audit-log"
 
 export async function POST(request: NextRequest) {
   const { pending2FAToken, code, isBackupCode } = await request.json()
@@ -79,6 +80,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isValid) {
+      // Log failed 2FA attempt
+      await logUserAction(
+        'user.login.fail',
+        { id: userData.id, email: userData.email },
+        userData.id,
+        { reason: 'invalid_2fa_code', method: isBackupCode ? 'backup_code' : 'totp' },
+        request
+      )
       return NextResponse.json({ 
         success: false, 
         error: isBackupCode ? "Invalid backup code" : "Invalid verification code" 
@@ -93,6 +102,15 @@ export async function POST(request: NextRequest) {
       email: userData.email,
       role: userRole,
     })
+
+    // Log successful 2FA login
+    await logUserAction(
+      'user.login',
+      { id: userData.id, email: userData.email },
+      userData.id,
+      { method: isBackupCode ? 'password_with_backup_code' : 'password_with_2fa', role: userRole },
+      request
+    )
 
     // Set secure cookie
     const response = NextResponse.json({
