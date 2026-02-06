@@ -17,7 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { withApiKeyAuth, addRateLimitHeaders, logApiRequest } from "@/lib/api-key-auth"
-import { createUploadJob, startUploadJob, completeUploadJob, failUploadJob, addUploadJobLog } from "@/lib/upload-job-manager"
+import { createUploadJob, startUploadJob, completeUploadJob, failUploadJob, addUploadJobLog, updateUploadJob } from "@/lib/upload-job-manager"
 import { processFileUpload } from "@/lib/upload/file-upload-processor"
 import { createImportLog, updateImportLog, logUploadAction } from "@/lib/audit-log"
 import { executeQuery } from "@/lib/mysql"
@@ -174,10 +174,34 @@ export async function POST(request: NextRequest) {
       started_at: new Date()
     })
 
-    // Create a logger that updates job logs
+    // Track last progress to avoid too many database updates
+    let lastProgressSync = 0
+
+    // Create a logger that updates job logs and progress
     const logWithJobUpdate = async (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
       console.log(`[Job ${jobId}] ${message}`)
       await addUploadJobLog(jobId!, type === 'success' ? 'info' : type, message)
+      
+      // Parse progress messages: [PROGRESS] X/Y
+      const progressMatch = message.match(/\[PROGRESS\]\s*(\d+)\/(\d+)/)
+      if (progressMatch) {
+        const current = parseInt(progressMatch[1], 10)
+        const total = parseInt(progressMatch[2], 10)
+        if (total > 0) {
+          // Calculate progress percentage (0-99, reserve 100 for completion)
+          const progressPercent = Math.min(99, Math.floor((current / total) * 100))
+          
+          // Only update if progress changed by at least 1%
+          if (progressPercent > lastProgressSync) {
+            lastProgressSync = progressPercent
+            await updateUploadJob(jobId!, { 
+              progress: progressPercent,
+              processedDevices: current,
+              totalDevices: total
+            })
+          }
+        }
+      }
     }
 
     // Process the file
@@ -340,9 +364,33 @@ async function processUploadInBackground(jobId: string, file: File, _apiKeyId: s
       started_at: new Date()
     })
 
+    // Track last progress to avoid too many database updates
+    let lastProgress = 0
+
     const logWithJobUpdate = async (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
       console.log(`[Job ${jobId}] ${message}`)
       await addUploadJobLog(jobId, type === 'success' ? 'info' : type, message)
+      
+      // Parse progress messages: [PROGRESS] X/Y
+      const progressMatch = message.match(/\[PROGRESS\]\s*(\d+)\/(\d+)/)
+      if (progressMatch) {
+        const current = parseInt(progressMatch[1], 10)
+        const total = parseInt(progressMatch[2], 10)
+        if (total > 0) {
+          // Calculate progress percentage (0-99, reserve 100 for completion)
+          const progressPercent = Math.min(99, Math.floor((current / total) * 100))
+          
+          // Only update if progress changed by at least 1%
+          if (progressPercent > lastProgress) {
+            lastProgress = progressPercent
+            await updateUploadJob(jobId, { 
+              progress: progressPercent,
+              processedDevices: current,
+              totalDevices: total
+            })
+          }
+        }
+      }
     }
 
     const result = await processFileUpload(file, jobId, logWithJobUpdate)
