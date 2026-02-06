@@ -7,7 +7,7 @@
  * Schema Version: 1.0.0
  */
 
-export const SCHEMA_VERSION = "1.1.0"
+export const SCHEMA_VERSION = "1.2.0"
 
 // Column definition type
 export interface ColumnDefinition {
@@ -445,6 +445,76 @@ export const UPLOAD_JOB_LOGS_TABLE: TableDefinition = {
   collate: 'utf8mb4_unicode_ci'
 }
 
+// Audit Logs Table - Comprehensive audit trail for all user actions
+export const AUDIT_LOGS_TABLE: TableDefinition = {
+  name: 'audit_logs',
+  columns: [
+    { name: 'id', type: 'bigint', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'user_id', type: 'int', nullable: true, comment: 'User who performed the action (NULL for system actions)' },
+    { name: 'user_email', type: 'varchar(255)', nullable: true, comment: 'Email of user for display (denormalized for history)' },
+    { name: 'action', type: 'varchar(50)', nullable: false, comment: 'Action type (e.g., user.create, upload.complete)' },
+    { name: 'resource_type', type: 'varchar(50)', nullable: false, comment: 'Type of resource (user, api_key, settings, upload, device)' },
+    { name: 'resource_id', type: 'varchar(255)', nullable: true, comment: 'ID of the affected resource' },
+    { name: 'details', type: 'text', nullable: false, comment: 'JSON object with action details' },
+    { name: 'ip_address', type: 'varchar(45)', nullable: true, comment: 'Client IP address' },
+    { name: 'user_agent', type: 'varchar(500)', nullable: true, comment: 'Client user agent' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_audit_logs_user_id', columns: ['user_id'], unique: false },
+    { name: 'idx_audit_logs_action', columns: ['action'], unique: false },
+    { name: 'idx_audit_logs_resource_type', columns: ['resource_type'], unique: false },
+    { name: 'idx_audit_logs_resource_id', columns: ['resource_id'], unique: false },
+    { name: 'idx_audit_logs_created_at', columns: ['created_at'], unique: false },
+    { name: 'idx_audit_logs_user_action', columns: ['user_id', 'action'], unique: false },
+    { name: 'idx_audit_logs_resource', columns: ['resource_type', 'resource_id'], unique: false },
+  ],
+  foreignKeys: [],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Import Logs Table - Track all data import operations
+export const IMPORT_LOGS_TABLE: TableDefinition = {
+  name: 'import_logs',
+  columns: [
+    { name: 'id', type: 'bigint', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'job_id', type: 'varchar(50)', nullable: false, key: 'UNI', comment: 'Unique job identifier' },
+    { name: 'user_id', type: 'int', nullable: true, comment: 'User who initiated the import' },
+    { name: 'user_email', type: 'varchar(255)', nullable: true, comment: 'Email of user for display (denormalized)' },
+    { name: 'api_key_id', type: 'int', nullable: true, comment: 'API key used (if API import)' },
+    { name: 'source', type: "enum('web','api')", nullable: false, default: "'web'", comment: 'Import source' },
+    { name: 'filename', type: 'varchar(500)', nullable: true, comment: 'Original filename' },
+    { name: 'file_size', type: 'bigint', nullable: true, comment: 'File size in bytes' },
+    { name: 'status', type: "enum('pending','processing','completed','failed','cancelled')", nullable: false, default: "'pending'" },
+    { name: 'total_devices', type: 'int', nullable: false, default: '0' },
+    { name: 'processed_devices', type: 'int', nullable: false, default: '0' },
+    { name: 'total_credentials', type: 'int', nullable: false, default: '0' },
+    { name: 'total_files', type: 'int', nullable: false, default: '0' },
+    { name: 'error_message', type: 'text', nullable: true, comment: 'Error message if failed' },
+    { name: 'started_at', type: 'timestamp', nullable: true, comment: 'Processing start time' },
+    { name: 'completed_at', type: 'timestamp', nullable: true, comment: 'Processing completion time' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+    { name: 'updated_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP', extra: 'on update CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'job_id', columns: ['job_id'], unique: true },
+    { name: 'idx_import_logs_user_id', columns: ['user_id'], unique: false },
+    { name: 'idx_import_logs_api_key_id', columns: ['api_key_id'], unique: false },
+    { name: 'idx_import_logs_source', columns: ['source'], unique: false },
+    { name: 'idx_import_logs_status', columns: ['status'], unique: false },
+    { name: 'idx_import_logs_created_at', columns: ['created_at'], unique: false },
+    { name: 'idx_import_logs_user_source', columns: ['user_id', 'source'], unique: false },
+  ],
+  foreignKeys: [],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
 // ===========================================
 // ALL TABLES (in creation order - respect FK dependencies)
 // ===========================================
@@ -462,6 +532,8 @@ export const ALL_TABLES: TableDefinition[] = [
   API_REQUEST_LOGS_TABLE,
   UPLOAD_JOBS_TABLE,
   UPLOAD_JOB_LOGS_TABLE,
+  AUDIT_LOGS_TABLE,
+  IMPORT_LOGS_TABLE,
 ]
 
 // ===========================================

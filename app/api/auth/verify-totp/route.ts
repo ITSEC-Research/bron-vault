@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
     const token = await generateToken({
       userId: String(userData.id),
       username: userData.name || userData.email,
+      email: userData.email,
       role: userRole,
     })
 

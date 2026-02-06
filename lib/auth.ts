@@ -8,6 +8,7 @@ export type UserRole = 'admin' | 'analyst'
 export interface JWTPayload {
   userId: string
   username: string
+  email?: string  // User email for audit logging
   role?: UserRole  // Optional for backwards compatibility with old tokens
   iat?: number
   exp?: number

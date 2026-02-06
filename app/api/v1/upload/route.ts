@@ -19,6 +19,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { withApiKeyAuth, addRateLimitHeaders, logApiRequest } from "@/lib/api-key-auth"
 import { createUploadJob, startUploadJob, completeUploadJob, failUploadJob, addUploadJobLog } from "@/lib/upload-job-manager"
 import { processFileUpload } from "@/lib/upload/file-upload-processor"
+import { createImportLog, updateImportLog, logUploadAction } from "@/lib/audit-log"
+import { executeQuery } from "@/lib/mysql"
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // 5 minutes max for upload processing
@@ -35,6 +37,7 @@ export async function POST(request: NextRequest) {
   const { payload } = auth
   
   let jobId: string | null = null
+  let userEmail: string | null = null
 
   try {
     // Get form data
@@ -92,6 +95,38 @@ export async function POST(request: NextRequest) {
 
     addUploadJobLog(jobId, 'info', 'Upload job created', { filename: file.name, size: file.size })
 
+    // Get user email for logging
+    const userResult = await executeQuery("SELECT email FROM users WHERE id = ?", [payload.userId]) as any[]
+    userEmail = userResult.length > 0 ? userResult[0].email : null
+
+    // Create import log entry
+    await createImportLog({
+      job_id: jobId,
+      user_id: Number(payload.userId),
+      user_email: userEmail,
+      api_key_id: Number(payload.keyId),
+      source: 'api',
+      filename: file.name,
+      file_size: file.size,
+      status: 'pending',
+      total_devices: 0,
+      processed_devices: 0,
+      total_credentials: 0,
+      total_files: 0,
+      error_message: null,
+      started_at: null,
+      completed_at: null
+    })
+
+    // Log the upload start in audit log
+    await logUploadAction(
+      'upload.api.start',
+      { id: Number(payload.userId), email: userEmail },
+      jobId,
+      { filename: file.name, file_size: file.size, api_key_id: payload.keyId },
+      request
+    )
+
     // By default, process asynchronously (return immediately)
     // Use ?sync=true to wait for processing to complete (not recommended for large files)
     const processSync = formData.get("sync") === "true"
@@ -133,6 +168,12 @@ export async function POST(request: NextRequest) {
     await startUploadJob(jobId)
     addUploadJobLog(jobId, 'info', 'Processing started')
 
+    // Update import log to processing status
+    await updateImportLog(jobId, {
+      status: 'processing',
+      started_at: new Date()
+    })
+
     // Create a logger that updates job logs
     const logWithJobUpdate = async (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
       console.log(`[Job ${jobId}] ${message}`)
@@ -156,6 +197,24 @@ export async function POST(request: NextRequest) {
         totalCredentials,
         totalFiles
       })
+
+      // Update import log with results
+      await updateImportLog(jobId, {
+        status: 'completed',
+        total_devices: totalDevices,
+        processed_devices: totalDevices,
+        total_credentials: totalCredentials,
+        total_files: totalFiles,
+        completed_at: new Date()
+      })
+
+      // Log audit for successful upload
+      await logUploadAction(
+        'upload.api.complete',
+        { id: Number(payload.userId), email: userEmail },
+        jobId,
+        { total_devices: totalDevices, total_credentials: totalCredentials, total_files: totalFiles }
+      )
 
       const response = NextResponse.json({
         success: true,
@@ -191,6 +250,21 @@ export async function POST(request: NextRequest) {
       // Update job with failure
       await failUploadJob(jobId, result.error || 'Unknown error', 'PROCESSING_FAILED')
 
+      // Update import log with error
+      await updateImportLog(jobId, {
+        status: 'failed',
+        error_message: result.error || 'Unknown error',
+        completed_at: new Date()
+      })
+
+      // Log audit for failed upload
+      await logUploadAction(
+        'upload.api.fail',
+        { id: Number(payload.userId), email: userEmail },
+        jobId,
+        { error: result.error || 'Unknown error' }
+      )
+
       return NextResponse.json(
         {
           success: false,
@@ -211,6 +285,21 @@ export async function POST(request: NextRequest) {
     // Update job with failure if we have a job ID
     if (jobId) {
       await failUploadJob(jobId, error instanceof Error ? error.message : 'Unknown error', 'UNEXPECTED_ERROR')
+      
+      // Update import log with error
+      await updateImportLog(jobId, {
+        status: 'failed',
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        completed_at: new Date()
+      })
+
+      // Log audit for failed upload
+      await logUploadAction(
+        'upload.api.fail',
+        { id: Number(payload.userId), email: userEmail },
+        jobId,
+        { error: error instanceof Error ? error.message : 'Unknown error' }
+      )
     }
     
     // Log API request
@@ -245,6 +334,12 @@ async function processUploadInBackground(jobId: string, file: File, _apiKeyId: s
     await startUploadJob(jobId)
     await addUploadJobLog(jobId, 'info', 'Background processing started')
 
+    // Update import log to processing status
+    await updateImportLog(jobId, {
+      status: 'processing',
+      started_at: new Date()
+    })
+
     const logWithJobUpdate = async (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
       console.log(`[Job ${jobId}] ${message}`)
       await addUploadJobLog(jobId, type === 'success' ? 'info' : type, message)
@@ -256,19 +351,86 @@ async function processUploadInBackground(jobId: string, file: File, _apiKeyId: s
       // Extract stats from result.details
       // The zip processors return: devicesFound, devicesProcessed, totalCredentials, totalFiles
       const details = result.details || {}
+      const totalDevices = details.devicesFound || details.devicesProcessed || 0
+      const totalCredentials = details.totalCredentials || 0
+      const totalFiles = details.totalFiles || 0
+
       await completeUploadJob(jobId, {
-        totalDevices: details.devicesFound || details.devicesProcessed || 0,
-        totalCredentials: details.totalCredentials || 0,
-        totalFiles: details.totalFiles || 0
+        totalDevices,
+        totalCredentials,
+        totalFiles
       })
+
+      // Update import log with results
+      await updateImportLog(jobId, {
+        status: 'completed',
+        total_devices: totalDevices,
+        processed_devices: totalDevices,
+        total_credentials: totalCredentials,
+        total_files: totalFiles,
+        completed_at: new Date()
+      })
+
+      // Get user info for audit log
+      const jobInfo = await executeQuery(
+        "SELECT user_id FROM upload_jobs WHERE job_id = ?",
+        [jobId]
+      ) as any[]
+      
+      if (jobInfo.length > 0) {
+        const userResult = await executeQuery("SELECT email FROM users WHERE id = ?", [jobInfo[0].user_id]) as any[]
+        const userEmail = userResult.length > 0 ? userResult[0].email : null
+        
+        await logUploadAction(
+          'upload.api.complete',
+          { id: jobInfo[0].user_id, email: userEmail },
+          jobId,
+          { total_devices: totalDevices, total_credentials: totalCredentials, total_files: totalFiles }
+        )
+      }
+
       await addUploadJobLog(jobId, 'info', 'Processing completed successfully', result.details)
     } else {
       await failUploadJob(jobId, result.error || 'Unknown error', 'PROCESSING_FAILED')
+      
+      // Update import log with error
+      await updateImportLog(jobId, {
+        status: 'failed',
+        error_message: result.error || 'Unknown error',
+        completed_at: new Date()
+      })
+
+      // Get user info for audit log
+      const jobInfo = await executeQuery(
+        "SELECT user_id FROM upload_jobs WHERE job_id = ?",
+        [jobId]
+      ) as any[]
+      
+      if (jobInfo.length > 0) {
+        const userResult = await executeQuery("SELECT email FROM users WHERE id = ?", [jobInfo[0].user_id]) as any[]
+        const userEmail = userResult.length > 0 ? userResult[0].email : null
+        
+        await logUploadAction(
+          'upload.api.fail',
+          { id: jobInfo[0].user_id, email: userEmail },
+          jobId,
+          { error: result.error || 'Unknown error' }
+        )
+      }
+
       await addUploadJobLog(jobId, 'error', 'Processing failed', { error: result.error })
     }
   } catch (error) {
     console.error(`Background processing error for job ${jobId}:`, error)
     await failUploadJob(jobId, error instanceof Error ? error.message : 'Unknown error', 'UNEXPECTED_ERROR')
+    
+    // Update import log with error
+    await updateImportLog(jobId, {
+      status: 'failed',
+      error_message: error instanceof Error ? error.message : 'Unknown error',
+      completed_at: new Date()
+    })
+
     await addUploadJobLog(jobId, 'error', 'Unexpected error during processing', { 
       error: error instanceof Error ? error.message : 'Unknown error' 
     })

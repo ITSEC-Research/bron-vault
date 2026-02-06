@@ -317,6 +317,63 @@ CREATE TABLE IF NOT EXISTS upload_job_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
+-- Table: audit_logs
+-- =====================================================
+-- Comprehensive audit trail for all user actions
+-- Tracks: uploads, user management, API key management, settings changes, etc.
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL COMMENT 'User who performed the action (NULL for system actions)',
+    user_email VARCHAR(255) NULL COMMENT 'Email of user for display (denormalized for history)',
+    action VARCHAR(50) NOT NULL COMMENT 'Action type (e.g., user.create, upload.complete)',
+    resource_type VARCHAR(50) NOT NULL COMMENT 'Type of resource (user, api_key, settings, upload, device)',
+    resource_id VARCHAR(255) NULL COMMENT 'ID of the affected resource',
+    details TEXT NOT NULL COMMENT 'JSON object with action details',
+    ip_address VARCHAR(45) NULL COMMENT 'Client IP address',
+    user_agent VARCHAR(500) NULL COMMENT 'Client user agent',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_logs_user_id (user_id),
+    INDEX idx_audit_logs_action (action),
+    INDEX idx_audit_logs_resource_type (resource_type),
+    INDEX idx_audit_logs_resource_id (resource_id),
+    INDEX idx_audit_logs_created_at (created_at),
+    INDEX idx_audit_logs_user_action (user_id, action),
+    INDEX idx_audit_logs_resource (resource_type, resource_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Table: import_logs
+-- =====================================================
+-- Track all data import operations (via web upload or API)
+-- Provides history of imports with status, results, and performance metrics
+CREATE TABLE IF NOT EXISTS import_logs (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    job_id VARCHAR(50) NOT NULL UNIQUE COMMENT 'Unique job identifier',
+    user_id INT NULL COMMENT 'User who initiated the import',
+    user_email VARCHAR(255) NULL COMMENT 'Email of user for display (denormalized)',
+    api_key_id INT NULL COMMENT 'API key used (if API import)',
+    source ENUM('web', 'api') NOT NULL DEFAULT 'web' COMMENT 'Import source',
+    filename VARCHAR(500) NULL COMMENT 'Original filename',
+    file_size BIGINT NULL COMMENT 'File size in bytes',
+    status ENUM('pending', 'processing', 'completed', 'failed', 'cancelled') NOT NULL DEFAULT 'pending',
+    total_devices INT NOT NULL DEFAULT 0,
+    processed_devices INT NOT NULL DEFAULT 0,
+    total_credentials INT NOT NULL DEFAULT 0,
+    total_files INT NOT NULL DEFAULT 0,
+    error_message TEXT NULL COMMENT 'Error message if failed',
+    started_at TIMESTAMP NULL COMMENT 'Processing start time',
+    completed_at TIMESTAMP NULL COMMENT 'Processing completion time',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_import_logs_user_id (user_id),
+    INDEX idx_import_logs_api_key_id (api_key_id),
+    INDEX idx_import_logs_source (source),
+    INDEX idx_import_logs_status (status),
+    INDEX idx_import_logs_created_at (created_at),
+    INDEX idx_import_logs_user_source (user_id, source)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
 -- Performance Indexes
 -- =====================================================
 -- These indexes optimize queries for large datasets
