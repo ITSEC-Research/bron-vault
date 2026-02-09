@@ -14,7 +14,6 @@ import {
 import { isLikelyTextFile } from "./zip-structure-analyzer"
 import { chunkArray } from "@/lib/utils"
 import { settingsManager } from "@/lib/settings"
-import { checkMonitorsForDevice } from "@/lib/domain-monitor"
 import { getStorageProvider } from "@/lib/storage"
 
 export interface DeviceProcessingResult {
@@ -684,11 +683,8 @@ export async function processDevice(
     "info",
   )
 
-  // Check domain monitors for this device (non-blocking)
-  if ((savedCredentials as any[])[0].count > 0) {
-    checkMonitorsForDevice(deviceId, uploadBatch, logWithBroadcast)
-      .catch(err => logWithBroadcast(`❌ Domain monitor check error: ${err}`, 'error'))
-  }
+  // Domain monitor checks are now deferred to batch level (after all devices are processed)
+  // See checkMonitorsForBatch() in domain-monitor.ts - called from zip-processor after upload completes
 
   return {
     deviceCredentials,

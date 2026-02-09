@@ -404,7 +404,7 @@ export default function ImportLogsPage() {
                       <FileUp className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-foreground">{stats.total_imports}</p>
+                      <p className="text-2xl font-bold text-foreground">{Number(stats.total_imports || 0).toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">Total Imports</p>
                     </div>
                   </div>
@@ -418,7 +418,7 @@ export default function ImportLogsPage() {
                       <CheckCircle2 className="h-5 w-5 text-green-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-foreground">{stats.completed_imports}</p>
+                      <p className="text-2xl font-bold text-foreground">{Number(stats.completed_imports || 0).toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">Completed</p>
                     </div>
                   </div>
@@ -432,7 +432,7 @@ export default function ImportLogsPage() {
                       <HardDrive className="h-5 w-5 text-blue-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-foreground">{stats.total_devices?.toLocaleString() || 0}</p>
+                      <p className="text-2xl font-bold text-foreground">{Number(stats.total_devices || 0).toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">Total Devices</p>
                     </div>
                   </div>
@@ -446,7 +446,7 @@ export default function ImportLogsPage() {
                       <Database className="h-5 w-5 text-purple-400" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-foreground">{stats.total_credentials?.toLocaleString() || 0}</p>
+                      <p className="text-2xl font-bold text-foreground">{Number(stats.total_credentials || 0).toLocaleString()}</p>
                       <p className="text-xs text-muted-foreground">Total Credentials</p>
                     </div>
                   </div>
@@ -554,11 +554,11 @@ export default function ImportLogsPage() {
                             <div className="space-y-1 text-sm">
                               <p className="text-foreground flex items-center justify-end gap-1">
                                 <HardDrive className="h-3 w-3 text-muted-foreground" />
-                                {log.processed_devices}/{log.total_devices}
+                                {Number(log.processed_devices || 0).toLocaleString()}/{Number(log.total_devices || 0).toLocaleString()}
                               </p>
                               <p className="text-muted-foreground flex items-center justify-end gap-1">
                                 <FileText className="h-3 w-3" />
-                                {log.total_credentials.toLocaleString()} creds
+                                {Number(log.total_credentials || 0).toLocaleString()} creds
                               </p>
                             </div>
                           </TableCell>
@@ -577,7 +577,7 @@ export default function ImportLogsPage() {
             {pagination.totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
                 <div className="text-sm text-muted-foreground">
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+                  Showing {(((pagination.page - 1) * pagination.limit) + 1).toLocaleString()} to {Math.min(pagination.page * pagination.limit, pagination.total).toLocaleString()} of {pagination.total.toLocaleString()} entries
                 </div>
                 <div className="flex items-center gap-2">
                   <Button

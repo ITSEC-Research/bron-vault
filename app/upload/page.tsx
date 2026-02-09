@@ -256,10 +256,19 @@ export default function UploadPage() {
                 setUploadStatus((prev) => ({
                   ...prev,
                   progress: progressPercent,
-                  message: `Processing files... (${processed} / ${total})`,
+                  message: `Processing devices... (${processed} / ${total})`,
                 }));
               }
             }
+          }
+
+          // Domain monitor check progress
+          if (logEntry.message.startsWith('[MONITOR_CHECK]')) {
+            const msg = logEntry.message.replace('[MONITOR_CHECK] ', '');
+            setUploadStatus((prev) => ({
+              ...prev,
+              message: msg,
+            }));
           }
         } catch (error) {
           console.error("Failed to parse log entry:", error)
