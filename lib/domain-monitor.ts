@@ -89,16 +89,16 @@ export interface CredentialMatch {
   login: string
   password: string
   browser: string
-  target_machine_name: string
-  target_ip: string
 }
 
 export interface WebhookPayload {
   monitor_name: string
   matched_domain: string
   device: {
-    name: string
-    ip: string
+    target_machine_name: string
+    target_ip: string
+    username: string
+    hwid: string
     country: string
     os: string
     log_date: string
@@ -498,31 +498,190 @@ export async function checkMonitorsForDevice(
     // Get all active monitors
     const monitors = await getActiveMonitors()
     if (monitors.length === 0) {
-      log('🔔 No active domain monitors configured', 'info')
       return
     }
 
     log(`🔔 Checking ${monitors.length} active domain monitors for device ${deviceId}`, 'info')
 
-    // Get device system info for payload enrichment
-    const sysInfoRows = await query(
-      `SELECT computer_name, ip_address, country, os, log_date FROM systeminformation WHERE device_id = ?`,
-      [deviceId]
-    ) as any[]
+    // Collect all unique domains across all monitors
+    const allDomains = new Set<string>()
+    const needsCredentialMatch = new Set<string>()
+    const needsUrlMatch = new Set<string>()
+    
+    for (const monitor of monitors) {
+      for (const domain of monitor.domains) {
+        const d = domain.toLowerCase()
+        allDomains.add(d)
+        if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
+          needsCredentialMatch.add(d)
+        }
+        if (monitor.match_mode === 'url' || monitor.match_mode === 'both') {
+          needsUrlMatch.add(d)
+        }
+      }
+    }
 
-    const deviceInfo = sysInfoRows.length > 0 ? sysInfoRows[0] : {}
+    // Run at most 2 queries total (credential match + URL match) instead of per-domain
+    const credentialMatchesByDomain = new Map<string, CredentialMatch[]>()
+    const urlMatchesByDomain = new Map<string, CredentialMatch[]>()
 
-    // Get device name
-    const deviceRows = await query(
-      `SELECT device_name FROM devices WHERE device_id = ?`,
-      [deviceId]
-    ) as any[]
+    // Get device info once
+    const [sysInfoRows, deviceRows] = await Promise.all([
+      query(`SELECT computer_name, ip_address, username, hwid, country, os, log_date FROM systeminformation WHERE device_id = ?`, [deviceId]),
+      query(`SELECT device_name FROM devices WHERE device_id = ?`, [deviceId]),
+    ])
+    const deviceInfo = (sysInfoRows as any[]).length > 0 ? (sysInfoRows as any[])[0] : {}
+    const deviceName = (deviceRows as any[]).length > 0 ? (deviceRows as any[])[0].device_name : deviceId
 
-    const deviceName = deviceRows.length > 0 ? deviceRows[0].device_name : deviceId
+    // 1) Credential match: single query fetching all credentials with email-like usernames
+    if (needsCredentialMatch.size > 0) {
+      const credRows = await query(
+        `SELECT url, username, password, browser, created_at FROM credentials WHERE device_id = ? AND username IS NOT NULL AND username != ''`,
+        [deviceId]
+      ) as any[]
 
+      // Match in-memory against domains (much faster than N LIKE queries)
+      for (const row of credRows) {
+        const username = (row.username || '').toLowerCase()
+        const atIdx = username.lastIndexOf('@')
+        if (atIdx === -1) continue
+        
+        const emailDomain = username.substring(atIdx + 1)
+        
+        for (const domain of needsCredentialMatch) {
+          if (emailDomain === domain || emailDomain.endsWith('.' + domain)) {
+            if (!credentialMatchesByDomain.has(domain)) {
+              credentialMatchesByDomain.set(domain, [])
+            }
+            credentialMatchesByDomain.get(domain)!.push({
+              found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+              url: row.url || '',
+              login: row.username || '',
+              password: row.password || '',
+              browser: row.browser || '',
+            })
+          }
+        }
+      }
+    }
+
+    // 2) URL match: single query fetching all credentials with domain info
+    if (needsUrlMatch.size > 0) {
+      const urlRows = await query(
+        `SELECT url, username, password, browser, domain, created_at FROM credentials WHERE device_id = ? AND domain IS NOT NULL AND domain != ''`,
+        [deviceId]
+      ) as any[]
+
+      for (const row of urlRows) {
+        const credDomain = (row.domain || '').toLowerCase()
+        
+        for (const domain of needsUrlMatch) {
+          if (credDomain === domain || credDomain.endsWith('.' + domain)) {
+            // Deduplicate against credential matches
+            const existingCreds = credentialMatchesByDomain.get(domain) || []
+            const isDuplicate = existingCreds.some(
+              cm => cm.url === (row.url || '') && cm.login === (row.username || '')
+            )
+            if (!isDuplicate) {
+              if (!urlMatchesByDomain.has(domain)) {
+                urlMatchesByDomain.set(domain, [])
+              }
+              urlMatchesByDomain.get(domain)!.push({
+                found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+                url: row.url || '',
+                login: row.username || '',
+                password: row.password || '',
+                browser: row.browser || '',
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // 3) Process each monitor using in-memory results
     for (const monitor of monitors) {
       try {
-        await processMonitorForDevice(monitor, deviceId, uploadBatch, deviceName, deviceInfo, log)
+        const monitorCredentials: CredentialMatch[] = []
+        const monitorUrls: CredentialMatch[] = []
+        const matchedDomains: string[] = []
+
+        for (const domain of monitor.domains) {
+          const d = domain.toLowerCase()
+          const creds = credentialMatchesByDomain.get(d) || []
+          const urls = urlMatchesByDomain.get(d) || []
+          
+          if (creds.length > 0 || urls.length > 0) {
+            matchedDomains.push(d)
+          }
+          if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
+            monitorCredentials.push(...creds)
+          }
+          if (monitor.match_mode === 'url' || monitor.match_mode === 'both') {
+            monitorUrls.push(...urls)
+          }
+        }
+
+        if (monitorCredentials.length === 0 && monitorUrls.length === 0) continue
+
+        const totalMatches = monitorCredentials.length + monitorUrls.length
+        log(`🔔 Monitor "${monitor.name}" matched ${totalMatches} credentials for device ${deviceId}`, 'success')
+
+        // Build payload
+        const payload: WebhookPayload = {
+          monitor_name: monitor.name,
+          matched_domain: matchedDomains.join(', '),
+          device: {
+            target_machine_name: deviceInfo.computer_name || deviceName,
+            target_ip: deviceInfo.ip_address || '',
+            username: deviceInfo.username || '',
+            hwid: deviceInfo.hwid || '',
+            country: deviceInfo.country || '',
+            os: deviceInfo.os || '',
+            log_date: deviceInfo.log_date || '',
+          },
+          credential_matches: monitorCredentials,
+          url_matches: monitorUrls,
+          summary: {
+            total_credential_matches: monitorCredentials.length,
+            total_url_matches: monitorUrls.length,
+            upload_batch: uploadBatch,
+          }
+        }
+
+        // Get webhooks for this monitor
+        const webhookRows = await query(
+          `SELECT mw.* FROM monitor_webhooks mw
+           INNER JOIN monitor_webhook_map mwm ON mwm.webhook_id = mw.id
+           WHERE mwm.monitor_id = ? AND mw.is_active = 1`,
+          [monitor.id]
+        ) as any[]
+
+        if (webhookRows.length === 0) {
+          log(`⚠️ Monitor "${monitor.name}" has no active webhooks configured`, 'warning')
+          continue
+        }
+
+        // Determine match type
+        let matchType: 'credential_email' | 'url' | 'both' = 'both'
+        if (monitorCredentials.length > 0 && monitorUrls.length === 0) {
+          matchType = 'credential_email'
+        } else if (monitorCredentials.length === 0 && monitorUrls.length > 0) {
+          matchType = 'url'
+        }
+
+        // Fire webhooks (non-blocking)
+        for (const webhookRow of webhookRows) {
+          const webhook = parseWebhookRow(webhookRow)
+          deliverWebhook(webhook, payload, monitor.id, deviceId, uploadBatch, matchedDomains.join(', '), matchType, monitorCredentials.length, monitorUrls.length, log)
+            .catch(err => log(`❌ Webhook delivery error for "${webhook.name}": ${err}`, 'error'))
+        }
+
+        // Update monitor stats
+        await mutate(
+          `UPDATE domain_monitors SET last_triggered_at = NOW(), total_alerts = total_alerts + ? WHERE id = ?`,
+          [webhookRows.length, monitor.id]
+        )
       } catch (monitorError) {
         log(`❌ Error processing monitor "${monitor.name}": ${monitorError}`, 'error')
       }
@@ -530,155 +689,6 @@ export async function checkMonitorsForDevice(
   } catch (error) {
     log(`❌ Error checking domain monitors: ${error}`, 'error')
   }
-}
-
-async function processMonitorForDevice(
-  monitor: DomainMonitor,
-  deviceId: string,
-  uploadBatch: string,
-  deviceName: string,
-  deviceInfo: any,
-  log: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void
-): Promise<void> {
-  const allCredentialMatches: CredentialMatch[] = []
-  const allUrlMatches: CredentialMatch[] = []
-  const matchedDomains: string[] = []
-
-  for (const domain of monitor.domains) {
-    const lowerDomain = domain.toLowerCase()
-
-    // Build credential match query (email domain match)
-    if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
-      const credRows = await query(
-        `SELECT c.url, c.username, c.password, c.browser, c.created_at,
-                COALESCE(si.computer_name, '') as computer_name,
-                COALESCE(si.ip_address, '') as ip_address
-         FROM credentials c
-         LEFT JOIN systeminformation si ON si.device_id = c.device_id
-         WHERE c.device_id = ? AND (
-           c.username LIKE ? OR c.username LIKE ?
-         )`,
-        [deviceId, `%@${lowerDomain}`, `%@%.${lowerDomain}`]
-      ) as any[]
-
-      if (credRows.length > 0) {
-        matchedDomains.push(lowerDomain)
-        for (const row of credRows) {
-          allCredentialMatches.push({
-            found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-            url: row.url || '',
-            login: row.username || '',
-            password: row.password || '',
-            browser: row.browser || '',
-            target_machine_name: row.computer_name || deviceInfo.computer_name || deviceName,
-            target_ip: row.ip_address || deviceInfo.ip_address || '',
-          })
-        }
-      }
-    }
-
-    // Build URL match query (URL domain match)
-    if (monitor.match_mode === 'url' || monitor.match_mode === 'both') {
-      const urlRows = await query(
-        `SELECT c.url, c.username, c.password, c.browser, c.created_at,
-                COALESCE(si.computer_name, '') as computer_name,
-                COALESCE(si.ip_address, '') as ip_address
-         FROM credentials c
-         LEFT JOIN systeminformation si ON si.device_id = c.device_id
-         WHERE c.device_id = ? AND (
-           c.domain = ? OR c.domain LIKE ?
-         )`,
-        [deviceId, lowerDomain, `%.${lowerDomain}`]
-      ) as any[]
-
-      if (urlRows.length > 0) {
-        if (!matchedDomains.includes(lowerDomain)) {
-          matchedDomains.push(lowerDomain)
-        }
-        for (const row of urlRows) {
-          // Deduplicate: don't add if already in credential matches with same URL + login
-          const isDuplicate = allCredentialMatches.some(
-            cm => cm.url === (row.url || '') && cm.login === (row.username || '')
-          )
-          if (!isDuplicate) {
-            allUrlMatches.push({
-              found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-              url: row.url || '',
-              login: row.username || '',
-              password: row.password || '',
-              browser: row.browser || '',
-              target_machine_name: row.computer_name || deviceInfo.computer_name || deviceName,
-              target_ip: row.ip_address || deviceInfo.ip_address || '',
-            })
-          }
-        }
-      }
-    }
-  }
-
-  // If no matches, skip
-  if (allCredentialMatches.length === 0 && allUrlMatches.length === 0) {
-    return
-  }
-
-  const totalMatches = allCredentialMatches.length + allUrlMatches.length
-  log(`🔔 Monitor "${monitor.name}" matched ${totalMatches} credentials for device ${deviceId}`, 'success')
-
-  // Build payload
-  const payload: WebhookPayload = {
-    monitor_name: monitor.name,
-    matched_domain: matchedDomains.join(', '),
-    device: {
-      name: deviceInfo.computer_name || deviceName,
-      ip: deviceInfo.ip_address || '',
-      country: deviceInfo.country || '',
-      os: deviceInfo.os || '',
-      log_date: deviceInfo.log_date || '',
-    },
-    credential_matches: allCredentialMatches,
-    url_matches: allUrlMatches,
-    summary: {
-      total_credential_matches: allCredentialMatches.length,
-      total_url_matches: allUrlMatches.length,
-      upload_batch: uploadBatch,
-    }
-  }
-
-  // Get webhooks for this monitor
-  const webhookRows = await query(
-    `SELECT mw.* FROM monitor_webhooks mw
-     INNER JOIN monitor_webhook_map mwm ON mwm.webhook_id = mw.id
-     WHERE mwm.monitor_id = ? AND mw.is_active = 1`,
-    [monitor.id]
-  ) as any[]
-
-  if (webhookRows.length === 0) {
-    log(`⚠️ Monitor "${monitor.name}" has no active webhooks configured`, 'warning')
-    return
-  }
-
-  // Determine match type
-  let matchType: 'credential_email' | 'url' | 'both' = 'both'
-  if (allCredentialMatches.length > 0 && allUrlMatches.length === 0) {
-    matchType = 'credential_email'
-  } else if (allCredentialMatches.length === 0 && allUrlMatches.length > 0) {
-    matchType = 'url'
-  }
-
-  // Fire webhooks (non-blocking with error handling per webhook)
-  for (const webhookRow of webhookRows) {
-    const webhook = parseWebhookRow(webhookRow)
-    
-    // Fire and forget - don't block upload pipeline
-    deliverWebhook(webhook, payload, monitor.id, deviceId, uploadBatch, matchedDomains.join(', '), matchType, allCredentialMatches.length, allUrlMatches.length, log)
-      .catch(err => log(`❌ Webhook delivery error for "${webhook.name}": ${err}`, 'error'))
-  }
-
-  // Update monitor stats
-  await query(
-    `UPDATE domain_monitors SET last_triggered_at = NOW(), total_alerts = total_alerts + ? WHERE id = ?`,
-    [webhookRows.length, monitor.id]
-  )
 }
 
 // ===========================================
@@ -827,8 +837,10 @@ export async function testWebhook(webhookId: number): Promise<{
     monitor_name: '[TEST] Sample Monitor',
     matched_domain: 'example.com',
     device: {
-      name: 'TEST-MACHINE',
-      ip: '192.168.1.1',
+      target_machine_name: 'TEST-MACHINE',
+      target_ip: '192.168.1.1',
+      username: 'testuser',
+      hwid: 'HWID-TEST-1234567890',
       country: 'US',
       os: 'Windows 10 Pro',
       log_date: new Date().toISOString().split('T')[0],
@@ -840,8 +852,6 @@ export async function testWebhook(webhookId: number): Promise<{
         login: 'user@example.com',
         password: 'test_password_123',
         browser: 'Chrome',
-        target_machine_name: 'TEST-MACHINE',
-        target_ip: '192.168.1.1',
       }
     ],
     url_matches: [
@@ -851,8 +861,6 @@ export async function testWebhook(webhookId: number): Promise<{
         login: 'admin@gmail.com',
         password: 'another_password',
         browser: 'Firefox',
-        target_machine_name: 'TEST-MACHINE',
-        target_ip: '192.168.1.1',
       }
     ],
     summary: {
