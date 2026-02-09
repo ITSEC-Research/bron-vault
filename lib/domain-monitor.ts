@@ -726,7 +726,8 @@ export async function checkMonitorsForBatch(
     log(`\n🔔 ═══════════════════════════════════════════`, 'info')
     log(`🔔 DOMAIN MONITOR CHECK — ${monitors.length} active monitor(s)`, 'info')
     log(`🔔 ═══════════════════════════════════════════`, 'info')
-    // Emit progress marker for frontend status bar (visible even when logs are hidden)
+    // Emit progress markers for frontend progress bar (separate from processing progress)
+    log(`[MONITOR_PROGRESS] 0/5 Initializing domain monitor check...`, 'info')
     log(`[MONITOR_CHECK] Checking domain monitors (${monitors.length} active)...`, 'info')
 
     // Step 2: Get all device IDs in this batch
@@ -749,6 +750,7 @@ export async function checkMonitorsForBatch(
     }
     log(`🔔 Step 1/3: Checking ${devices.length} devices against ${allMonitoredDomains.size} monitored domain(s)`, 'info')
     log(`🔔 Monitored domains: ${Array.from(allMonitoredDomains).join(', ')}`, 'info')
+    log(`[MONITOR_PROGRESS] 1/5 Collected ${allMonitoredDomains.size} domains from ${monitors.length} monitors`, 'info')
 
     // Step 3: Collect all unique monitored domains
     const needsCredentialMatch = new Set<string>()
@@ -799,6 +801,7 @@ export async function checkMonitorsForBatch(
       ) as any[]
 
       log(`🔔 Step 2/3: Credential match query returned ${credRows.length} potential matches`, 'info')
+      log(`[MONITOR_PROGRESS] 2/5 Credential match: ${credRows.length} results`, 'info')
 
       // Group by device_id and match to specific domains in-memory
       for (const row of credRows) {
@@ -851,6 +854,7 @@ export async function checkMonitorsForBatch(
       ) as any[]
 
       log(`🔔 Step 2/3: URL match query returned ${urlRows.length} potential matches`, 'info')
+      log(`[MONITOR_PROGRESS] 3/5 URL match: ${urlRows.length} results`, 'info')
 
       for (const row of urlRows) {
         const credDomain = (row.domain || '').toLowerCase()
@@ -895,12 +899,14 @@ export async function checkMonitorsForBatch(
 
     if (matchedDeviceIds.size === 0) {
       log(`🔔 Step 3/3: No domain monitor matches found — all clear ✓`, 'info')
+      log(`[MONITOR_PROGRESS] 5/5 No matches found — all clear`, 'info')
       log(`[MONITOR_CHECK] Domain monitor check completed — no matches found`, 'info')
       log(`🔔 ═══════════════════════════════════════════`, 'info')
       return
     }
 
     log(`🔔 Step 3/3: Found matches in ${matchedDeviceIds.size} device(s), sending webhook alerts...`, 'success')
+    log(`[MONITOR_PROGRESS] 4/5 Sending webhooks for ${matchedDeviceIds.size} matched device(s)...`, 'info')
     log(`[MONITOR_CHECK] Sending webhook alerts for ${matchedDeviceIds.size} matched device(s)...`, 'info')
 
     // Step 6: Get device info for matched devices only (batch query)
@@ -1022,6 +1028,7 @@ export async function checkMonitorsForBatch(
     }
 
     log(`✅ Domain monitor check completed — ${matchedDeviceIds.size} device(s) matched, webhooks dispatched`, 'success')
+    log(`[MONITOR_PROGRESS] 5/5 Domain monitor check completed`, 'success')
     log(`[MONITOR_CHECK] Domain monitor check completed ✔`, 'success')
     log(`🔔 ═══════════════════════════════════════════`, 'info')
   } catch (error) {
