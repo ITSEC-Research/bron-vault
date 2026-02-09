@@ -374,6 +374,91 @@ CREATE TABLE IF NOT EXISTS import_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
+-- Table: domain_monitors
+-- =====================================================
+-- Domain monitoring configuration for webhook alerts
+CREATE TABLE IF NOT EXISTS domain_monitors (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL COMMENT 'Monitor display name',
+    domains TEXT NOT NULL COMMENT 'JSON array of domains to monitor',
+    match_mode ENUM('credential', 'url', 'both') NOT NULL DEFAULT 'both' COMMENT 'What to match',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_by INT NULL COMMENT 'User who created this monitor',
+    last_triggered_at TIMESTAMP NULL COMMENT 'Last time this monitor was triggered',
+    total_alerts INT NOT NULL DEFAULT 0 COMMENT 'Total alerts sent',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_domain_monitors_is_active (is_active),
+    INDEX idx_domain_monitors_created_by (created_by),
+    INDEX idx_domain_monitors_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Table: monitor_webhooks
+-- =====================================================
+-- Webhook endpoints for domain monitoring alerts
+CREATE TABLE IF NOT EXISTS monitor_webhooks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL COMMENT 'Webhook display name',
+    url TEXT NOT NULL COMMENT 'Webhook URL',
+    secret VARCHAR(255) NULL COMMENT 'Optional HMAC secret for signing payloads',
+    headers TEXT NULL COMMENT 'Optional JSON custom headers',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_by INT NULL COMMENT 'User who created this webhook',
+    last_triggered_at TIMESTAMP NULL COMMENT 'Last time this webhook was called',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_monitor_webhooks_is_active (is_active),
+    INDEX idx_monitor_webhooks_created_by (created_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Table: monitor_webhook_map
+-- =====================================================
+-- Many-to-many relationship between monitors and webhooks
+CREATE TABLE IF NOT EXISTS monitor_webhook_map (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    monitor_id INT NOT NULL,
+    webhook_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (monitor_id) REFERENCES domain_monitors(id) ON DELETE CASCADE,
+    FOREIGN KEY (webhook_id) REFERENCES monitor_webhooks(id) ON DELETE CASCADE,
+    UNIQUE INDEX idx_monitor_webhook_map_unique (monitor_id, webhook_id),
+    INDEX idx_monitor_webhook_map_monitor (monitor_id),
+    INDEX idx_monitor_webhook_map_webhook (webhook_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- Table: monitor_alerts
+-- =====================================================
+-- Log of all webhook alert deliveries
+CREATE TABLE IF NOT EXISTS monitor_alerts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    monitor_id INT NOT NULL,
+    webhook_id INT NOT NULL,
+    device_id VARCHAR(255) NULL COMMENT 'Device that triggered the alert',
+    upload_batch VARCHAR(255) NULL COMMENT 'Upload batch that triggered the alert',
+    matched_domain VARCHAR(255) NOT NULL COMMENT 'Domain that was matched',
+    match_type ENUM('credential_email', 'url', 'both') NOT NULL COMMENT 'Type of match found',
+    credential_match_count INT NOT NULL DEFAULT 0,
+    url_match_count INT NOT NULL DEFAULT 0,
+    payload_sent LONGTEXT NULL COMMENT 'JSON payload sent to webhook',
+    status ENUM('success', 'failed', 'retrying') NOT NULL DEFAULT 'success',
+    http_status INT NULL,
+    error_message TEXT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (monitor_id) REFERENCES domain_monitors(id) ON DELETE CASCADE,
+    FOREIGN KEY (webhook_id) REFERENCES monitor_webhooks(id) ON DELETE CASCADE,
+    INDEX idx_monitor_alerts_monitor_id (monitor_id),
+    INDEX idx_monitor_alerts_webhook_id (webhook_id),
+    INDEX idx_monitor_alerts_device_id (device_id),
+    INDEX idx_monitor_alerts_status (status),
+    INDEX idx_monitor_alerts_created_at (created_at),
+    INDEX idx_monitor_alerts_matched_domain (matched_domain)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
 -- Performance Indexes
 -- =====================================================
 -- These indexes optimize queries for large datasets
