@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { settingsManager } from "@/lib/settings"
+import { logSettingsAction } from "@/lib/audit-log"
 
 /**
  * GET /api/settings
@@ -66,6 +67,15 @@ export async function POST(request: NextRequest) {
     if (body.key_name && body.value !== undefined) {
       // Single update
       await settingsManager.updateSetting(body.key_name, body.value)
+      
+      // Log the settings update in audit log
+      await logSettingsAction(
+        { id: Number(user.userId), email: user.email || null },
+        body.key_name,
+        { new_value: body.value },
+        request
+      )
+      
       return NextResponse.json({
         success: true,
         message: "Setting updated successfully",
@@ -74,12 +84,26 @@ export async function POST(request: NextRequest) {
     } else if (Array.isArray(body.settings)) {
       // Multiple updates
       let updated = 0
+      const updatedSettings: Record<string, unknown> = {}
+      
       for (const setting of body.settings) {
         if (setting.key_name && setting.value !== undefined) {
           await settingsManager.updateSetting(setting.key_name, setting.value)
+          updatedSettings[setting.key_name] = setting.value
           updated++
         }
       }
+      
+      // Log the settings update in audit log
+      if (updated > 0) {
+        await logSettingsAction(
+          { id: Number(user.userId), email: user.email || null },
+          'multiple',
+          { updated_count: updated, settings: updatedSettings },
+          request
+        )
+      }
+      
       return NextResponse.json({
         success: true,
         message: `${updated} setting(s) updated successfully`,

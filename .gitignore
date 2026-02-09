@@ -9,3 +9,5 @@ clickhouse-data
 mysql-data
 tmp
 .DS_Store
+.devtasks
+docs

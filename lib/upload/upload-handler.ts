@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { broadcastLogToSession, closeLogSession } from "@/lib/upload-connections"
 import { processFileUpload } from "./file-upload-processor"
+import { createImportLog, logUploadAction } from "@/lib/audit-log"
+import { v4 as uuidv4 } from "uuid"
 
 export async function handleUploadRequest(request: NextRequest): Promise<NextResponse> {
   // Validate authentication
@@ -30,12 +32,25 @@ export async function handleUploadRequest(request: NextRequest): Promise<NextRes
 
   logWithBroadcast("🚀 Upload API called", "info")
 
+  // Generate a unique job ID for this import
+  const jobId = `web-${uuidv4().substring(0, 8)}`
+  const startedAt = new Date()
+
   try {
     const file = formData.get("file") as File
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 })
     }
+
+    // Log the upload start in audit log
+    await logUploadAction(
+      'upload.start',
+      { id: Number(user.userId), email: user.email || null },
+      jobId,
+      { filename: file.name, file_size: file.size },
+      request
+    )
 
     // Process file upload
     const result = await processFileUpload(file, sessionId, logWithBroadcast)
@@ -44,11 +59,72 @@ export async function handleUploadRequest(request: NextRequest): Promise<NextRes
     setTimeout(() => closeLogSession(sessionId), 1000)
 
     if (result.success) {
+      // Create import log with complete data AFTER processing is done
+      // Note: result.details contains devicesFound, devicesProcessed from zip processor
+      await createImportLog({
+        job_id: jobId,
+        user_id: Number(user.userId),
+        user_email: user.email || null,
+        api_key_id: null,
+        source: 'web',
+        filename: file.name,
+        file_size: file.size,
+        status: 'completed',
+        total_devices: result.details?.devicesFound || 0,
+        processed_devices: result.details?.devicesProcessed || 0,
+        total_credentials: result.details?.totalCredentials || 0,
+        total_files: result.details?.totalFiles || 0,
+        error_message: null,
+        started_at: startedAt,
+        completed_at: new Date()
+      })
+
+      // Log the upload completion in audit log
+      await logUploadAction(
+        'upload.complete',
+        { id: Number(user.userId), email: user.email || null },
+        jobId,
+        { 
+          total_devices: result.details?.devicesFound || 0,
+          total_credentials: result.details?.totalCredentials || 0,
+          total_files: result.details?.totalFiles || 0
+        },
+        request
+      )
+
       return NextResponse.json({
         success: true,
         details: result.details,
       })
     } else {
+      // Create import log for failed upload
+      await createImportLog({
+        job_id: jobId,
+        user_id: Number(user.userId),
+        user_email: user.email || null,
+        api_key_id: null,
+        source: 'web',
+        filename: file.name,
+        file_size: file.size,
+        status: 'failed',
+        total_devices: 0,
+        processed_devices: 0,
+        total_credentials: 0,
+        total_files: 0,
+        error_message: result.error || 'Unknown error',
+        started_at: startedAt,
+        completed_at: new Date()
+      })
+
+      // Log the upload failure in audit log
+      await logUploadAction(
+        'upload.fail',
+        { id: Number(user.userId), email: user.email || null },
+        jobId,
+        { error: result.error || 'Unknown error' },
+        request
+      )
+
       return NextResponse.json(
         {
           error: "Processing failed",
@@ -59,6 +135,35 @@ export async function handleUploadRequest(request: NextRequest): Promise<NextRes
     }
   } catch (error) {
     logWithBroadcast("💥 Upload processing error:" + error, "error")
+
+    // Create import log for error
+    const file = formData.get("file") as File
+    await createImportLog({
+      job_id: jobId,
+      user_id: Number(user.userId),
+      user_email: user.email || null,
+      api_key_id: null,
+      source: 'web',
+      filename: file?.name || 'unknown',
+      file_size: file?.size || 0,
+      status: 'failed',
+      total_devices: 0,
+      processed_devices: 0,
+      total_credentials: 0,
+      total_files: 0,
+      error_message: error instanceof Error ? error.message : 'Unknown error',
+      started_at: startedAt,
+      completed_at: new Date()
+    })
+
+    // Log the upload failure in audit log
+    await logUploadAction(
+      'upload.fail',
+      { id: Number(user.userId), email: user.email || null },
+      jobId,
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      request
+    )
 
     // Close log session
     setTimeout(() => closeLogSession(sessionId), 1000)

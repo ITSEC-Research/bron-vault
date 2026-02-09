@@ -9,6 +9,8 @@ import { pipeline } from "stream/promises"
 import { mkdir } from "fs/promises"
 import { processFileUploadFromPath } from "@/lib/upload/file-upload-processor"
 import { broadcastLogToSession, closeLogSession } from "@/lib/upload-connections"
+import { createImportLog, logUploadAction } from "@/lib/audit-log"
+import { v4 as uuidv4 } from "uuid"
 
 /**
  * POST /api/upload-assemble
@@ -155,6 +157,19 @@ export async function POST(request: NextRequest) {
     // Clean up chunk files
     await chunkManager.cleanupChunks(fileId)
 
+    // Generate a unique job ID for this import
+    const jobId = `web-chunk-${uuidv4().substring(0, 8)}`
+    const startedAt = new Date()
+
+    // Log the upload start in audit log
+    await logUploadAction(
+      'upload.start',
+      { id: Number(user.userId), email: user.email || null },
+      jobId,
+      { filename: fileName, file_size: stats.size, upload_type: 'chunked' },
+      request
+    )
+
     // Process the assembled file (same processing logic as regular upload)
     // This uses the EXACT SAME processing functions - no changes to parsing logic
     const logWithBroadcast = (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
@@ -179,6 +194,34 @@ export async function POST(request: NextRequest) {
       const errorMsg = processError instanceof Error ? processError.message : String(processError)
       logWithBroadcast(`❌ Processing threw an error: ${errorMsg}`, "error")
       
+      // Create import log for error - AFTER processing failed
+      await createImportLog({
+        job_id: jobId,
+        user_id: Number(user.userId),
+        user_email: user.email || null,
+        api_key_id: null,
+        source: 'web',
+        filename: fileName,
+        file_size: stats.size,
+        status: 'failed',
+        total_devices: 0,
+        processed_devices: 0,
+        total_credentials: 0,
+        total_files: 0,
+        error_message: errorMsg,
+        started_at: startedAt,
+        completed_at: new Date()
+      })
+
+      // Log the upload failure in audit log
+      await logUploadAction(
+        'upload.fail',
+        { id: Number(user.userId), email: user.email || null },
+        jobId,
+        { error: errorMsg },
+        request
+      )
+
       // Close log session before returning error
       setTimeout(() => closeLogSession(sessionId), 1000)
       
@@ -197,6 +240,39 @@ export async function POST(request: NextRequest) {
     setTimeout(() => closeLogSession(sessionId), 1000)
 
     if (processingResult.success) {
+      // Create import log with complete data AFTER processing is done
+      // Note: processingResult.details contains devicesFound, devicesProcessed from zip processor
+      await createImportLog({
+        job_id: jobId,
+        user_id: Number(user.userId),
+        user_email: user.email || null,
+        api_key_id: null,
+        source: 'web',
+        filename: fileName,
+        file_size: stats.size,
+        status: 'completed',
+        total_devices: processingResult.details?.devicesFound || 0,
+        processed_devices: processingResult.details?.devicesProcessed || 0,
+        total_credentials: processingResult.details?.totalCredentials || 0,
+        total_files: processingResult.details?.totalFiles || 0,
+        error_message: null,
+        started_at: startedAt,
+        completed_at: new Date()
+      })
+
+      // Log the upload completion in audit log
+      await logUploadAction(
+        'upload.complete',
+        { id: Number(user.userId), email: user.email || null },
+        jobId,
+        { 
+          total_devices: processingResult.details?.devicesFound || 0,
+          total_credentials: processingResult.details?.totalCredentials || 0,
+          total_files: processingResult.details?.totalFiles || 0
+        },
+        request
+      )
+
       return NextResponse.json({
         success: true,
         filePath: assembledFilePath,
@@ -206,6 +282,34 @@ export async function POST(request: NextRequest) {
         message: "File assembled and processed successfully",
       })
     } else {
+      // Create import log for failed processing
+      await createImportLog({
+        job_id: jobId,
+        user_id: Number(user.userId),
+        user_email: user.email || null,
+        api_key_id: null,
+        source: 'web',
+        filename: fileName,
+        file_size: stats.size,
+        status: 'failed',
+        total_devices: 0,
+        processed_devices: 0,
+        total_credentials: 0,
+        total_files: 0,
+        error_message: processingResult.error || 'Unknown error',
+        started_at: startedAt,
+        completed_at: new Date()
+      })
+
+      // Log the upload failure in audit log
+      await logUploadAction(
+        'upload.fail',
+        { id: Number(user.userId), email: user.email || null },
+        jobId,
+        { error: processingResult.error || 'Unknown error' },
+        request
+      )
+
       logWithBroadcast(`❌ Processing returned failure: ${processingResult.error}`, "error")
       return NextResponse.json(
         {

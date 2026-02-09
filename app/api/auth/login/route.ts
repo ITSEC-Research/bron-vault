@@ -3,6 +3,7 @@ import { pool } from "@/lib/mysql"
 import bcrypt from "bcryptjs"
 import type { RowDataPacket } from "mysql2"
 import { generateToken, generatePending2FAToken, getSecureCookieOptions, UserRole } from "@/lib/auth"
+import { logUserAction } from "@/lib/audit-log"
 
 export async function POST(request: NextRequest) {
   const { email, password } = await request.json()
@@ -15,6 +16,14 @@ export async function POST(request: NextRequest) {
     )
 
     if (!Array.isArray(users) || users.length === 0) {
+      // Log failed login attempt (user not found)
+      await logUserAction(
+        'user.login.fail',
+        { id: null, email: email },
+        null,
+        { reason: 'user_not_found', attempted_email: email },
+        request
+      )
       return NextResponse.json({ success: false, error: "Invalid email or password." }, { status: 401 })
     }
 
@@ -23,11 +32,27 @@ export async function POST(request: NextRequest) {
     // Verify password hash
     const match = await bcrypt.compare(password, user.password_hash || "")
     if (!match) {
+      // Log failed login attempt (wrong password)
+      await logUserAction(
+        'user.login.fail',
+        { id: user.id, email: user.email },
+        user.id,
+        { reason: 'invalid_password' },
+        request
+      )
       return NextResponse.json({ success: false, error: "Invalid email or password." }, { status: 401 })
     }
 
     // Check if user account is active
     if (user.is_active === false || user.is_active === 0) {
+      // Log failed login (inactive account)
+      await logUserAction(
+        'user.login.fail',
+        { id: user.id, email: user.email },
+        user.id,
+        { reason: 'account_inactive' },
+        request
+      )
       return NextResponse.json({ 
         success: false, 
         error: "Your account has been deactivated. Please contact an administrator." 
@@ -56,8 +81,18 @@ export async function POST(request: NextRequest) {
     const token = await generateToken({
       userId: String(user.id),
       username: user.name || user.email,
+      email: user.email,
       role: userRole,
     })
+
+    // Log successful login (without 2FA)
+    await logUserAction(
+      'user.login',
+      { id: user.id, email: user.email },
+      user.id,
+      { method: 'password_only', role: userRole },
+      request
+    )
 
     // Set secure cookie with JWT token
     const response = NextResponse.json({

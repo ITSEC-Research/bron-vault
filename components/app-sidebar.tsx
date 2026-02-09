@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen, ClipboardList, FileUp, Radio } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -74,11 +74,30 @@ const menuGroups: MenuGroup[] = [
         adminOnly: true, // Only admins can upload data
       },
       {
+        title: "Import Logs",
+        description: "View Import History",
+        url: "/import-logs",
+        icon: FileUp,
+        adminOnly: true, // Only admins can view import logs
+      },
+      {
         title: "Debug ZIP",
         description: "Validate ZIP Files",
         url: "/debug-zip",
         icon: Bug,
         adminOnly: true, // Only admins can debug uploads
+      },
+    ],
+  },
+  {
+    title: "Monitoring",
+    items: [
+      {
+        title: "Domain Monitor",
+        description: "Webhook Alerts",
+        url: "/monitoring",
+        icon: Radio,
+        adminOnly: true,
       },
     ],
   },
@@ -103,6 +122,13 @@ const menuGroups: MenuGroup[] = [
         description: "API Documentation",
         url: "/docs",
         icon: BookOpen,
+      },
+      {
+        title: "Audit Logs",
+        description: "View Activity Logs",
+        url: "/audit-logs",
+        icon: ClipboardList,
+        adminOnly: true, // Only admins can view audit logs
       },
       {
         title: "Settings",
@@ -133,6 +159,11 @@ export function AppSidebar() {
     // For /domain-search, also match sub-routes
     if (url === "/domain-search") {
       return pathname.startsWith("/domain-search/");
+    }
+
+    // For /monitoring, also match sub-routes
+    if (url === "/monitoring") {
+      return pathname.startsWith("/monitoring/");
     }
 
     return false;

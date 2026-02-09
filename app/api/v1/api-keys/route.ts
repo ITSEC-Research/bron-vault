@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { validateRequest, isAdmin } from "@/lib/auth"
 import { createApiKey, getApiKeysByUser, getAllApiKeys, ApiKeyRole } from "@/lib/api-key-auth"
+import { logApiKeyAction } from "@/lib/audit-log"
 
 export const dynamic = 'force-dynamic'
 
@@ -157,6 +158,20 @@ export async function POST(request: NextRequest) {
       rateLimitWindow: finalRateLimitWindow,
       expiresAt: finalExpiresAt,
     })
+
+    // Log the API key creation in audit log
+    await logApiKeyAction(
+      'apikey.create',
+      { id: Number(user.userId), email: user.email || null },
+      record.id,
+      { 
+        name: record.name,
+        role: record.role,
+        key_prefix: record.key_prefix,
+        expires_at: record.expires_at?.toISOString() || null
+      },
+      request
+    )
 
     // Return the API key (only shown once!)
     return NextResponse.json({

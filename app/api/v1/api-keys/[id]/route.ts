@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { validateRequest, isAdmin } from "@/lib/auth"
 import { deleteApiKey } from "@/lib/api-key-auth"
 import { executeQuery } from "@/lib/mysql"
+import { logApiKeyAction } from "@/lib/audit-log"
 
 export const dynamic = 'force-dynamic'
 
@@ -42,6 +43,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // Get key info before deletion for audit log
+    const keyInfo = await executeQuery(
+      "SELECT id, name, key_prefix, role, user_id FROM api_keys WHERE id = ?",
+      [keyId]
+    ) as any[]
+
     // Admin can delete any key, analyst can only delete their own
     const userId = isAdmin(user) ? undefined : Number(user.userId)
     const deleted = await deleteApiKey(keyId, userId)
@@ -50,6 +57,22 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json(
         { success: false, error: "API key not found or you don't have permission to delete it" },
         { status: 404 }
+      )
+    }
+
+    // Log the API key deletion in audit log
+    if (keyInfo.length > 0) {
+      await logApiKeyAction(
+        'apikey.delete',
+        { id: Number(user.userId), email: user.email || null },
+        keyId,
+        {
+          name: keyInfo[0].name,
+          key_prefix: keyInfo[0].key_prefix,
+          role: keyInfo[0].role,
+          owner_user_id: keyInfo[0].user_id
+        },
+        request
       )
     }
 
@@ -168,6 +191,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       [keyId]
     ) as any[]
     const updatedKey = updatedKeys[0]
+
+    // Log the API key update in audit log
+    const updateDetails: Record<string, unknown> = {}
+    if (name !== undefined) updateDetails.name = name.trim()
+    if (isActive !== undefined) updateDetails.is_active = isActive
+    if (rateLimit !== undefined) updateDetails.rate_limit = rateLimit
+    if (rateLimitWindow !== undefined) updateDetails.rate_limit_window = rateLimitWindow
+    
+    await logApiKeyAction(
+      isActive === false ? 'apikey.revoke' : 'apikey.update',
+      { id: Number(user.userId), email: user.email || null },
+      keyId,
+      updateDetails,
+      request
+    )
 
     return NextResponse.json({
       success: true,

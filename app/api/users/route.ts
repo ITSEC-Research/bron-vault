@@ -3,6 +3,7 @@ import { pool } from "@/lib/mysql"
 import bcrypt from "bcryptjs"
 import type { RowDataPacket, ResultSetHeader } from "mysql2"
 import { validateRequest, requireAdminRole, UserRole } from "@/lib/auth"
+import { logUserAction } from "@/lib/audit-log"
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -131,6 +132,15 @@ export async function POST(request: NextRequest) {
     )
 
     console.log("✅ User created successfully:", email, "with role:", userRole)
+
+    // Log the user creation in audit log
+    await logUserAction(
+      'user.create',
+      { id: Number(user.userId), email: user.email || null },
+      result.insertId,
+      { email, name, role: userRole },
+      request
+    )
 
     return NextResponse.json({ 
       success: true, 
@@ -319,6 +329,22 @@ export async function PUT(request: NextRequest) {
 
     console.log("✅ User updated successfully:", id)
 
+    // Log the user update in audit log
+    const updateDetails: Record<string, unknown> = {}
+    if (email) updateDetails.email = email
+    if (name) updateDetails.name = name
+    if (role) updateDetails.role = role
+    if (password) updateDetails.password_changed = true
+    if (typeof is_active === 'boolean') updateDetails.is_active = is_active
+    
+    await logUserAction(
+      password ? 'user.password.change' : 'user.update',
+      { id: Number(user.userId), email: user.email || null },
+      id,
+      updateDetails,
+      request
+    )
+
     return NextResponse.json({ 
       success: true, 
       message: "User updated successfully"
@@ -384,7 +410,7 @@ export async function DELETE(request: NextRequest) {
     )
     
     const [userToDelete] = await pool.query<RowDataPacket[]>(
-      "SELECT role FROM users WHERE id = ? LIMIT 1",
+      "SELECT id, email, name, role FROM users WHERE id = ? LIMIT 1",
       [id]
     )
 
@@ -400,10 +426,26 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 })
     }
 
+    // Capture user info before deletion
+    const deletedUserInfo = userToDelete[0]
+
     // Delete user
     await pool.query("DELETE FROM users WHERE id = ?", [id])
 
     console.log("✅ User deleted successfully:", id)
+
+    // Log the user deletion in audit log
+    await logUserAction(
+      'user.delete',
+      { id: Number(user.userId), email: user.email || null },
+      id,
+      { 
+        deleted_user_email: deletedUserInfo?.email,
+        deleted_user_name: deletedUserInfo?.name,
+        deleted_user_role: deletedUserInfo?.role
+      },
+      request
+    )
 
     return NextResponse.json({ 
       success: true, 
