@@ -5,6 +5,7 @@ import { existsSync } from "fs"
 import path from "path"
 import JSZip from "jszip"
 import { validateRequest } from "@/lib/auth"
+import { getStorageProvider } from "@/lib/storage"
 
 export async function POST(request: NextRequest) {
   // Validate authentication
@@ -191,29 +192,48 @@ export async function POST(request: NextRequest) {
     let binaryFilesAdded = 0
     let binaryFilesSkipped = 0
 
-    // SECURITY: Define allowed uploads directory for path traversal protection
+    // Get storage provider for reading files
+    const storageProvider = await getStorageProvider()
+    const storageType = storageProvider.getType()
+
+    // SECURITY: Define allowed uploads directory for path traversal protection (local only)
     const uploadsDir = path.resolve(process.cwd(), 'uploads')
 
     for (const file of binaryFiles) {
       if (file.local_file_path) {
         try {
-          const fullPath = path.resolve(process.cwd(), file.local_file_path)
+          if (storageType === "local") {
+            // LOCAL STORAGE: Read from filesystem with security checks
+            const fullPath = path.resolve(process.cwd(), file.local_file_path)
 
-          // SECURITY: Path traversal protection - ensure file is within uploads directory
-          if (!fullPath.startsWith(uploadsDir)) {
-            console.warn(`⚠️ Skipping file outside uploads directory: ${file.local_file_path}`)
-            binaryFilesSkipped++
-            continue
-          }
+            // SECURITY: Path traversal protection
+            if (!fullPath.startsWith(uploadsDir)) {
+              console.warn(`⚠️ Skipping file outside uploads directory: ${file.local_file_path}`)
+              binaryFilesSkipped++
+              continue
+            }
 
-          if (existsSync(fullPath)) {
-            const binaryData = await readFile(fullPath)
-            zip.file(file.file_path, binaryData)
-            binaryFilesAdded++
-            console.log(`✅ Added binary file: ${file.file_path}`)
+            if (existsSync(fullPath)) {
+              const binaryData = await readFile(fullPath)
+              zip.file(file.file_path, binaryData)
+              binaryFilesAdded++
+              console.log(`✅ Added binary file: ${file.file_path}`)
+            } else {
+              console.warn(`⚠️ Binary file not found: ${fullPath}`)
+              binaryFilesSkipped++
+            }
           } else {
-            console.warn(`⚠️ Binary file not found: ${fullPath}`)
-            binaryFilesSkipped++
+            // S3 STORAGE: Read from object storage
+            const exists = await storageProvider.exists(file.local_file_path)
+            if (exists) {
+              const binaryData = await storageProvider.get(file.local_file_path)
+              zip.file(file.file_path, binaryData)
+              binaryFilesAdded++
+              console.log(`✅ Added binary file from S3: ${file.file_path}`)
+            } else {
+              console.warn(`⚠️ Binary file not found in S3: ${file.local_file_path}`)
+              binaryFilesSkipped++
+            }
           }
         } catch (error) {
           console.error(`❌ Error reading binary file ${file.local_file_path}:`, error)

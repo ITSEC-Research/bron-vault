@@ -10,6 +10,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.985.0",
+    "@aws-sdk/lib-storage": "^3.985.0",
     "@clickhouse/client": "^1.14.0",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.2",

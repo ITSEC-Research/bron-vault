@@ -77,7 +77,7 @@ services:
         condition: service_healthy
 
   # -----------------------------------------------------------
-  # 3. MAIN APP (Next.js)
+  # 3. MAIN APP (Next.js) 
   # -----------------------------------------------------------
   app:
     build:
@@ -120,7 +120,31 @@ services:
         condition: service_completed_successfully
 
   # -----------------------------------------------------------
-  # 4. SETUP WORKER (Run Once for Configuration)
+  # 4. OBJECT STORAGE (MinIO - S3 Compatible)
+  # -----------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: bronvault_minio
+    restart: always
+    ports:
+      - "9001:9000"      # S3 API
+      - "9002:9001"      # MinIO Console (Web UI)
+    environment:
+      TZ: Asia/Jakarta
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - ./minio-data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # -----------------------------------------------------------
+  # 5. SETUP WORKER (Run Once for Configuration)
   # -----------------------------------------------------------
   setup:
     build:
