@@ -7,7 +7,7 @@
  * Schema Version: 1.0.0
  */
 
-export const SCHEMA_VERSION = "1.2.0"
+export const SCHEMA_VERSION = "1.3.0"
 
 // Column definition type
 export interface ColumnDefinition {
@@ -515,6 +515,121 @@ export const IMPORT_LOGS_TABLE: TableDefinition = {
   collate: 'utf8mb4_unicode_ci'
 }
 
+// Domain Monitors Table - Define domains to watch for matches
+export const DOMAIN_MONITORS_TABLE: TableDefinition = {
+  name: 'domain_monitors',
+  columns: [
+    { name: 'id', type: 'int', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'name', type: 'varchar(255)', nullable: false, comment: 'Monitor display name' },
+    { name: 'domains', type: 'text', nullable: false, comment: 'JSON array of domains to monitor' },
+    { name: 'match_mode', type: "enum('credential','url','both')", nullable: false, default: "'both'", comment: 'What to match: email domain, URL domain, or both' },
+    { name: 'is_active', type: 'tinyint(1)', nullable: false, default: '1' },
+    { name: 'created_by', type: 'int', nullable: true, comment: 'User who created this monitor' },
+    { name: 'last_triggered_at', type: 'timestamp', nullable: true, comment: 'Last time this monitor was triggered' },
+    { name: 'total_alerts', type: 'int', nullable: false, default: '0', comment: 'Total alerts sent' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+    { name: 'updated_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP', extra: 'on update CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_domain_monitors_is_active', columns: ['is_active'], unique: false },
+    { name: 'idx_domain_monitors_created_by', columns: ['created_by'], unique: false },
+    { name: 'idx_domain_monitors_created_at', columns: ['created_at'], unique: false },
+  ],
+  foreignKeys: [],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Monitor Webhooks Table - Webhook endpoints for sending alerts
+export const MONITOR_WEBHOOKS_TABLE: TableDefinition = {
+  name: 'monitor_webhooks',
+  columns: [
+    { name: 'id', type: 'int', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'name', type: 'varchar(255)', nullable: false, comment: 'Webhook display name' },
+    { name: 'url', type: 'text', nullable: false, comment: 'Webhook URL' },
+    { name: 'secret', type: 'varchar(255)', nullable: true, comment: 'Optional HMAC secret for signing payloads' },
+    { name: 'headers', type: 'text', nullable: true, comment: 'Optional JSON custom headers' },
+    { name: 'is_active', type: 'tinyint(1)', nullable: false, default: '1' },
+    { name: 'created_by', type: 'int', nullable: true, comment: 'User who created this webhook' },
+    { name: 'last_triggered_at', type: 'timestamp', nullable: true, comment: 'Last time this webhook was called' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+    { name: 'updated_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP', extra: 'on update CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_monitor_webhooks_is_active', columns: ['is_active'], unique: false },
+    { name: 'idx_monitor_webhooks_created_by', columns: ['created_by'], unique: false },
+  ],
+  foreignKeys: [],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Monitor-Webhook Map - Many-to-many relationship between monitors and webhooks
+export const MONITOR_WEBHOOK_MAP_TABLE: TableDefinition = {
+  name: 'monitor_webhook_map',
+  columns: [
+    { name: 'id', type: 'int', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'monitor_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'webhook_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_monitor_webhook_map_monitor', columns: ['monitor_id'], unique: false },
+    { name: 'idx_monitor_webhook_map_webhook', columns: ['webhook_id'], unique: false },
+    { name: 'idx_monitor_webhook_map_unique', columns: ['monitor_id', 'webhook_id'], unique: true },
+  ],
+  foreignKeys: [
+    { name: 'monitor_webhook_map_ibfk_1', column: 'monitor_id', referencedTable: 'domain_monitors', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' },
+    { name: 'monitor_webhook_map_ibfk_2', column: 'webhook_id', referencedTable: 'monitor_webhooks', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' },
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Monitor Alerts Table - Log of all alerts sent
+export const MONITOR_ALERTS_TABLE: TableDefinition = {
+  name: 'monitor_alerts',
+  columns: [
+    { name: 'id', type: 'bigint', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'monitor_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'webhook_id', type: 'int', nullable: false, key: 'MUL' },
+    { name: 'device_id', type: 'varchar(255)', nullable: true, comment: 'Device that triggered the alert' },
+    { name: 'upload_batch', type: 'varchar(255)', nullable: true, comment: 'Upload batch that triggered the alert' },
+    { name: 'matched_domain', type: 'varchar(255)', nullable: false, comment: 'Domain that was matched' },
+    { name: 'match_type', type: "enum('credential_email','url','both')", nullable: false, comment: 'Type of match found' },
+    { name: 'credential_match_count', type: 'int', nullable: false, default: '0' },
+    { name: 'url_match_count', type: 'int', nullable: false, default: '0' },
+    { name: 'payload_sent', type: 'longtext', nullable: true, comment: 'JSON payload sent to webhook' },
+    { name: 'status', type: "enum('success','failed','retrying')", nullable: false, default: "'success'" },
+    { name: 'http_status', type: 'int', nullable: true },
+    { name: 'error_message', type: 'text', nullable: true },
+    { name: 'retry_count', type: 'int', nullable: false, default: '0' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_monitor_alerts_monitor_id', columns: ['monitor_id'], unique: false },
+    { name: 'idx_monitor_alerts_webhook_id', columns: ['webhook_id'], unique: false },
+    { name: 'idx_monitor_alerts_device_id', columns: ['device_id'], unique: false },
+    { name: 'idx_monitor_alerts_status', columns: ['status'], unique: false },
+    { name: 'idx_monitor_alerts_created_at', columns: ['created_at'], unique: false },
+    { name: 'idx_monitor_alerts_matched_domain', columns: ['matched_domain'], unique: false },
+  ],
+  foreignKeys: [
+    { name: 'monitor_alerts_ibfk_1', column: 'monitor_id', referencedTable: 'domain_monitors', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' },
+    { name: 'monitor_alerts_ibfk_2', column: 'webhook_id', referencedTable: 'monitor_webhooks', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' },
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
 // ===========================================
 // ALL TABLES (in creation order - respect FK dependencies)
 // ===========================================
@@ -534,6 +649,10 @@ export const ALL_TABLES: TableDefinition[] = [
   UPLOAD_JOB_LOGS_TABLE,
   AUDIT_LOGS_TABLE,
   IMPORT_LOGS_TABLE,
+  DOMAIN_MONITORS_TABLE,
+  MONITOR_WEBHOOKS_TABLE,
+  MONITOR_WEBHOOK_MAP_TABLE,
+  MONITOR_ALERTS_TABLE,
 ]
 
 // ===========================================

@@ -8,24 +8,38 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
     webpackBuildWorker: true, // Use separate worker process for faster builds
+    // Exclude large data folders from output file tracing (fixes slow builds)
+    outputFileTracingExcludes: {
+      '*': [
+        './uploads/**',
+        './clickhouse-data/**',
+        './mysql-data/**',
+        './.devtasks/**',
+      ],
+    },
   },
   // Exclude data folders from webpack processing (these contain stealer logs with .ts files)
   webpack: (config, { isServer }) => {
-    // Ignore data directories from module resolution
+    // Ignore data directories from file watching
     config.watchOptions = {
       ...config.watchOptions,
       ignored: ['**/uploads/**', '**/clickhouse-data/**', '**/mysql-data/**', '**/node_modules/**'],
     };
     
-    // Add rule to completely ignore data folders
+    // Add rule to completely ignore data folders from module bundling
     config.module.rules.push({
       test: /\.(ts|tsx|js|jsx|json)$/,
       exclude: [
-        /uploads/,
-        /clickhouse-data/,
-        /mysql-data/,
+        path.resolve('./uploads'),
+        path.resolve('./clickhouse-data'),
+        path.resolve('./mysql-data'),
       ],
     });
+
+    // Exclude from snapshot paths to prevent webpack from scanning data dirs
+    if (!config.snapshot) config.snapshot = {};
+    config.snapshot.managedPaths = config.snapshot.managedPaths || [/node_modules/];
+    config.snapshot.immutablePaths = config.snapshot.immutablePaths || [];
     
     return config;
   },

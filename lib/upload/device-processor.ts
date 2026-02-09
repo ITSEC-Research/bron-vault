@@ -14,6 +14,7 @@ import {
 import { isLikelyTextFile } from "./zip-structure-analyzer"
 import { chunkArray } from "@/lib/utils"
 import { settingsManager } from "@/lib/settings"
+import { checkMonitorsForDevice } from "@/lib/domain-monitor"
 
 export interface DeviceProcessingResult {
   deviceCredentials: number
@@ -657,6 +658,12 @@ export async function processDevice(
     `🔍 Verification: ${(savedCredentials as any[])[0].count} credentials saved for device ${deviceName}`,
     "info",
   )
+
+  // Check domain monitors for this device (non-blocking)
+  if ((savedCredentials as any[])[0].count > 0) {
+    checkMonitorsForDevice(deviceId, uploadBatch, logWithBroadcast)
+      .catch(err => logWithBroadcast(`❌ Domain monitor check error: ${err}`, 'error'))
+  }
 
   return {
     deviceCredentials,

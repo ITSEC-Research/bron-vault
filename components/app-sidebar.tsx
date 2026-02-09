@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen, ClipboardList, FileUp } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen, ClipboardList, FileUp, Radio } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -90,6 +90,18 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    title: "Monitoring",
+    items: [
+      {
+        title: "Domain Monitor",
+        description: "Webhook Alerts",
+        url: "/monitoring",
+        icon: Radio,
+        adminOnly: true,
+      },
+    ],
+  },
+  {
     title: "System",
     items: [
       {
@@ -147,6 +159,11 @@ export function AppSidebar() {
     // For /domain-search, also match sub-routes
     if (url === "/domain-search") {
       return pathname.startsWith("/domain-search/");
+    }
+
+    // For /monitoring, also match sub-routes
+    if (url === "/monitoring") {
+      return pathname.startsWith("/monitoring/");
     }
 
     return false;
