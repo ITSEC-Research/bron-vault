@@ -1,14 +1,34 @@
 import mysql, { Pool, PoolConnection, QueryResult, RowDataPacket, FieldPacket, ResultSetHeader, OkPacket, ProcedureCallPacket } from "mysql2/promise"
 
 // MySQL connection configuration - lazy loaded
-const getDbConfig = () => ({
-  host: process.env.MYSQL_HOST || "localhost",
-  port: Number.parseInt(process.env.MYSQL_PORT || "3306"),
-  user: process.env.MYSQL_USER || "root",
-  password: process.env.MYSQL_PASSWORD || "",
-  database: process.env.MYSQL_DATABASE || "stealer_logs",
-  charset: "utf8mb4",
-})
+// SECURITY: No fallback defaults for credentials (HIGH-12)
+const getDbConfig = () => {
+  const host = process.env.MYSQL_HOST
+  const user = process.env.MYSQL_USER
+  const password = process.env.MYSQL_PASSWORD
+  const database = process.env.MYSQL_DATABASE || "stealer_logs"
+
+  if (!host || !user || !password) {
+    throw new Error(
+      "Missing required MySQL environment variables: MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD. " +
+      "Please add them to .env.local or .env file."
+    )
+  }
+
+  // SECURITY: Validate database name to prevent injection (MED-14)
+  if (!/^[a-zA-Z0-9_]+$/.test(database)) {
+    throw new Error(`Invalid database name: ${database}. Only alphanumeric and underscores allowed.`)
+  }
+
+  return {
+    host,
+    port: Number.parseInt(process.env.MYSQL_PORT || "3306"),
+    user,
+    password,
+    database,
+    charset: "utf8mb4",
+  }
+}
 
 // Singleton pattern for connection pool - lazy initialization
 // This prevents blocking startup while waiting for DB connection
@@ -28,7 +48,7 @@ function getPool(): Pool {
     ...dbConfig,
     waitForConnections: true,
     connectionLimit: 50,
-    queueLimit: 0,
+    queueLimit: 100, // SECURITY: Limit queue to prevent resource exhaustion (MED-17)
     // Add connection timeout to prevent hanging
     connectTimeout: 10000,
     // Enable keep-alive

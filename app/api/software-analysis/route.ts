@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
 
     // Build device filter for date range
     let deviceFilter = ""
+    let deviceFilterParams: Record<string, unknown> = {}
     if (hasDateFilter) {
       const { whereClause: deviceDateFilter } = buildDeviceDateFilter(dateFilter)
       const { whereClause: systemInfoDateFilter } = buildSystemInfoDateFilter(dateFilter)
@@ -86,9 +87,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, softwareAnalysis: [] })
       }
       
-      // Use array format for ClickHouse IN clause
-      const deviceIdsStr = deviceIds.map(id => `'${id.replace(/'/g, "''")}'`).join(', ')
-      deviceFilter = `AND device_id IN (${deviceIdsStr})`
+      // SECURITY: Use parameterized array for ClickHouse IN clause (CRIT-09)
+      deviceFilter = `AND device_id IN {filterDeviceIds:Array(String)}`
+      deviceFilterParams = { filterDeviceIds: deviceIds }
     }
 
     // Query to get software grouped by name and version for attack surface management
@@ -100,7 +101,7 @@ export async function GET(request: NextRequest) {
       GROUP BY software_name, version
       ORDER BY count DESC, software_name, version
       LIMIT 10
-    `) as any[];
+    `, deviceFilterParams) as any[];
 
     if (!Array.isArray(results)) {
       return NextResponse.json({ success: false, error: "Invalid data format" }, { status: 500 });

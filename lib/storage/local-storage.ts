@@ -122,13 +122,15 @@ export class LocalStorageProvider implements StorageProvider {
 
   /**
    * Resolve a storage key to a full filesystem path
+   * SECURITY: All paths must be relative to baseDir (MED-09)
    */
   private resolvePath(key: string): string {
-    // If key is already absolute, use it directly (backward compat)
-    if (path.isAbsolute(key)) {
-      return key
+    // SECURITY: Remove absolute path bypass to prevent path traversal
+    const resolved = path.resolve(this.baseDir, key)
+    if (!resolved.startsWith(path.resolve(this.baseDir))) {
+      throw new Error(`Path traversal detected: ${key}`)
     }
-    return path.join(this.baseDir, key)
+    return resolved
   }
 
   /**

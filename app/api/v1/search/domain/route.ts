@@ -18,7 +18,7 @@ interface SearchDomainRequest {
   includeSubdomains?: boolean // Default true
   page?: number
   limit?: number
-  maskPasswords?: boolean // Default false - show plain passwords
+  maskPasswords?: boolean // Default true - passwords are masked unless explicitly requested
 }
 
 interface DomainSearchResult {
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       includeSubdomains = true, 
       page = 1, 
       limit = 50, 
-      maskPasswords = false 
+      maskPasswords = true 
     } = body
 
     // Validate input

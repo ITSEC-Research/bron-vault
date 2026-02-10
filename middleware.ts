@@ -14,71 +14,65 @@ const PUBLIC_PATHS = [
   "/favicon.ico"
 ]
 
-// RATE LIMITING DISABLED - Uncomment below to re-enable
-// =======================================================
 // SECURITY: Rate limiting for auth endpoints to prevent brute force attacks
 // Simple in-memory rate limiter for middleware (Edge-compatible)
-// const authRateLimitMap = new Map<string, { count: number; resetTime: number }>()
+const authRateLimitMap = new Map<string, { count: number; resetTime: number }>()
 
-// function getClientIP(request: NextRequest): string {
-//   const forwarded = request.headers.get('x-forwarded-for')
-//   const realIp = request.headers.get('x-real-ip')
-//   return forwarded?.split(',')[0]?.trim() || realIp || 'anonymous'
-// }
+function getClientIP(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for')
+  const realIp = request.headers.get('x-real-ip')
+  return forwarded?.split(',')[0]?.trim() || realIp || 'anonymous'
+}
 
-// function checkAuthRateLimit(request: NextRequest): { allowed: boolean; remaining: number } {
-//   const clientIP = getClientIP(request)
-//   const now = Date.now()
-//   const windowMs = 15 * 60 * 1000 // 15 minutes
-//   const maxAttempts = 10 // Max 10 login/TOTP attempts per 15 minutes
+function checkAuthRateLimit(request: NextRequest): { allowed: boolean; remaining: number } {
+  const clientIP = getClientIP(request)
+  const now = Date.now()
+  const windowMs = 15 * 60 * 1000 // 15 minutes
+  const maxAttempts = 10 // Max 10 login/TOTP attempts per 15 minutes
   
-//   // Cleanup expired entries periodically
-//   if (authRateLimitMap.size > 10000) {
-//     for (const [key, value] of authRateLimitMap.entries()) {
-//       if (now > value.resetTime) {
-//         authRateLimitMap.delete(key)
-//       }
-//     }
-//   }
+  // Cleanup expired entries periodically
+  if (authRateLimitMap.size > 10000) {
+    for (const [key, value] of authRateLimitMap.entries()) {
+      if (now > value.resetTime) {
+        authRateLimitMap.delete(key)
+      }
+    }
+  }
   
-//   const current = authRateLimitMap.get(clientIP)
+  const current = authRateLimitMap.get(clientIP)
   
-//   if (!current || now > current.resetTime) {
-//     authRateLimitMap.set(clientIP, { count: 1, resetTime: now + windowMs })
-//     return { allowed: true, remaining: maxAttempts - 1 }
-//   }
+  if (!current || now > current.resetTime) {
+    authRateLimitMap.set(clientIP, { count: 1, resetTime: now + windowMs })
+    return { allowed: true, remaining: maxAttempts - 1 }
+  }
   
-//   if (current.count >= maxAttempts) {
-//     return { allowed: false, remaining: 0 }
-//   }
+  if (current.count >= maxAttempts) {
+    return { allowed: false, remaining: 0 }
+  }
   
-//   current.count++
-//   return { allowed: true, remaining: maxAttempts - current.count }
-// }
-// =======================================================
+  current.count++
+  return { allowed: true, remaining: maxAttempts - current.count }
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // RATE LIMITING DISABLED
-  // =======================================================
   // SECURITY: Rate limit auth endpoints to prevent brute force attacks
-  // if (pathname === '/api/auth/login' || pathname === '/api/auth/verify-totp') {
-  //   const rateLimit = checkAuthRateLimit(request)
-  //   if (!rateLimit.allowed) {
-  //     return NextResponse.json(
-  //       { success: false, error: "Too many login attempts. Please try again in 15 minutes." },
-  //       { 
-  //         status: 429,
-  //         headers: {
-  //           'Retry-After': '900', // 15 minutes in seconds
-  //           'X-RateLimit-Remaining': '0'
-  //         }
-  //       }
-  //     )
-  //   }
-  // }
-  // =======================================================
+  if (pathname === '/api/auth/login' || pathname === '/api/auth/verify-totp') {
+    const rateLimit = checkAuthRateLimit(request)
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: "Too many login attempts. Please try again in 15 minutes." },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': '900', // 15 minutes in seconds
+            'X-RateLimit-Remaining': '0'
+          }
+        }
+      )
+    }
+  }
 
   // Allow public paths
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
@@ -98,14 +92,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Add user info to headers for API routes
+  // Add user info to request context for API routes (internal use only)
   const response = NextResponse.next()
-  response.headers.set("x-user-id", user.userId)
-  response.headers.set("x-username", user.username)
-  // SECURITY: Include role in headers for API routes to check authorization
-  if (user.role) {
-    response.headers.set("x-user-role", user.role)
-  }
+  // SECURITY: User identity headers removed from response to prevent information leakage
+  // User context is available via validateRequest() in API routes instead
 
   return response
 }

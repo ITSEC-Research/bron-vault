@@ -126,7 +126,7 @@ export async function processDevice(
         if (credential.password) {
           logPasswordInfo(credential.password, `Credential from ${passwordFile.path}`)
           if (hasSpecialCharacters(credential.password)) {
-            logWithBroadcast(`🔐 Found password with special characters: ${credential.password.substring(0, 5)}...`, "info")
+            logWithBroadcast(`🔐 Found password with special characters in ${passwordFile.path}`, "info")
           }
         }
       }
@@ -554,8 +554,26 @@ export async function processDevice(
         }
         
         // Step 2: Write to storage immediately (while data is still in scope)
-        const safeFilePath = zipFile.path.replace(/[<>:"|?*]/g, "_")
+        // SECURITY: Strip path traversal sequences to prevent Zip Slip
+        const safeFilePath = zipFile.path
+          .replace(/[<>:"|?*]/g, "_")
+          .split("/").filter(p => p !== ".." && p !== ".").join("/")
         const fullLocalPath = path.join(deviceDir, safeFilePath)
+        
+        // SECURITY: Verify resolved path is within device directory
+        if (!path.resolve(fullLocalPath).startsWith(path.resolve(deviceDir))) {
+          logWithBroadcast(`⚠️ Skipping malicious zip entry with path traversal: ${zipFile.path}`, "warning")
+          return {
+            zipFile,
+            fileName,
+            parentPath,
+            localFilePath: null,
+            size: 0,
+            fileType: "unknown",
+            isDirectory: false,
+            error: "Path traversal detected",
+          }
+        }
         
         // Compute the storage key (relative path from project root)
         const localFilePath = path.relative(process.cwd(), fullLocalPath)

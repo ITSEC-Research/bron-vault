@@ -16,7 +16,10 @@ import type { RowDataPacket } from "mysql2"
 import { logUserAction } from "@/lib/audit-log"
 
 export async function POST(request: NextRequest) {
-  const { pending2FAToken, code, isBackupCode } = await request.json()
+  const { code, isBackupCode } = await request.json()
+
+  // SECURITY: Read pending2FAToken from httpOnly cookie instead of request body (HIGH-02)
+  const pending2FAToken = request.cookies.get('pending_2fa')?.value
 
   // SECURITY: Validate pending 2FA token instead of accepting userId directly
   // This ensures the user has already passed password authentication
@@ -95,7 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT token
-    const userRole: UserRole = userData.role || 'admin'
+    const userRole: UserRole = userData.role || 'analyst'
     const token = await generateToken({
       userId: String(userData.id),
       username: userData.name || userData.email,
@@ -124,6 +127,15 @@ export async function POST(request: NextRequest) {
     })
 
     response.cookies.set("auth", token, getSecureCookieOptions())
+
+    // SECURITY: Clear the pending_2fa cookie after successful verification
+    response.cookies.set("pending_2fa", "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/api/auth/verify-totp',
+      maxAge: 0,
+    })
 
     return response
   } catch (err) {

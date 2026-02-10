@@ -250,7 +250,11 @@ export async function processZipStream(
       zipfile.readEntry()
       zipfile.on("entry", (entry: yauzl.Entry) => {
         // Normalize path (remove leading slash, handle Windows paths)
-        const normalizedPath = entry.fileName.replace(/\\/g, "/").replace(/^\/+/, "")
+        // SECURITY: Strip path traversal sequences to prevent Zip Slip
+        const normalizedPath = entry.fileName
+          .replace(/\\/g, "/")
+          .replace(/^\/+/, "")
+          .split("/").filter((p: string) => p !== ".." && p !== ".").join("/")
         
         if (!entry.fileName.endsWith("/")) {
           // Only add files, not directories

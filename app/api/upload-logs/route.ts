@@ -54,13 +54,18 @@ export async function GET(request: NextRequest) {
     },
   })
 
+  // SECURITY: Restrict CORS to same origin (HIGH-05/HIGH-16)
+  const origin = request.headers.get("origin") || ""
+  const allowedOrigin = process.env.NEXT_PUBLIC_APP_URL || origin
+
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
-      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Origin": allowedOrigin,
       "Access-Control-Allow-Headers": "Cache-Control",
+      "Access-Control-Allow-Credentials": "true",
     },
   })
 }

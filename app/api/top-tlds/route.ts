@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
 
     // Build device filter for date range
     let deviceFilter = ""
+    let deviceFilterParams: Record<string, unknown> = {}
     if (hasDateFilter) {
       const { whereClause: deviceDateFilter } = buildDeviceDateFilter(dateFilter)
       const { whereClause: systemInfoDateFilter } = buildSystemInfoDateFilter(dateFilter)
@@ -104,9 +105,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json([])
       }
       
-      // Use array format for ClickHouse IN clause
-      const deviceIdsStr = deviceIds.map(id => `'${id.replace(/'/g, "''")}'`).join(', ')
-      deviceFilter = `AND device_id IN (${deviceIdsStr})`
+      // SECURITY: Use parameterized array for ClickHouse IN clause (CRIT-09)
+      deviceFilter = `AND device_id IN {filterDeviceIds:Array(String)}`
+      deviceFilterParams = { filterDeviceIds: deviceIds }
     }
 
     // Get top TLDs from credentials table (ClickHouse)
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
       GROUP BY tld 
       ORDER BY count DESC, affected_devices DESC
       LIMIT 10
-    `)
+    `, deviceFilterParams)
 
     console.log(
       `📊 [TOP-TLDS] Found ${Array.isArray(topTlds) ? (topTlds as any[]).length : "?"} top TLDs`,

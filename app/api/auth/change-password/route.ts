@@ -3,6 +3,7 @@ import { pool } from "@/lib/mysql";
 import bcrypt from "bcryptjs";
 import type { RowDataPacket } from "mysql2";
 import { validateRequest } from "@/lib/auth";
+import { passwordSchema } from "@/lib/validation";
 
 export async function POST(request: NextRequest) {
   const { currentPassword, newPassword } = await request.json();
@@ -12,6 +13,15 @@ export async function POST(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+
+  // SECURITY: Validate new password strength (MED-01)
+  const passwordValidation = passwordSchema.safeParse(newPassword);
+  if (!passwordValidation.success) {
+    return NextResponse.json(
+      { success: false, error: passwordValidation.error.errors.map(e => e.message).join(", ") },
+      { status: 400 }
+    );
   }
 
   try {
