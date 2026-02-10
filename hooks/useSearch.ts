@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { parseSearchQuery, detectQueryType } from "@/lib/query-parser"
 
 interface SearchResult {
   deviceId: string
@@ -47,9 +48,13 @@ export function useSearch(): UseSearchReturn {
   const [hasSearched, setHasSearched] = useState(false)
 
   const detectSearchType = (query: string) => {
-    if (query.includes("@")) {
+    const parsed = parseSearchQuery(query)
+    const type = detectQueryType(parsed)
+    if (type === 'email' || type === 'mixed') {
+      // For mixed queries (field prefixes), default to email which
+      // uses the general condition builder on the backend
       setSearchType("email")
-    } else if (query.includes(".")) {
+    } else {
       setSearchType("domain")
     }
   }

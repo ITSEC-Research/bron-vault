@@ -15,12 +15,25 @@ export default function DomainSearchPage() {
     setIsLoading(true)
     
     if (searchType === 'domain') {
-    // Normalize domain
-      let normalizedDomain = query.trim().toLowerCase()
-    normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '')
-    normalizedDomain = normalizedDomain.replace(/^www\./, '')
-    normalizedDomain = normalizedDomain.replace(/\/$/, '')
-    normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
+    // Normalize domain(s) — handle comma-separated (OR) and plus-separated (AND) input
+    const normalizedDomain = query.split(',').map(segment => {
+      // Within each OR segment, handle + for AND terms
+      return segment.split('+').map(andPart => {
+        let d = andPart.trim()
+        if (!d) return ''
+        // Preserve operator prefixes (- for NOT, " for exact)
+        const prefix = d.startsWith('-') ? '-' : ''
+        if (prefix) d = d.substring(1)
+        
+        let nd = d.toLowerCase()
+        nd = nd.replace(/^https?:\/\//, '')
+        nd = nd.replace(/^www\./, '')
+        nd = nd.replace(/\/$/, '')
+        nd = nd.split('/')[0].split(':')[0]
+        
+        return prefix + nd
+      }).filter(Boolean).join(' + ')
+    }).filter(Boolean).join(', ')
     
     // Navigate to domain page with overview tab
     router.push(`/domain-search/${encodeURIComponent(normalizedDomain)}?tab=overview`)

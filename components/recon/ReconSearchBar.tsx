@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from "react"
-import { Globe, Key, Link, Globe2 } from "lucide-react"
+import { Globe, Key, Link, Globe2, HelpCircle, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -23,6 +23,7 @@ export function ReconSearchBar({
   const [query, setQuery] = useState(targetDomain || "")
   const [searchType, setSearchType] = useState<"domain" | "keyword">("domain")
   const [keywordMode, setKeywordMode] = useState<"domain-only" | "full-url">(initialKeywordMode || "full-url")
+  const [showOperatorGuide, setShowOperatorGuide] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Sync keywordMode from props (when navigating from URL)
@@ -176,6 +177,15 @@ export function ReconSearchBar({
 
                 {/* Search Button */}
                 <Button
+                  onClick={() => setShowOperatorGuide(!showOperatorGuide)}
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 text-muted-foreground hover:text-foreground shrink-0 mr-0.5"
+                  title="Search operators"
+                >
+                  {showOperatorGuide ? <X className="h-4 w-4" /> : <HelpCircle className="h-4 w-4" />}
+                </Button>
+                <Button
                   onClick={handleSearch}
                   disabled={isLoading || !query.trim()}
                   className="h-11 px-6 bg-primary hover:bg-primary/90 text-white rounded-md font-medium transition-colors text-sm shadow-md mr-1.5"
@@ -193,6 +203,8 @@ export function ReconSearchBar({
                     <span>
                       Searching for subdomains related to{' '}
                       <span className="text-blue-500 font-medium">this domain</span>.
+                      {query.includes(',') && <span className="ml-1 text-primary">(multi-domain OR)</span>}
+                      {query.includes('+') && <span className="ml-1 text-green-500">(AND &mdash; all must match)</span>}
                     </span>
                   ) : keywordMode === 'domain-only' ? (
                     <span>
@@ -205,6 +217,38 @@ export function ReconSearchBar({
                       <span className="text-primary font-medium">full URL paths</span> & parameters.
                     </span>
                   )}
+                </p>
+              </div>
+            )}
+
+            {/* Operator Guide */}
+            {showOperatorGuide && (
+              <div className="w-full p-3 rounded-lg border border-border/50 bg-secondary/30 text-sm">
+                <p className="font-medium text-foreground mb-2">Search Operators</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-muted-foreground">
+                  <div>
+                    <code className="text-foreground/80 bg-secondary/50 px-1 rounded">a.com, b.com</code>
+                    <span className="ml-1.5">OR &mdash; either domain</span>
+                  </div>
+                  <div>
+                    <code className="text-foreground/80 bg-secondary/50 px-1 rounded">a.com + b.com</code>
+                    <span className="ml-1.5">AND &mdash; device has both</span>
+                  </div>
+                  <div>
+                    <code className="text-foreground/80 bg-secondary/50 px-1 rounded">-staging.a.com</code>
+                    <span className="ml-1.5">NOT &mdash; exclude</span>
+                  </div>
+                  <div>
+                    <code className="text-foreground/80 bg-secondary/50 px-1 rounded">*.a.com</code>
+                    <span className="ml-1.5">Wildcard pattern</span>
+                  </div>
+                  <div>
+                    <code className="text-foreground/80 bg-secondary/50 px-1 rounded">&quot;exact.domain&quot;</code>
+                    <span className="ml-1.5">Exact match only</span>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground/70">
+                  Examples: <code className="text-foreground/60">a.com + b.com</code> (devices with both) &bull; <code className="text-foreground/60">a.com, b.com, -staging.a.com</code>
                 </p>
               </div>
             )}

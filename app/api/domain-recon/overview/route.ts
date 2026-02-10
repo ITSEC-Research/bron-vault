@@ -2,59 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
-
-/**
- * Build WHERE clause for domain matching (ClickHouse version)
- * Uses named parameters
- */
-function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: Record<string, string> } {
-  const whereClause = `WHERE (
-    c.domain = {domain:String} OR 
-    c.domain ilike concat('%.', {domain:String}) OR
-    c.url ilike {pattern1:String} OR
-    c.url ilike {pattern2:String} OR
-    c.url ilike {pattern3:String} OR
-    c.url ilike {pattern4:String}
-  ) AND c.domain IS NOT NULL`
-  
-  return {
-    whereClause,
-    params: {
-      domain: targetDomain,
-      pattern1: `%://${targetDomain}/%`,
-      pattern2: `%://${targetDomain}:%`,
-      pattern3: `%://%.${targetDomain}/%`,
-      pattern4: `%://%.${targetDomain}:%`
-    }
-  }
-}
-
-/**
- * Build WHERE clause for keyword search (ClickHouse version)
- */
-function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: Record<string, string> } {
-  if (mode === 'domain-only') {
-    // Extract hostname safe logic without Arrays
-    // IMPORTANT: Use domain() native function with fallback extract() regex
-    const hostnameExpr = `if(
-      length(domain(c.url)) > 0,
-      domain(c.url),
-      extract(c.url, '^(?:https?://)?([^/:]+)')
-    )`
-    
-    const whereClause = `WHERE ${hostnameExpr} ilike {keyword:String} AND c.url IS NOT NULL`
-    return {
-      whereClause,
-      params: { keyword: `%${keyword}%` }
-    }
-  } else {
-    const whereClause = `WHERE c.url ilike {keyword:String} AND c.url IS NOT NULL`
-    return {
-      whereClause,
-      params: { keyword: `%${keyword}%` }
-    }
-  }
-}
+import { parseSearchQuery } from "@/lib/query-parser"
+import { buildDomainReconCondition, buildKeywordReconCondition } from "@/lib/search-query-builder"
 
 export async function POST(request: NextRequest) {
   // ✅ Check abort VERY EARLY - before validateRequest
@@ -80,19 +29,19 @@ export async function POST(request: NextRequest) {
     const signal = getRequestSignal(request)
 
     let whereClause = ''
-    let params: Record<string, string> = {}
+    let params: Record<string, unknown> = {}
     
     if (searchType === 'keyword') {
       const keyword = targetDomain.trim()
       const keywordMode = body.keywordMode || 'full-url'
-      const built = buildKeywordWhereClause(keyword, keywordMode)
-      whereClause = built.whereClause
+      const parsed = parseSearchQuery(keyword)
+      const built = buildKeywordReconCondition(parsed, keywordMode)
+      whereClause = `WHERE ${built.condition}`
       params = built.params
     } else {
-    let normalizedDomain = targetDomain.trim().toLowerCase()
-      normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split(':')[0]
-      const built = buildDomainWhereClause(normalizedDomain)
-      whereClause = built.whereClause
+      const parsed = parseSearchQuery(targetDomain)
+      const built = buildDomainReconCondition(parsed, { notNullCheck: true })
+      whereClause = `WHERE ${built.condition}`
       params = built.params
     }
 
@@ -229,7 +178,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getTimelineData(whereClause: string, params: Record<string, string>, granularity: string, signal?: AbortSignal) {
+async function getTimelineData(whereClause: string, params: Record<string, unknown>, granularity: string, signal?: AbortSignal) {
   // OPTIMIZED DATE PARSING STRATEGY (POST-NORMALIZATION)
   // After normalization, log_date is already in standard YYYY-MM-DD format
   // Query becomes very simple and fast - directly toDate() without complex parsing
@@ -315,7 +264,7 @@ async function getTimelineData(whereClause: string, params: Record<string, strin
 
 async function getTopSubdomains(
   whereClause: string, 
-  params: Record<string, string>, 
+  params: Record<string, unknown>, 
   limit: number,
   searchType: string,
   keywordMode: string,
@@ -355,7 +304,7 @@ async function getTopSubdomains(
   }))
 }
 
-async function getTopPaths(whereClause: string, params: Record<string, string>, limit: number, signal?: AbortSignal) {
+async function getTopPaths(whereClause: string, params: Record<string, unknown>, limit: number, signal?: AbortSignal) {
   // SECURITY: Validate limit parameter
   const safeLimit = Math.min(1000, Math.max(1, Math.floor(Number(limit)) || 10))
   

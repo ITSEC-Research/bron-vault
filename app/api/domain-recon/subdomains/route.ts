@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
+import { parseSearchQuery } from "@/lib/query-parser"
+import { buildDomainReconCondition, buildKeywordReconCondition } from "@/lib/search-query-builder"
 
 // ============================================
 // CLICKHOUSE EXPRESSIONS (CONSTANTS) - DRY Principle
@@ -57,59 +59,6 @@ const PATH_EXPR = `if(
 // HELPER FUNCTIONS
 // ============================================
 
-/**
- * Build WHERE clause for domain matching that supports subdomains (ClickHouse version)
- * OPTIMIZED: Uses index-friendly patterns to leverage idx_domain index
- * Uses named parameters for ClickHouse
- */
-function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: Record<string, string> } {
-  // Use ilike for case-insensitive matching (data in DB might be mixed case)
-  const whereClause = `WHERE (
-    c.domain = {domain:String} OR 
-    c.domain ilike concat('%.', {domain:String}) OR
-    c.url ilike {pattern1:String} OR
-    c.url ilike {pattern2:String} OR
-    c.url ilike {pattern3:String} OR
-    c.url ilike {pattern4:String}
-  )`
-  
-  return {
-    whereClause,
-    params: {
-      domain: targetDomain,                              // Exact domain match (uses idx_domain)
-      pattern1: `%://${targetDomain}/%`,                   // URL exact: https://api.example.com/
-      pattern2: `%://${targetDomain}:%`,                   // URL exact with port: https://api.example.com:8080
-      pattern3: `%://%.${targetDomain}/%`,                  // URL subdomain: https://v1.api.example.com/
-      pattern4: `%://%.${targetDomain}:%`                   // URL subdomain with port: https://v1.api.example.com:8080
-    }
-  }
-}
-
-/**
- * Build WHERE clause for keyword search (ClickHouse version)
- * Supports two modes: domain-only (hostname only) or full-url (entire URL)
- * Uses ilike for case-insensitive search
- * OPTIMIZED: Reuses HOSTNAME_EXPR constant for consistency
- */
-function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: Record<string, string> } {
-  if (mode === 'domain-only') {
-    // Extract hostname from URL, then search keyword in hostname only (ClickHouse)
-    // OPTIMIZED: Reuse HOSTNAME_EXPR constant for consistency and performance
-    const whereClause = `WHERE ${HOSTNAME_EXPR} ilike {keyword:String} AND c.url IS NOT NULL`
-    return {
-      whereClause,
-      params: { keyword: `%${keyword}%` }
-    }
-  } else {
-    // Full URL mode: search keyword in entire URL (ClickHouse: use ilike)
-    const whereClause = `WHERE c.url ilike {keyword:String} AND c.url IS NOT NULL`
-    return {
-      whereClause,
-      params: { keyword: `%${keyword}%` }
-    }
-  }
-}
-
 export async function POST(request: NextRequest) {
   // ✅ Check abort VERY EARLY - before validateRequest
   throwIfAborted(request)
@@ -142,10 +91,12 @@ export async function POST(request: NextRequest) {
     
     if (searchType === 'keyword') {
       // ===== KEYWORD SEARCH PATH =====
-      // New code path - completely separate
       const keyword = targetDomain.trim()
       const keywordMode = body.keywordMode || 'full-url'
-      const subdomainsData = await getSubdomainsData(keyword, filters, pagination, 'keyword', keywordMode, deduplicate, signal)
+      const parsed = parseSearchQuery(keyword)
+      const built = buildKeywordReconCondition(parsed, keywordMode)
+      const whereClause = `WHERE ${built.condition}`
+      const subdomainsData = await getSubdomainsData(whereClause, built.params, filters, pagination, deduplicate, signal)
 
       // Check abort after operations
       throwIfAborted(request)
@@ -159,21 +110,17 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // ===== DOMAIN SEARCH PATH =====
-      // EXISTING CODE - NO CHANGES
-    let normalizedDomain = targetDomain.trim().toLowerCase()
-    normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '')
-    normalizedDomain = normalizedDomain.replace(/^www\./, '')
-    normalizedDomain = normalizedDomain.replace(/\/$/, '')
-    normalizedDomain = normalizedDomain.split('/')[0].split(':')[0]
-
-      const subdomainsData = await getSubdomainsData(normalizedDomain, filters, pagination, 'domain', 'full-url', deduplicate, signal)
+      const parsed = parseSearchQuery(targetDomain)
+      const built = buildDomainReconCondition(parsed)
+      const whereClause = `WHERE ${built.condition}`
+      const subdomainsData = await getSubdomainsData(whereClause, built.params, filters, pagination, deduplicate, signal)
 
       // Check abort after operations
       throwIfAborted(request)
 
     return NextResponse.json({
       success: true,
-      targetDomain: normalizedDomain,
+      targetDomain,
         searchType: 'domain',
       subdomains: subdomainsData.data || [],
       pagination: subdomainsData.pagination,
@@ -199,11 +146,10 @@ export async function POST(request: NextRequest) {
 }
 
 async function getSubdomainsData(
-  query: string,
+  whereClause: string,
+  baseParams: Record<string, unknown>,
   filters?: any,
   pagination?: any,
-  searchType: 'domain' | 'keyword' = 'domain',
-  keywordMode: 'domain-only' | 'full-url' = 'full-url',
   deduplicate: boolean = false,
   signal?: AbortSignal
 ) {
@@ -218,14 +164,9 @@ async function getSubdomainsData(
     : 'credential_count'
   const sortOrder = (pagination?.sortOrder || 'desc').toUpperCase() === 'ASC' ? 'ASC' : 'DESC'
 
-  // Build WHERE clause based on search type (ClickHouse: named parameters)
-  const { whereClause, params: baseParams } = searchType === 'keyword' 
-    ? buildKeywordWhereClause(query, keywordMode)
-    : buildDomainWhereClause(query)
-  const params: Record<string, string> = { ...baseParams }
+  const params: Record<string, unknown> = { ...baseParams }
 
   // Build final WHERE clause with filters
-  // OPTIMIZED: Reuse HOSTNAME_EXPR and PATH_EXPR constants (defined at top of file)
   let finalWhereClause = whereClause
   if (filters?.subdomain) {
     const subdomainParam = `subdomainFilter${Object.keys(params).length}`
