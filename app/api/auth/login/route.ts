@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { pool } from "@/lib/mysql"
 import bcrypt from "bcryptjs"
 import type { RowDataPacket } from "mysql2"
-import { generateToken, generatePending2FAToken, getSecureCookieOptions, UserRole } from "@/lib/auth"
+import { generateToken, generatePending2FAToken, getSecureCookieOptions, isRequestSecure, UserRole } from "@/lib/auth"
 import { logUserAction } from "@/lib/audit-log"
 
 export async function POST(request: NextRequest) {
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
 
       response.cookies.set("pending_2fa", pending2FAToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isRequestSecure(request),
         sameSite: 'strict',
         path: '/api/auth/verify-totp',
         maxAge: 300, // 5 minutes
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    response.cookies.set("auth", token, getSecureCookieOptions())
+    response.cookies.set("auth", token, getSecureCookieOptions(request))
 
     return response
   } catch (err) {

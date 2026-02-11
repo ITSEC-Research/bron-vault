@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSecureCookieOptions } from "@/lib/auth";
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
   const response = NextResponse.json({ success: true });
 
-  // Clear the auth cookie with consistent secure options
+  // Clear the auth cookie with same options it was set with (so browser clears it)
   response.cookies.set("auth", "", {
-    ...getSecureCookieOptions(),
-    maxAge: 0, // Override maxAge to 0 to clear the cookie
+    ...getSecureCookieOptions(request),
+    maxAge: 0,
   });
 
   return response;
