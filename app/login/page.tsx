@@ -20,7 +20,6 @@ export default function LoginPage() {
   
   // 2FA states
   const [requires2FA, setRequires2FA] = useState(false);
-  const [pending2FAToken, setPending2FAToken] = useState<string | null>(null);
   const [totpCode, setTotpCode] = useState("");
   const [useBackupCode, setUseBackupCode] = useState(false);
   
@@ -125,7 +124,6 @@ export default function LoginPage() {
       if (data.success) {
         // Check if 2FA is required
         if (data.requires2FA) {
-          setPending2FAToken(data.pending2FAToken);
           setRequires2FA(true);
           setLoading(false);
           return;
@@ -172,7 +170,7 @@ export default function LoginPage() {
 
   const handle2FAVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pending2FAToken || !totpCode) return;
+    if (!totpCode) return;
     
     setLoading(true);
     try {
@@ -180,7 +178,6 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          pending2FAToken: pending2FAToken, 
           code: totpCode,
           isBackupCode: useBackupCode 
         }),
@@ -220,7 +217,6 @@ export default function LoginPage() {
 
   const handleBack = () => {
     setRequires2FA(false);
-    setPending2FAToken(null);
     setTotpCode("");
     setUseBackupCode(false);
   };
@@ -515,7 +511,7 @@ export default function LoginPage() {
                   <label className="text-white/70 text-sm font-medium flex items-center gap-2" htmlFor="password">
                     <Lock className="w-4 h-4 text-red-500/70" />
                     Password
-                    {isRegisterMode && <span className="text-white/30 text-xs ml-auto">(min. 6 characters)</span>}
+                    {isRegisterMode && <span className="text-white/30 text-xs ml-auto">(min. 12 characters)</span>}
                   </label>
                   <div className="relative group">
                     <Input
@@ -525,7 +521,7 @@ export default function LoginPage() {
                       onChange={e => setPassword(e.target.value)}
                       className="w-full h-12 px-4 pr-12 bg-white/5 border-white/10 text-white placeholder:text-white/30 rounded-xl focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all selection:bg-red-500/50 selection:text-white"
                       placeholder="••••••••"
-                      minLength={isRegisterMode ? 6 : undefined}
+                      minLength={isRegisterMode ? 12 : undefined}
                       required
                     />
                     <button

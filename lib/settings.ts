@@ -20,6 +20,17 @@ export const SETTING_KEYS = {
   DB_BATCH_SIZE_PASSWORD_STATS: 'db_batch_size_password_stats',
   DB_BATCH_SIZE_FILES: 'db_batch_size_files',
   FILE_WRITE_PARALLEL_LIMIT: 'file_write_parallel_limit',
+  // Storage settings
+  STORAGE_TYPE: 'storage_type',
+  S3_ENDPOINT: 'storage_s3_endpoint',
+  S3_REGION: 'storage_s3_region',
+  S3_BUCKET: 'storage_s3_bucket',
+  S3_ACCESS_KEY: 'storage_s3_access_key',
+  S3_SECRET_KEY: 'storage_s3_secret_key',
+  S3_PATH_STYLE: 'storage_s3_path_style',
+  S3_USE_SSL: 'storage_s3_use_ssl',
+  STORAGE_MIGRATION_STATUS: 'storage_migration_status',
+  STORAGE_MIGRATION_PROGRESS: 'storage_migration_progress',
 } as const
 
 export type SettingKey = typeof SETTING_KEYS[keyof typeof SETTING_KEYS]
@@ -286,6 +297,52 @@ class SettingsManager {
       passwordStatsBatchSize,
       filesBatchSize,
       fileWriteParallelLimit,
+    }
+  }
+
+  /**
+   * Get storage settings (convenience method)
+   */
+  async getStorageSettings(): Promise<{
+    storageType: string
+    s3Endpoint: string
+    s3Region: string
+    s3Bucket: string
+    s3AccessKey: string
+    s3SecretKey: string
+    s3PathStyle: boolean
+    s3UseSSL: boolean
+    migrationStatus: string
+    migrationProgress: string
+  }> {
+    const [
+      storageType, s3Endpoint, s3Region, s3Bucket,
+      s3AccessKey, s3SecretKey, s3PathStyle, s3UseSSL,
+      migrationStatus, migrationProgress,
+    ] = await Promise.all([
+      this.getSettingString(SETTING_KEYS.STORAGE_TYPE, 'local'),
+      this.getSettingString(SETTING_KEYS.S3_ENDPOINT, ''),
+      this.getSettingString(SETTING_KEYS.S3_REGION, 'us-east-1'),
+      this.getSettingString(SETTING_KEYS.S3_BUCKET, ''),
+      this.getSettingString(SETTING_KEYS.S3_ACCESS_KEY, ''),
+      this.getSettingString(SETTING_KEYS.S3_SECRET_KEY, ''),
+      this.getSettingString(SETTING_KEYS.S3_PATH_STYLE, 'true'),
+      this.getSettingString(SETTING_KEYS.S3_USE_SSL, 'true'),
+      this.getSettingString(SETTING_KEYS.STORAGE_MIGRATION_STATUS, 'idle'),
+      this.getSettingString(SETTING_KEYS.STORAGE_MIGRATION_PROGRESS, '{}'),
+    ])
+
+    return {
+      storageType,
+      s3Endpoint,
+      s3Region,
+      s3Bucket,
+      s3AccessKey,
+      s3SecretKey,
+      s3PathStyle: s3PathStyle === 'true' || s3PathStyle === '1',
+      s3UseSSL: s3UseSSL === 'true' || s3UseSSL === '1',
+      migrationStatus,
+      migrationProgress,
     }
   }
 

@@ -407,6 +407,9 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                       background={{ fill: "hsl(var(--secondary))", opacity: 0.3 }}
                       stroke="hsl(var(--background))"
                       strokeWidth={2}
+                      isAnimationActive={true}
+                      animationDuration={800}
+                      animationEasing="ease-out"
                     >
                       {chartPasswords.map((entry, index) => {
                         // Convert HSL to HSLA with opacity for softer appearance
@@ -418,8 +421,6 @@ export function DeviceOverview({ deviceId }: DeviceOverviewProps) {
                             stroke="hsl(var(--background))"
                             strokeWidth={2}
                             style={{
-                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-                              transition: 'all 0.2s ease',
                               cursor: 'pointer'
                             }}
                           />

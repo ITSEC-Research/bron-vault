@@ -115,8 +115,16 @@ export async function POST(request: NextRequest) {
       await mkdir(uploadsDir, { recursive: true })
     }
 
-    // Assemble file path
-    const assembledFilePath = path.join(uploadsDir, fileName)
+    // SECURITY: Sanitize fileName to prevent path traversal
+    const safeFileName = path.basename(fileName)
+    const assembledFilePath = path.join(uploadsDir, safeFileName)
+    // Verify resolved path is within uploads directory
+    if (!path.resolve(assembledFilePath).startsWith(path.resolve(uploadsDir))) {
+      return NextResponse.json(
+        { success: false, error: "Invalid filename" },
+        { status: 400 }
+      )
+    }
     console.log(`🔧 [ASSEMBLE] Assembling ${chunkPaths.length} chunks into: ${assembledFilePath}`)
 
     // Stream chunks sequentially to final file
@@ -275,8 +283,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        filePath: assembledFilePath,
-        fileName,
+        fileName: safeFileName,
         fileSize: stats.size,
         details: processingResult.details,
         message: "File assembled and processed successfully",

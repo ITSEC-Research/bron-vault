@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
 interface UploadStatus {
-  status: "idle" | "uploading" | "processing" | "success" | "error"
+  status: "idle" | "uploading" | "processing" | "monitoring" | "success" | "error"
   message: string
   progress: number
   details?: {
@@ -256,7 +256,36 @@ export default function UploadPage() {
                 setUploadStatus((prev) => ({
                   ...prev,
                   progress: progressPercent,
-                  message: `Processing files... (${processed} / ${total})`,
+                  message: `Processing devices... (${processed} / ${total})`,
+                }));
+              }
+            }
+          }
+
+          // Domain monitor check progress
+          if (logEntry.message.startsWith('[MONITOR_CHECK]')) {
+            const msg = logEntry.message.replace('[MONITOR_CHECK] ', '');
+            setUploadStatus((prev) => ({
+              ...prev,
+              status: 'monitoring',
+              message: msg,
+            }));
+          }
+
+          // Domain monitor progress bar (separate phase from processing)
+          if (logEntry.message.startsWith('[MONITOR_PROGRESS]')) {
+            const match = logEntry.message.match(/\[MONITOR_PROGRESS\] (\d+)\/(\d+)\s*(.*)/);
+            if (match) {
+              const current = parseInt(match[1], 10);
+              const total = parseInt(match[2], 10);
+              const stepMessage = match[3] || '';
+              if (total > 0) {
+                const progressPercent = Math.round((current / total) * 100);
+                setUploadStatus((prev) => ({
+                  ...prev,
+                  status: 'monitoring',
+                  progress: progressPercent,
+                  message: stepMessage || `Checking domain monitors... (${current}/${total})`,
                 }));
               }
             }
@@ -720,14 +749,30 @@ export default function UploadPage() {
               </div>
             )}
 
-              {(uploadStatus.status === "processing") && (
+              {(uploadStatus.status === "processing" || uploadStatus.status === "monitoring") && (
                 <div className="space-y-4 mt-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Upload className="h-4 w-4 animate-pulse text-primary" />
-                      <span className="text-foreground">Processing data...</span>
+                      {uploadStatus.status === "monitoring" ? (
+                        <Activity className="h-4 w-4 animate-pulse text-amber-500" />
+                      ) : (
+                        <Upload className="h-4 w-4 animate-pulse text-primary" />
+                      )}
+                      <span className="text-foreground">
+                        {uploadStatus.status === "monitoring" 
+                          ? uploadStatus.message || "Checking domain monitors..."
+                          : "Processing data..."
+                        }
+                      </span>
                     </div>
-                    <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
+                    <div className="flex items-center space-x-2">
+                      {uploadStatus.status === "monitoring" && (
+                        <Badge variant="outline" className="text-xs border-amber-500/30 text-amber-500">
+                          Monitor Check
+                        </Badge>
+                      )}
+                      <div className="text-sm font-medium text-primary">{uploadStatus.progress}%</div>
+                    </div>
                   </div>
                   <Progress value={uploadStatus.progress} className="w-full" />
                   {/* Realtime Logs Window - Only show if stream is enabled */}
@@ -783,6 +828,7 @@ export default function UploadPage() {
                   }
                   <div className="text-xs text-muted-foreground text-center">
                     {uploadStatus.status === "processing" && "Extracting ZIP contents and saving binary files..."}
+                    {uploadStatus.status === "monitoring" && "Checking uploaded data against active domain monitors..."}
                   </div>
                 </div>
               )}

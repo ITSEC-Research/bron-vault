@@ -14,7 +14,7 @@ import {
 import { isLikelyTextFile } from "./zip-structure-analyzer"
 import { chunkArray } from "@/lib/utils"
 import { settingsManager } from "@/lib/settings"
-import { checkMonitorsForDevice } from "@/lib/domain-monitor"
+import { getStorageProvider } from "@/lib/storage"
 
 export interface DeviceProcessingResult {
   deviceCredentials: number
@@ -35,8 +35,20 @@ export async function processDevice(
   // Create device-specific directory
   const deviceDir = path.join(extractionBaseDir, deviceId)
   logWithBroadcast(`📁 Creating device directory: ${deviceDir}`, "info")
-  if (!existsSync(deviceDir)) {
-    await mkdir(deviceDir, { recursive: true })
+
+  // Get storage provider for file operations
+  const storageProvider = await getStorageProvider()
+  const storageType = storageProvider.getType()
+  logWithBroadcast(`💾 Storage provider: ${storageType}`, "info")
+
+  if (storageType === "local") {
+    // Local storage: create directory on filesystem
+    if (!existsSync(deviceDir)) {
+      await mkdir(deviceDir, { recursive: true })
+    }
+  } else {
+    // S3: no-op for directory creation
+    await storageProvider.ensureDir(deviceDir)
   }
 
   // Find password files
@@ -114,7 +126,7 @@ export async function processDevice(
         if (credential.password) {
           logPasswordInfo(credential.password, `Credential from ${passwordFile.path}`)
           if (hasSpecialCharacters(credential.password)) {
-            logWithBroadcast(`🔐 Found password with special characters: ${credential.password.substring(0, 5)}...`, "info")
+            logWithBroadcast(`🔐 Found password with special characters in ${passwordFile.path}`, "info")
           }
         }
       }
@@ -541,26 +553,56 @@ export async function processDevice(
           logWithBroadcast(`💾 Binary file: ${zipFile.path} (${size} bytes)`, "info")
         }
         
-        // Step 2: Write to disk immediately (while data is still in scope)
-        const safeFilePath = zipFile.path.replace(/[<>:"|?*]/g, "_")
+        // Step 2: Write to storage immediately (while data is still in scope)
+        // SECURITY: Strip path traversal sequences to prevent Zip Slip
+        const safeFilePath = zipFile.path
+          .replace(/[<>:"|?*]/g, "_")
+          .split("/").filter(p => p !== ".." && p !== ".").join("/")
         const fullLocalPath = path.join(deviceDir, safeFilePath)
         
-        // Create directory structure if needed
-        const fileDir = path.dirname(fullLocalPath)
-        if (!existsSync(fileDir)) {
-          await mkdir(fileDir, { recursive: true })
+        // SECURITY: Verify resolved path is within device directory
+        if (!path.resolve(fullLocalPath).startsWith(path.resolve(deviceDir))) {
+          logWithBroadcast(`⚠️ Skipping malicious zip entry with path traversal: ${zipFile.path}`, "warning")
+          return {
+            zipFile,
+            fileName,
+            parentPath,
+            localFilePath: null,
+            size: 0,
+            fileType: "unknown",
+            isDirectory: false,
+            error: "Path traversal detected",
+          }
         }
         
-        // Write file to disk
-        if (fileType === "text") {
-          await writeFile(fullLocalPath, fileData as string, "utf-8")
-        } else {
-          await writeFile(fullLocalPath, fileData as Uint8Array)
-          deviceBinaryFiles++
-        }
-        
+        // Compute the storage key (relative path from project root)
         const localFilePath = path.relative(process.cwd(), fullLocalPath)
-        logWithBroadcast(`💾 File saved to disk: ${zipFile.path} -> ${localFilePath} (${size} bytes, ${fileType})`, "info")
+        
+        if (storageType === "local") {
+          // Local filesystem: create directory structure and write file
+          const fileDir = path.dirname(fullLocalPath)
+          if (!existsSync(fileDir)) {
+            await mkdir(fileDir, { recursive: true })
+          }
+          
+          if (fileType === "text") {
+            await writeFile(fullLocalPath, fileData as string, "utf-8")
+          } else {
+            await writeFile(fullLocalPath, fileData as Uint8Array)
+            deviceBinaryFiles++
+          }
+        } else {
+          // S3: upload using storage provider with the relative key
+          if (fileType === "text") {
+            await storageProvider.put(localFilePath, fileData as string, "text/plain")
+          } else {
+            const buffer = Buffer.from(fileData as Uint8Array)
+            await storageProvider.put(localFilePath, buffer)
+            deviceBinaryFiles++
+          }
+        }
+        
+        logWithBroadcast(`💾 File saved to ${storageType}: ${zipFile.path} -> ${localFilePath} (${size} bytes, ${fileType})`, "info")
         
         // Step 3: fileData goes out of scope here → memory freed automatically
         // Only save metadata (no file data)
@@ -659,11 +701,8 @@ export async function processDevice(
     "info",
   )
 
-  // Check domain monitors for this device (non-blocking)
-  if ((savedCredentials as any[])[0].count > 0) {
-    checkMonitorsForDevice(deviceId, uploadBatch, logWithBroadcast)
-      .catch(err => logWithBroadcast(`❌ Domain monitor check error: ${err}`, 'error'))
-  }
+  // Domain monitor checks are now deferred to batch level (after all devices are processed)
+  // See checkMonitorsForBatch() in domain-monitor.ts - called from zip-processor after upload completes
 
   return {
     deviceCredentials,

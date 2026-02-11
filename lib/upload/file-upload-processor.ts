@@ -41,10 +41,15 @@ export async function processFileUpload(
       await mkdir(uploadsDir, { recursive: true })
     }
 
+    // SECURITY: Use UUID-based temporary filename to prevent path traversal and overwrites
+    const { v4: uuidv4 } = await import("uuid")
+    const safeBaseName = path.basename(file.name)
+    const tempFileName = `${uuidv4()}_${safeBaseName}`
+    
     // Save uploaded file temporarily
     const bytes = await file.arrayBuffer()
     const buffer = new Uint8Array(bytes)
-    uploadedFilePath = path.join(uploadsDir, file.name)
+    uploadedFilePath = path.join(uploadsDir, tempFileName)
     await writeFile(uploadedFilePath, buffer)
 
     // Process using the file path method (reuse logic)

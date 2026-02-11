@@ -2,44 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
-
-function buildDomainWhereClause(targetDomain: string): { whereClause: string; params: Record<string, string> } {
-  const whereClause = `WHERE (
-    domain = {domain:String} OR 
-    domain ilike concat('%.', {domain:String}) OR
-    url ilike {pattern1:String} OR
-    url ilike {pattern2:String} OR
-    url ilike {pattern3:String} OR
-    url ilike {pattern4:String}
-  )`
-    return {
-      whereClause,
-    params: {
-      domain: targetDomain,
-      pattern1: `%://${targetDomain}/%`,
-      pattern2: `%://${targetDomain}:%`,
-      pattern3: `%://%.${targetDomain}/%`,
-      pattern4: `%://%.${targetDomain}:%`
-    }
-  }
-}
-
-function buildKeywordWhereClause(keyword: string, mode: 'domain-only' | 'full-url' = 'full-url'): { whereClause: string; params: Record<string, string> } {
-  if (mode === 'domain-only') {
-    // Use safe extract/domain without array access
-    // IMPORTANT: Use domain() native function with fallback extract() regex
-    const hostnameExpr = `if(
-      length(domain(url)) > 0,
-      domain(url),
-      extract(url, '^(?:https?://)?([^/:]+)')
-    )`
-    const whereClause = `WHERE ${hostnameExpr} ilike {keyword:String} AND url IS NOT NULL`
-    return { whereClause, params: { keyword: `%${keyword}%` } }
-  } else {
-    const whereClause = `WHERE url ilike {keyword:String} AND url IS NOT NULL`
-    return { whereClause, params: { keyword: `%${keyword}%` } }
-  }
-}
+import { parseSearchQuery } from "@/lib/query-parser"
+import { buildDomainReconCondition, buildKeywordReconCondition } from "@/lib/search-query-builder"
 
 export async function POST(request: NextRequest) {
   // ✅ Check abort VERY EARLY - before validateRequest
@@ -65,19 +29,19 @@ export async function POST(request: NextRequest) {
     const signal = getRequestSignal(request)
 
     let whereClause = ''
-    let params: Record<string, string> = {}
+    let params: Record<string, unknown> = {}
     
     if (searchType === 'keyword') {
       const keyword = targetDomain.trim()
       const mode = body.keywordMode || 'full-url'
-      const built = buildKeywordWhereClause(keyword, mode)
-      whereClause = built.whereClause
+      const parsed = parseSearchQuery(keyword)
+      const built = buildKeywordReconCondition(parsed, mode)
+      whereClause = `WHERE ${built.condition}`
       params = built.params
     } else {
-    let normalizedDomain = targetDomain.trim().toLowerCase()
-      normalizedDomain = normalizedDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split(':')[0]
-      const built = buildDomainWhereClause(normalizedDomain)
-      whereClause = built.whereClause
+      const parsed = parseSearchQuery(targetDomain)
+      const built = buildDomainReconCondition(parsed)
+      whereClause = `WHERE ${built.condition}`
       params = built.params
     }
 

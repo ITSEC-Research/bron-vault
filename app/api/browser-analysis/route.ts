@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
     // Build date filter - credentials are linked to devices, so we filter by device_id
     // Get device_ids first, then use them in the query
     let deviceFilter = ""
+    let deviceFilterParams: Record<string, unknown> = {}
     if (hasDateFilter) {
       const { whereClause: deviceDateFilter } = buildDeviceDateFilter(dateFilter)
       const { whereClause: systemInfoDateFilter } = buildSystemInfoDateFilter(dateFilter)
@@ -86,9 +87,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: true, browserAnalysis: [] })
       }
       
-      // Use array format for ClickHouse IN clause
-      const deviceIdsStr = deviceIds.map(id => `'${id.replace(/'/g, "''")}'`).join(', ')
-      deviceFilter = `AND device_id IN (${deviceIdsStr})`
+      // SECURITY: Use parameterized array for ClickHouse IN clause (CRIT-09)
+      deviceFilter = `AND device_id IN {filterDeviceIds:Array(String)}`
+      deviceFilterParams = { filterDeviceIds: deviceIds }
     }
     
     // Get all (device_id, browser) pairs to properly count unique devices per normalized browser
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
       FROM credentials 
       WHERE browser IS NOT NULL AND browser != '' ${deviceFilter}`
     
-    const results = await executeClickHouseQuery(baseQuery) as any[];
+    const results = await executeClickHouseQuery(baseQuery, deviceFilterParams) as any[];
 
     if (!Array.isArray(results)) {
       return NextResponse.json({ success: false, error: "Invalid data format" }, { status: 500 });

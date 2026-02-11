@@ -45,6 +45,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // SECURITY: Validate fileId format to prevent path traversal
+    if (!/^[a-zA-Z0-9_\-]+$/.test(fileId)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid fileId format" },
+        { status: 400 }
+      )
+    }
+
+    // SECURITY: Validate chunk index bounds
+    if (chunkIndex < 0 || chunkIndex >= totalChunks || totalChunks <= 0) {
+      return NextResponse.json(
+        { success: false, error: "Invalid chunk index or total chunks" },
+        { status: 400 }
+      )
+    }
+
     // Initialize chunk metadata if first chunk
     let metadata = chunkManager.getChunkMetadata(fileId)
     if (!metadata) {
@@ -92,7 +108,6 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: error instanceof Error ? error.message : "Failed to upload chunk",
-        details: error instanceof Error ? error.stack : String(error),
       },
       { status: 500 }
     )

@@ -5,6 +5,7 @@ import { readFile } from "fs/promises"
 import path from "path"
 import { validateRequest } from "@/lib/auth"
 import { Readable } from "stream"
+import { getStorageProvider } from "@/lib/storage"
 
 export const runtime = "nodejs"
 
@@ -149,73 +150,104 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File path not found" }, { status: 404 })
     }
 
-    // SECURITY: Use safe path resolution with built-in traversal protection
-    const safePath = safeResolvePath(fileRecord.local_file_path)
-    
-    if (!safePath) {
-      console.error(`Invalid or unsafe file path: ${fileRecord.local_file_path}`)
-      return NextResponse.json({ error: "Access denied: Invalid file path" }, { status: 403 })
-    }
+    // Get storage provider
+    const storageProvider = await getStorageProvider()
+    const storageType = storageProvider.getType()
 
-    if (!fileExistsAtPath(safePath)) {
-      return NextResponse.json({ error: "File not found on disk" }, { status: 404 })
-    }
+    if (storageType === "local") {
+      // LOCAL STORAGE: Use existing filesystem-based logic with security checks
+      const safePath = safeResolvePath(fileRecord.local_file_path)
+      
+      if (!safePath) {
+        console.error(`Invalid or unsafe file path: ${fileRecord.local_file_path}`)
+        return NextResponse.json({ error: "Access denied: Invalid file path" }, { status: 403 })
+      }
 
-    // STEP 4: Determine file type
-    // Priority: file_type column > extension check
-    const fileType = fileRecord.file_type || "unknown"
-    const isText =
-      fileType === "text" || (fileType === "unknown" && isTextFileByExtension(fileName))
+      if (!fileExistsAtPath(safePath)) {
+        return NextResponse.json({ error: "File not found on disk" }, { status: 404 })
+      }
 
-    // STEP 5: Handle text files - read as text and return JSON
-    if (isText) {
+      // Determine file type
+      const fileType = fileRecord.file_type || "unknown"
+      const isText =
+        fileType === "text" || (fileType === "unknown" && isTextFileByExtension(fileName))
+
+      if (isText) {
+        try {
+          const content = await readTextFile(safePath)
+          return NextResponse.json({ content })
+        } catch (error) {
+          console.error("Error reading text file:", error)
+          return NextResponse.json(
+            { error: "Failed to read file", details: error instanceof Error ? error.message : "Unknown error" },
+            { status: 500 },
+          )
+        }
+      }
+
+      // Binary file — stream from local fs
+      const ext = path.extname(safePath).toLowerCase()
+      const contentType = getContentType(ext)
+
       try {
-        const content = await readTextFile(safePath)
-        return NextResponse.json({ content })
-      } catch (error) {
-        console.error("Error reading text file:", error)
-        return NextResponse.json(
-          {
-            error: "Failed to read file",
-            details: error instanceof Error ? error.message : "Unknown error",
+        const nodeStream = createFileStream(safePath)
+        const webStream = nodeStreamToWeb(nodeStream)
+
+        return new NextResponse(webStream, {
+          status: 200,
+          headers: {
+            "Content-Type": contentType,
+            "Content-Disposition": `inline; filename="${path.basename(safePath)}"`,
           },
+        })
+      } catch (error) {
+        console.error("Error streaming file:", error)
+        return NextResponse.json(
+          { error: "Failed to stream file", details: error instanceof Error ? error.message : "Unknown error" },
           { status: 500 },
         )
       }
-    }
+    } else {
+      // S3 STORAGE: Read from object storage
+      const storageKey = fileRecord.local_file_path
 
-    // STEP 6: Handle binary files (images, etc.) - return stream
-    const ext = path.extname(safePath).toLowerCase()
-    let contentType = "application/octet-stream"
+      const fileType = fileRecord.file_type || "unknown"
+      const isText =
+        fileType === "text" || (fileType === "unknown" && isTextFileByExtension(fileName))
 
-    // Image types
-    if ([".jpg", ".jpeg"].includes(ext)) contentType = "image/jpeg"
-    else if (ext === ".png") contentType = "image/png"
-    else if (ext === ".gif") contentType = "image/gif"
-    else if (ext === ".bmp") contentType = "image/bmp"
-    else if (ext === ".webp") contentType = "image/webp"
-    // Add more MIME types as needed
+      try {
+        const fileExists = await storageProvider.exists(storageKey)
+        if (!fileExists) {
+          return NextResponse.json({ error: "File not found in object storage" }, { status: 404 })
+        }
 
-    try {
-      const nodeStream = createFileStream(safePath)
-      const webStream = nodeStreamToWeb(nodeStream)
+        if (isText) {
+          const data = await storageProvider.get(storageKey)
+          const content = data.toString("utf-8")
+          return NextResponse.json({ content })
+        }
 
-      return new NextResponse(webStream, {
-        status: 200,
-        headers: {
-          "Content-Type": contentType,
-          "Content-Disposition": `inline; filename="${path.basename(safePath)}"`,
-        },
-      })
-    } catch (error) {
-      console.error("Error streaming file:", error)
-      return NextResponse.json(
-        {
-          error: "Failed to stream file",
-          details: error instanceof Error ? error.message : "Unknown error",
-        },
-        { status: 500 },
-      )
+        // Binary file — stream from S3
+        const ext = path.extname(fileName).toLowerCase()
+        const contentType = getContentType(ext)
+
+        const stream = await storageProvider.getStream(storageKey)
+        const webStream = nodeStreamToWeb(stream as Readable)
+
+        return new NextResponse(webStream, {
+          status: 200,
+          headers: {
+            "Content-Type": contentType,
+            "Content-Disposition": `inline; filename="${fileName}"`,
+          },
+        })
+      } catch (error) {
+        console.error("Error reading from object storage:", error)
+        return NextResponse.json(
+          { error: "Failed to read file from storage", details: error instanceof Error ? error.message : "Unknown error" },
+          { status: 500 },
+        )
+      }
     }
   } catch (error) {
     console.error("File content error:", error)
@@ -227,4 +259,20 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     )
   }
+}
+
+// Helper: Get content type from file extension
+function getContentType(ext: string): string {
+  const mimeTypes: Record<string, string> = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".pdf": "application/pdf",
+    ".zip": "application/zip",
+  }
+  return mimeTypes[ext] || "application/octet-stream"
 }

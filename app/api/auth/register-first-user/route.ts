@@ -27,11 +27,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validate password strength - matches validation.ts requirements
-    if (password.length < 8) {
+    // Validate password strength - matches validation.ts requirements (LOW-01)
+    if (password.length < 12) {
       return NextResponse.json({ 
         success: false, 
-        error: "Password must be at least 8 characters long" 
+        error: "Password must be at least 12 characters long" 
       }, { status: 400 })
     }
     
@@ -52,6 +52,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: false, 
         error: "Password must contain at least one number" 
+      }, { status: 400 })
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Password must contain at least one special character" 
       }, { status: 400 })
     }
 
@@ -83,40 +89,26 @@ export async function POST(request: NextRequest) {
     }
 
     // SECURITY CHECK: Ensure no users exist before allowing registration
-    const [existingUsers] = await pool.query<RowDataPacket[]>(
-      "SELECT COUNT(*) as count FROM users"
+    // Use atomic INSERT...SELECT to prevent race condition (MED-05)
+    // If another request created a user between our check and insert, this will insert 0 rows
+    const hashedPassword = await bcrypt.hash(password, 12)
+
+    const [insertResult] = await pool.query<RowDataPacket[]>(
+      `INSERT INTO users (email, password_hash, name, role)
+       SELECT ?, ?, ?, 'admin'
+       FROM DUAL
+       WHERE NOT EXISTS (SELECT 1 FROM users LIMIT 1)`,
+      [email, hashedPassword, name]
     )
 
-    const userCount = Array.isArray(existingUsers) && existingUsers.length > 0 ? existingUsers[0].count : 0
+    const affectedRows = (insertResult as any).affectedRows || 0
 
-    if (userCount > 0) {
+    if (affectedRows === 0) {
       return NextResponse.json({ 
         success: false, 
         error: "Registration is only allowed when no users exist. Please use login instead." 
       }, { status: 403 })
     }
-
-    // Check if email already exists (extra safety)
-    const [emailCheck] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM users WHERE email = ? LIMIT 1",
-      [email]
-    )
-
-    if (Array.isArray(emailCheck) && emailCheck.length > 0) {
-      return NextResponse.json({ 
-        success: false, 
-        error: "Email already exists" 
-      }, { status: 400 })
-    }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
-
-    // Create first user - always admin role for first user
-    await pool.query(
-      "INSERT INTO users (email, password_hash, name, role) VALUES (?, ?, ?, 'admin')",
-      [email, hashedPassword, name]
-    )
 
     console.log("✅ First user created successfully:", email)
 

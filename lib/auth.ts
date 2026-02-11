@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production'
+// SECURITY: JWT_SECRET must be set via environment variable — no fallback
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error('FATAL: JWT_SECRET environment variable is required. Set it in .env or environment.')
+  }
+  return secret
+}
 
 // User roles type definition
 export type UserRole = 'admin' | 'analyst'
@@ -118,8 +125,18 @@ export async function generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): P
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload))
   const data = `${encodedHeader}.${encodedPayload}`
 
-  const signature = await hmacSha256(JWT_SECRET, data)
+  const signature = await hmacSha256(getJwtSecret(), data)
   return `${data}.${signature}`
+}
+
+// SECURITY: Constant-time string comparison to prevent timing attacks
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  let result = 0
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  }
+  return result === 0
 }
 
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
@@ -132,9 +149,9 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     const [encodedHeader, encodedPayload, signature] = parts
     const data = `${encodedHeader}.${encodedPayload}`
 
-    // Verify signature
-    const expectedSignature = await hmacSha256(JWT_SECRET, data)
-    if (signature !== expectedSignature) {
+    // SECURITY: Verify signature using constant-time comparison to prevent timing attacks
+    const expectedSignature = await hmacSha256(getJwtSecret(), data)
+    if (!constantTimeEqual(signature, expectedSignature)) {
       console.error('JWT signature verification failed')
       return null
     }
@@ -188,7 +205,10 @@ export class AuthError extends Error {
 // =====================================================
 
 // Separate secret for pending 2FA tokens for additional security
-const PENDING_2FA_SECRET = process.env.JWT_SECRET ? process.env.JWT_SECRET + '-pending-2fa' : 'pending-2fa-secret-change-this'
+// SECURITY: Derives from JWT_SECRET — no fallback
+function getPending2FASecret(): string {
+  return getJwtSecret() + '-pending-2fa'
+}
 
 interface Pending2FAPayload {
   userId: string
@@ -220,7 +240,7 @@ export async function generatePending2FAToken(userId: string): Promise<string> {
   const encodedPayload = base64UrlEncode(JSON.stringify(payload))
   const data = `${encodedHeader}.${encodedPayload}`
 
-  const signature = await hmacSha256(PENDING_2FA_SECRET, data)
+  const signature = await hmacSha256(getPending2FASecret(), data)
   return `${data}.${signature}`
 }
 
@@ -238,9 +258,9 @@ export async function verifyPending2FAToken(token: string): Promise<string | nul
     const [encodedHeader, encodedPayload, signature] = parts
     const data = `${encodedHeader}.${encodedPayload}`
 
-    // Verify signature using the separate pending 2FA secret
-    const expectedSignature = await hmacSha256(PENDING_2FA_SECRET, data)
-    if (signature !== expectedSignature) {
+    // SECURITY: Verify signature using constant-time comparison
+    const expectedSignature = await hmacSha256(getPending2FASecret(), data)
+    if (!constantTimeEqual(signature, expectedSignature)) {
       console.error('Pending 2FA token signature verification failed')
       return null
     }

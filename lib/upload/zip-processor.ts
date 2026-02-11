@@ -10,6 +10,7 @@ import {
   type ZipStructureInfo,
 } from "./zip-structure-analyzer"
 import { processDevice, type DeviceProcessingResult } from "./device-processor"
+import { checkMonitorsForBatch } from "@/lib/domain-monitor"
 
 export interface ProcessingResult {
   devicesFound: number
@@ -230,6 +231,17 @@ export async function processZipWithBinaryStorage(
     // Clear all analytics cache to ensure fresh data after upload
     // This ensures users see new data immediately, not cached old data
     await executeQuery("DELETE FROM analytics_cache WHERE cache_key IN ('stats_main', 'browser_analysis', 'software_analysis', 'top_tlds')")
+
+    // Run domain monitor check for the entire batch (deferred from per-device)
+    // This is much more efficient: single check after all parsing is complete
+    // Awaited (not fire-and-forget) so progress logs are visible in the upload UI
+    if (totalCredentials > 0) {
+      try {
+        await checkMonitorsForBatch(uploadBatch, logWithBroadcast)
+      } catch (monitorError) {
+        logWithBroadcast(`❌ Batch domain monitor check error: ${monitorError}`, 'error')
+      }
+    }
 
     return {
       devicesFound,

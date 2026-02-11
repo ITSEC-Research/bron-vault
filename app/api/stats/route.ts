@@ -160,10 +160,9 @@ export async function GET(request: NextRequest) {
       console.log("📊 Total unique device IDs:", deviceIds.length)
       
       if (deviceIds.length > 0) {
-        // Use array format for ClickHouse IN clause
-        const deviceIdsStr = deviceIds.map(id => `'${id.replace(/'/g, "''")}'`).join(', ')
-        passwordDeviceFilter = `AND device_id IN (${deviceIdsStr})`
-        filesDeviceFilter = `AND device_id IN (${deviceIdsStr})`
+        // SECURITY: Use parameterized array for ClickHouse IN clause (CRIT-09)
+        passwordDeviceFilter = `AND device_id IN {filterDeviceIds:Array(String)}`
+        filesDeviceFilter = `AND device_id IN {filterDeviceIds:Array(String)}`
         console.log("📊 Device filter applied to password_stats and files")
       } else {
         // No devices match - return empty results early
@@ -213,7 +212,8 @@ export async function GET(request: NextRequest) {
           ? `SELECT count() as count 
              FROM files
              WHERE is_directory = 0 ${filesDeviceFilter}`
-          : "SELECT count() as count FROM files WHERE is_directory = 0"
+          : "SELECT count() as count FROM files WHERE is_directory = 0",
+          hasFilter && deviceIds.length > 0 ? { filterDeviceIds: deviceIds } : {}
         ),
         // ClickHouse: SUM aggregations
         executeClickHouseQuery(`
@@ -241,7 +241,7 @@ export async function GET(request: NextRequest) {
         GROUP BY password
         ORDER BY total_count DESC, password ASC
         LIMIT 5
-      `),
+      `, hasFilter && deviceIds.length > 0 ? { filterDeviceIds: deviceIds } : {}),
         // ClickHouse: Recent devices
         executeClickHouseQuery(`
         SELECT device_id, device_name, upload_batch, upload_date, total_files, total_credentials, total_domains, total_urls

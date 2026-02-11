@@ -18,7 +18,7 @@ interface SearchCredentialsRequest {
   type: 'email' | 'username' | 'password' | 'any'
   page?: number
   limit?: number
-  maskPasswords?: boolean // Default false - show plain passwords
+  maskPasswords?: boolean // Default true - passwords are masked unless explicitly requested
 }
 
 interface CredentialResult {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: SearchCredentialsRequest = await request.json()
-    const { query, type = 'any', page = 1, limit = 50, maskPasswords = false } = body
+    const { query, type = 'any', page = 1, limit = 50, maskPasswords = true } = body
 
     // Validate input
     if (!query || typeof query !== 'string') {

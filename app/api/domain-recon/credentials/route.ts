@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest } from "@/lib/auth"
 import { throwIfAborted, getRequestSignal, handleAbortError } from "@/lib/api-helpers"
+import { parseSearchQuery } from "@/lib/query-parser"
+import { buildDomainReconCondition, buildKeywordReconCondition } from "@/lib/search-query-builder"
 
 export async function POST(request: NextRequest) {
   // ✅ Check abort VERY EARLY - before validateRequest
@@ -24,11 +26,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Normalize Domain
-    let cleanDomain = targetDomain.trim().toLowerCase()
-    cleanDomain = cleanDomain.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].split(':')[0]
+    const cleanDomain = targetDomain.trim().toLowerCase()
+
+    // Parse query for operator support (OR, NOT, wildcard, exact)
+    const parsed = parseSearchQuery(cleanDomain)
 
     // Cleaner log: only show search if present
-    const logData: any = { type: searchType, domain: cleanDomain }
+    const logData: any = { type: searchType, domain: cleanDomain, terms: parsed.terms.length }
     if (searchQuery && searchQuery.trim()) {
       logData.search = searchQuery.trim()
     }
@@ -41,7 +45,7 @@ export async function POST(request: NextRequest) {
     throwIfAborted(request)
 
     // Call the new data getter function
-    const credentialsData = await getCredentialsDataOptimized(cleanDomain, filters, pagination, searchQuery, searchType, body.keywordMode, signal)
+    const credentialsData = await getCredentialsDataOptimized(parsed, filters, pagination, searchQuery, searchType, body.keywordMode, signal)
     
     // Check abort after operations
     throwIfAborted(request)
@@ -71,7 +75,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function getCredentialsDataOptimized(
-  query: string,
+  parsed: import("@/lib/query-parser").ParsedQuery,
   filters?: any,
   pagination?: any,
   searchQuery?: string,
@@ -99,44 +103,19 @@ async function getCredentialsDataOptimized(
   // ==========================================
   // 1. BUILD PREWHERE (Main Table Filters)
   // ==========================================
-  // PREWHERE is the key to speed in ClickHouse. 
-  // It filters before JOIN and before reading heavy columns.
+  // Use the shared query builder for the main domain/keyword condition
   
   const prewhereConditions: string[] = []
   const params: Record<string, any> = {}
 
   if (searchType === 'domain') {
-    // DOMAIN OPTIMIZATION:
-    // 1. Check Exact Match domain
-    // 2. Check Subdomain using endsWith (much faster than ilike/regex)
-    // 3. Fallback to URL pattern match only if needed
-    
-    params['targetDomain'] = query
-    params['dotTargetDomain'] = '.' + query
-    
-    // Logic: Domain column exact match OR Domain column ends with .target.com
-    // This leverages suffix index if available, or at least fast string scan
-    prewhereConditions.push(`(
-      c.domain = {targetDomain:String} OR 
-      endsWith(c.domain, {dotTargetDomain:String}) OR
-      c.url ilike {urlPattern:String} 
-    )`)
-    // Fallback URL pattern for catch-all
-    params['urlPattern'] = `%${query}%`
-
+    const built = buildDomainReconCondition(parsed, { notNullCheck: false })
+    prewhereConditions.push(`(${built.condition})`)
+    Object.assign(params, built.params)
   } else {
-    // KEYWORD SEARCH
-    params['keyword'] = query
-    params['likeKeyword'] = `%${query}%`
-    
-    if (keywordMode === 'domain-only') {
-      prewhereConditions.push(`(c.domain ilike {likeKeyword:String})`)
-    } else {
-      // Optimization: multiSearchAnyCase is faster than OR OR OR
-      // But for simplicity and param binding, we use ilike in PREWHERE 
-      // because PREWHERE already significantly reduces cost.
-      prewhereConditions.push(`(c.url ilike {likeKeyword:String} OR c.domain ilike {likeKeyword:String})`)
-    }
+    const built = buildKeywordReconCondition(parsed, keywordMode)
+    prewhereConditions.push(`(${built.condition})`)
+    Object.assign(params, built.params)
   }
 
   // Additional Filters to PREWHERE (To filter faster at the start)

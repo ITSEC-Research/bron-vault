@@ -504,11 +504,11 @@ export default function MonitoringPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Monitors</p>
-                  <p className="text-2xl font-bold">{stats.monitors.active}</p>
+                  <p className="text-2xl font-bold">{Number(stats.monitors.active || 0).toLocaleString()}</p>
                 </div>
                 <Radio className="h-8 w-8 text-primary opacity-50" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{stats.monitors.total} total</p>
+              <p className="text-xs text-muted-foreground mt-1">{Number(stats.monitors.total || 0).toLocaleString()} total</p>
             </CardContent>
           </Card>
           <Card>
@@ -516,11 +516,11 @@ export default function MonitoringPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Webhooks</p>
-                  <p className="text-2xl font-bold">{stats.webhooks.active}</p>
+                  <p className="text-2xl font-bold">{Number(stats.webhooks.active || 0).toLocaleString()}</p>
                 </div>
                 <Webhook className="h-8 w-8 text-blue-500 opacity-50" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{stats.webhooks.total} total</p>
+              <p className="text-xs text-muted-foreground mt-1">{Number(stats.webhooks.total || 0).toLocaleString()} total</p>
             </CardContent>
           </Card>
           <Card>
@@ -528,11 +528,11 @@ export default function MonitoringPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Alerts Today</p>
-                  <p className="text-2xl font-bold">{stats.alerts.today}</p>
+                  <p className="text-2xl font-bold">{Number(stats.alerts.today || 0).toLocaleString()}</p>
                 </div>
                 <Bell className="h-8 w-8 text-amber-500 opacity-50" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{stats.alerts.total} total</p>
+              <p className="text-xs text-muted-foreground mt-1">{Number(stats.alerts.total || 0).toLocaleString()} total</p>
             </CardContent>
           </Card>
           <Card>
@@ -541,15 +541,15 @@ export default function MonitoringPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Success Rate</p>
                   <p className="text-2xl font-bold">
-                    {stats.alerts.total > 0
-                      ? Math.round((stats.alerts.success / stats.alerts.total) * 100)
+                    {Number(stats.alerts.total || 0) > 0
+                      ? Math.round((Number(stats.alerts.success || 0) / Number(stats.alerts.total || 0)) * 100)
                       : 100}%
                   </p>
                 </div>
                 <Activity className="h-8 w-8 text-green-500 opacity-50" />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {stats.alerts.failed} failed
+                {Number(stats.alerts.success || 0).toLocaleString()} success · {Number(stats.alerts.failed || 0).toLocaleString()} failed
               </p>
             </CardContent>
           </Card>

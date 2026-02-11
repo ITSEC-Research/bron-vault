@@ -692,6 +692,351 @@ export async function checkMonitorsForDevice(
 }
 
 // ===========================================
+// BATCH-LEVEL DOMAIN MONITORING (POST-UPLOAD)
+// ===========================================
+
+/**
+ * Check all credentials in a batch against active domain monitors.
+ * This runs ONCE after the entire upload+parse is complete,
+ * instead of per-device during parsing.
+ * 
+ * Much more efficient than per-device checks because:
+ * 1. Single "are there any monitors?" check (early return if none)
+ * 2. SQL-level JOIN to find matching credentials across the whole batch
+ * 3. No interference with parsing performance
+ * 4. Webhooks still fire per-device per-monitor (same behavior)
+ * 
+ * @param uploadBatch - The upload batch identifier
+ * @param logFn - Optional logging function
+ */
+export async function checkMonitorsForBatch(
+  uploadBatch: string,
+  logFn?: (message: string, type?: 'info' | 'success' | 'warning' | 'error') => void
+): Promise<void> {
+  const log = logFn || (() => {})
+
+  try {
+    // Step 1: Early return if no active monitors (single cheap query)
+    const monitors = await getActiveMonitors()
+    if (monitors.length === 0) {
+      log(`🔔 No active domain monitors configured, skipping batch check`, 'info')
+      return
+    }
+
+    log(`\n🔔 ═══════════════════════════════════════════`, 'info')
+    log(`🔔 DOMAIN MONITOR CHECK — ${monitors.length} active monitor(s)`, 'info')
+    log(`🔔 ═══════════════════════════════════════════`, 'info')
+    // Emit progress markers for frontend progress bar (separate from processing progress)
+    log(`[MONITOR_PROGRESS] 0/5 Initializing domain monitor check...`, 'info')
+    log(`[MONITOR_CHECK] Checking domain monitors (${monitors.length} active)...`, 'info')
+
+    // Step 2: Get all device IDs in this batch
+    const devices = await query(
+      `SELECT device_id, device_name FROM devices WHERE upload_batch = ?`,
+      [uploadBatch]
+    ) as any[]
+
+    if (devices.length === 0) {
+      log(`⚠️ No devices found for batch ${uploadBatch}`, 'warning')
+      return
+    }
+
+    // Collect all monitored domain names for display
+    const allMonitoredDomains = new Set<string>()
+    for (const monitor of monitors) {
+      for (const domain of monitor.domains) {
+        allMonitoredDomains.add(domain.toLowerCase())
+      }
+    }
+    log(`🔔 Step 1/3: Checking ${devices.length} devices against ${allMonitoredDomains.size} monitored domain(s)`, 'info')
+    log(`🔔 Monitored domains: ${Array.from(allMonitoredDomains).join(', ')}`, 'info')
+    log(`[MONITOR_PROGRESS] 1/5 Collected ${allMonitoredDomains.size} domains from ${monitors.length} monitors`, 'info')
+
+    // Step 3: Collect all unique monitored domains
+    const needsCredentialMatch = new Set<string>()
+    const needsUrlMatch = new Set<string>()
+
+    for (const monitor of monitors) {
+      for (const domain of monitor.domains) {
+        const d = domain.toLowerCase()
+        if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
+          needsCredentialMatch.add(d)
+        }
+        if (monitor.match_mode === 'url' || monitor.match_mode === 'both') {
+          needsUrlMatch.add(d)
+        }
+      }
+    }
+
+    // Step 4: Build SQL-level domain matching for the ENTIRE batch at once
+    // Instead of fetching ALL credentials and matching in-memory per device,
+    // we use SQL LIKE to only fetch credentials that actually match monitored domains.
+    // This is efficient because the number of monitored domains is typically small (< 100).
+
+    const deviceIds = devices.map(d => d.device_id)
+    const deviceIdPlaceholders = deviceIds.map(() => '?').join(', ')
+
+    // Credential match: find credentials where email domain matches monitored domains
+    const credentialMatchesByDeviceAndDomain = new Map<string, Map<string, CredentialMatch[]>>()
+
+    if (needsCredentialMatch.size > 0) {
+      // Build LIKE conditions for email domain matching
+      // username LIKE '%@domain.com' OR username LIKE '%@%.domain.com'
+      const likeClauses: string[] = []
+      const likeParams: any[] = []
+      for (const domain of needsCredentialMatch) {
+        likeClauses.push('LOWER(c.username) LIKE ?')
+        likeParams.push(`%@${domain}`)
+        likeClauses.push('LOWER(c.username) LIKE ?')
+        likeParams.push(`%@%.${domain}`)
+      }
+
+      const credRows = await query(
+        `SELECT c.device_id, c.url, c.username, c.password, c.browser, c.created_at
+         FROM credentials c
+         WHERE c.device_id IN (${deviceIdPlaceholders})
+           AND c.username IS NOT NULL AND c.username != ''
+           AND (${likeClauses.join(' OR ')})`,
+        [...deviceIds, ...likeParams]
+      ) as any[]
+
+      log(`🔔 Step 2/3: Credential match query returned ${credRows.length} potential matches`, 'info')
+      log(`[MONITOR_PROGRESS] 2/5 Credential match: ${credRows.length} results`, 'info')
+
+      // Group by device_id and match to specific domains in-memory
+      for (const row of credRows) {
+        const username = (row.username || '').toLowerCase()
+        const atIdx = username.lastIndexOf('@')
+        if (atIdx === -1) continue
+        const emailDomain = username.substring(atIdx + 1)
+
+        for (const domain of needsCredentialMatch) {
+          if (emailDomain === domain || emailDomain.endsWith('.' + domain)) {
+            if (!credentialMatchesByDeviceAndDomain.has(row.device_id)) {
+              credentialMatchesByDeviceAndDomain.set(row.device_id, new Map())
+            }
+            const deviceMap = credentialMatchesByDeviceAndDomain.get(row.device_id)!
+            if (!deviceMap.has(domain)) {
+              deviceMap.set(domain, [])
+            }
+            deviceMap.get(domain)!.push({
+              found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+              url: row.url || '',
+              login: row.username || '',
+              password: row.password || '',
+              browser: row.browser || '',
+            })
+          }
+        }
+      }
+    }
+
+    // URL match: find credentials where URL domain matches monitored domains
+    const urlMatchesByDeviceAndDomain = new Map<string, Map<string, CredentialMatch[]>>()
+
+    if (needsUrlMatch.size > 0) {
+      const likeClauses: string[] = []
+      const likeParams: any[] = []
+      for (const domain of needsUrlMatch) {
+        likeClauses.push('LOWER(c.domain) = ?')
+        likeParams.push(domain)
+        likeClauses.push('LOWER(c.domain) LIKE ?')
+        likeParams.push(`%.${domain}`)
+      }
+
+      const urlRows = await query(
+        `SELECT c.device_id, c.url, c.username, c.password, c.browser, c.domain, c.created_at
+         FROM credentials c
+         WHERE c.device_id IN (${deviceIdPlaceholders})
+           AND c.domain IS NOT NULL AND c.domain != ''
+           AND (${likeClauses.join(' OR ')})`,
+        [...deviceIds, ...likeParams]
+      ) as any[]
+
+      log(`🔔 Step 2/3: URL match query returned ${urlRows.length} potential matches`, 'info')
+      log(`[MONITOR_PROGRESS] 3/5 URL match: ${urlRows.length} results`, 'info')
+
+      for (const row of urlRows) {
+        const credDomain = (row.domain || '').toLowerCase()
+
+        for (const domain of needsUrlMatch) {
+          if (credDomain === domain || credDomain.endsWith('.' + domain)) {
+            // Deduplicate against credential matches
+            const existingCredMap = credentialMatchesByDeviceAndDomain.get(row.device_id)
+            const existingCreds = existingCredMap?.get(domain) || []
+            const isDuplicate = existingCreds.some(
+              cm => cm.url === (row.url || '') && cm.login === (row.username || '')
+            )
+            if (!isDuplicate) {
+              if (!urlMatchesByDeviceAndDomain.has(row.device_id)) {
+                urlMatchesByDeviceAndDomain.set(row.device_id, new Map())
+              }
+              const deviceMap = urlMatchesByDeviceAndDomain.get(row.device_id)!
+              if (!deviceMap.has(domain)) {
+                deviceMap.set(domain, [])
+              }
+              deviceMap.get(domain)!.push({
+                found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+                url: row.url || '',
+                login: row.username || '',
+                password: row.password || '',
+                browser: row.browser || '',
+              })
+            }
+          }
+        }
+      }
+    }
+
+    // Step 5: Collect device IDs that have any matches
+    const matchedDeviceIds = new Set<string>()
+    for (const deviceId of credentialMatchesByDeviceAndDomain.keys()) {
+      matchedDeviceIds.add(deviceId)
+    }
+    for (const deviceId of urlMatchesByDeviceAndDomain.keys()) {
+      matchedDeviceIds.add(deviceId)
+    }
+
+    if (matchedDeviceIds.size === 0) {
+      log(`🔔 Step 3/3: No domain monitor matches found — all clear ✓`, 'info')
+      log(`[MONITOR_PROGRESS] 5/5 No matches found — all clear`, 'info')
+      log(`[MONITOR_CHECK] Domain monitor check completed — no matches found`, 'info')
+      log(`🔔 ═══════════════════════════════════════════`, 'info')
+      return
+    }
+
+    log(`🔔 Step 3/3: Found matches in ${matchedDeviceIds.size} device(s), sending webhook alerts...`, 'success')
+    log(`[MONITOR_PROGRESS] 4/5 Sending webhooks for ${matchedDeviceIds.size} matched device(s)...`, 'info')
+    log(`[MONITOR_CHECK] Sending webhook alerts for ${matchedDeviceIds.size} matched device(s)...`, 'info')
+
+    // Step 6: Get device info for matched devices only (batch query)
+    const matchedDeviceIdList = Array.from(matchedDeviceIds)
+    const matchedPlaceholders = matchedDeviceIdList.map(() => '?').join(', ')
+
+    const [sysInfoRows, deviceInfoRows] = await Promise.all([
+      query(
+        `SELECT device_id, computer_name, ip_address, username, hwid, country, os, log_date 
+         FROM systeminformation WHERE device_id IN (${matchedPlaceholders})`,
+        matchedDeviceIdList
+      ),
+      query(
+        `SELECT device_id, device_name FROM devices WHERE device_id IN (${matchedPlaceholders})`,
+        matchedDeviceIdList
+      ),
+    ])
+
+    const sysInfoByDevice = new Map<string, any>()
+    for (const row of sysInfoRows as any[]) {
+      sysInfoByDevice.set(row.device_id, row)
+    }
+    const deviceNameByDevice = new Map<string, string>()
+    for (const row of deviceInfoRows as any[]) {
+      deviceNameByDevice.set(row.device_id, row.device_name)
+    }
+
+    // Step 7: Process each monitor for each matched device
+    for (const monitor of monitors) {
+      try {
+        // Get webhooks for this monitor (once per monitor)
+        const webhookRows = await query(
+          `SELECT mw.* FROM monitor_webhooks mw
+           INNER JOIN monitor_webhook_map mwm ON mwm.webhook_id = mw.id
+           WHERE mwm.monitor_id = ? AND mw.is_active = 1`,
+          [monitor.id]
+        ) as any[]
+
+        if (webhookRows.length === 0) {
+          continue
+        }
+
+        for (const deviceId of matchedDeviceIds) {
+          const credMap = credentialMatchesByDeviceAndDomain.get(deviceId) || new Map()
+          const urlMap = urlMatchesByDeviceAndDomain.get(deviceId) || new Map()
+
+          const monitorCredentials: CredentialMatch[] = []
+          const monitorUrls: CredentialMatch[] = []
+          const matchedDomains: string[] = []
+
+          for (const domain of monitor.domains) {
+            const d = domain.toLowerCase()
+            const creds = credMap.get(d) || []
+            const urls = urlMap.get(d) || []
+
+            if (creds.length > 0 || urls.length > 0) {
+              matchedDomains.push(d)
+            }
+            if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
+              monitorCredentials.push(...creds)
+            }
+            if (monitor.match_mode === 'url' || monitor.match_mode === 'both') {
+              monitorUrls.push(...urls)
+            }
+          }
+
+          if (monitorCredentials.length === 0 && monitorUrls.length === 0) continue
+
+          const totalMatches = monitorCredentials.length + monitorUrls.length
+          log(`🔔 Monitor "${monitor.name}" matched ${totalMatches} credentials for device ${deviceId}`, 'success')
+
+          const deviceInfo = sysInfoByDevice.get(deviceId) || {}
+          const deviceName = deviceNameByDevice.get(deviceId) || deviceId
+
+          const payload: WebhookPayload = {
+            monitor_name: monitor.name,
+            matched_domain: matchedDomains.join(', '),
+            device: {
+              target_machine_name: deviceInfo.computer_name || deviceName,
+              target_ip: deviceInfo.ip_address || '',
+              username: deviceInfo.username || '',
+              hwid: deviceInfo.hwid || '',
+              country: deviceInfo.country || '',
+              os: deviceInfo.os || '',
+              log_date: deviceInfo.log_date || '',
+            },
+            credential_matches: monitorCredentials,
+            url_matches: monitorUrls,
+            summary: {
+              total_credential_matches: monitorCredentials.length,
+              total_url_matches: monitorUrls.length,
+              upload_batch: uploadBatch,
+            }
+          }
+
+          let matchType: 'credential_email' | 'url' | 'both' = 'both'
+          if (monitorCredentials.length > 0 && monitorUrls.length === 0) {
+            matchType = 'credential_email'
+          } else if (monitorCredentials.length === 0 && monitorUrls.length > 0) {
+            matchType = 'url'
+          }
+
+          // Fire webhooks
+          for (const webhookRow of webhookRows) {
+            const webhook = parseWebhookRow(webhookRow)
+            deliverWebhook(webhook, payload, monitor.id, deviceId, uploadBatch, matchedDomains.join(', '), matchType, monitorCredentials.length, monitorUrls.length, log)
+              .catch(err => log(`❌ Webhook delivery error for "${webhook.name}": ${err}`, 'error'))
+          }
+
+          // Update monitor stats
+          await mutate(
+            `UPDATE domain_monitors SET last_triggered_at = NOW(), total_alerts = total_alerts + ? WHERE id = ?`,
+            [webhookRows.length, monitor.id]
+          )
+        }
+      } catch (monitorError) {
+        log(`❌ Error processing monitor "${monitor.name}": ${monitorError}`, 'error')
+      }
+    }
+
+    log(`✅ Domain monitor check completed — ${matchedDeviceIds.size} device(s) matched, webhooks dispatched`, 'success')
+    log(`[MONITOR_PROGRESS] 5/5 Domain monitor check completed`, 'success')
+    log(`[MONITOR_CHECK] Domain monitor check completed ✔`, 'success')
+    log(`🔔 ═══════════════════════════════════════════`, 'info')
+  } catch (error) {
+    log(`❌ Error in batch domain monitor check: ${error}`, 'error')
+  }
+}
+
+// ===========================================
 // WEBHOOK DELIVERY
 // ===========================================
 

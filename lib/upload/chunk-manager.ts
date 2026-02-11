@@ -28,6 +28,27 @@ class ChunkManager {
   }
 
   /**
+   * SECURITY: Validate fileId format to prevent path traversal
+   */
+  private validateFileId(fileId: string): boolean {
+    return /^[a-zA-Z0-9_\-]+$/.test(fileId)
+  }
+
+  /**
+   * SECURITY: Resolve and validate path is within chunks directory
+   */
+  private safeChunkDir(fileId: string): string {
+    if (!this.validateFileId(fileId)) {
+      throw new Error('Invalid fileId format')
+    }
+    const dir = path.join(this.chunksDir, fileId)
+    if (!path.resolve(dir).startsWith(path.resolve(this.chunksDir))) {
+      throw new Error('Invalid fileId: path traversal detected')
+    }
+    return dir
+  }
+
+  /**
    * Initialize chunk metadata
    */
   initializeChunk(
@@ -82,14 +103,15 @@ class ChunkManager {
    * Get chunk file path
    */
   getChunkPath(fileId: string, chunkIndex: number): string {
-    return path.join(this.chunksDir, fileId, `chunk_${chunkIndex}.tmp`)
+    const dir = this.safeChunkDir(fileId)
+    return path.join(dir, `chunk_${chunkIndex}.tmp`)
   }
 
   /**
    * Get all chunk paths for a file
    */
   async getAllChunkPaths(fileId: string): Promise<string[]> {
-    const chunkDir = path.join(this.chunksDir, fileId)
+    const chunkDir = this.safeChunkDir(fileId)
     if (!existsSync(chunkDir)) {
       return []
     }
@@ -135,7 +157,7 @@ class ChunkManager {
    * Clean up chunk files and metadata
    */
   async cleanupChunks(fileId: string): Promise<void> {
-    const chunkDir = path.join(this.chunksDir, fileId)
+    const chunkDir = this.safeChunkDir(fileId)
     if (existsSync(chunkDir)) {
       try {
         const files = await readdir(chunkDir)
@@ -173,7 +195,7 @@ class ChunkManager {
    * Get chunk directory path
    */
   getChunkDir(fileId: string): string {
-    return path.join(this.chunksDir, fileId)
+    return this.safeChunkDir(fileId)
   }
 }
 

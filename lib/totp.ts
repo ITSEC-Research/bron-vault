@@ -109,8 +109,8 @@ export function generateBackupCodes(count: number = 10): string[] {
   const codes: string[] = []
   
   for (let i = 0; i < count; i++) {
-    // Generate random 8-character alphanumeric code
-    const code = crypto.randomBytes(4).toString('hex').toUpperCase()
+    // SECURITY: Generate random 12-character code (6 bytes = 48 bits of entropy) (MED-04)
+    const code = crypto.randomBytes(6).toString('hex').toUpperCase()
     codes.push(code)
   }
   
@@ -150,8 +150,13 @@ export function formatBackupCode(code: string): string {
 
 /**
  * Get current TOTP code (for testing/debug purposes only)
+ * SECURITY: Only available in test/development environment (MED-03)
  */
 export function getCurrentTOTP(secret: string): string {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('getCurrentTOTP is not available in production')
+  }
+  
   const totp = new OTPAuth.TOTP({
     issuer: APP_NAME,
     label: 'User',

@@ -65,17 +65,26 @@ export async function POST(request: NextRequest) {
       // This token is short-lived (5 minutes) and can only be used for 2FA verification
       const pending2FAToken = await generatePending2FAToken(String(user.id))
       
-      // Return requires2FA flag with secure pending token - don't issue auth token yet
-      return NextResponse.json({
+      // SECURITY: Store pending2FAToken in httpOnly cookie instead of response body (HIGH-02)
+      const response = NextResponse.json({
         success: true,
         requires2FA: true,
-        pending2FAToken, // Secure token that proves password was verified
         message: "Please enter your 2FA code"
       })
+
+      response.cookies.set("pending_2fa", pending2FAToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/auth/verify-totp',
+        maxAge: 300, // 5 minutes
+      })
+
+      return response
     }
 
-    // Get user role - default to 'admin' for backwards compatibility
-    const userRole: UserRole = user.role || 'admin'
+    // Get user role - default to 'analyst' for least privilege
+    const userRole: UserRole = user.role || 'analyst'
 
     // Generate JWT token with role included
     const token = await generateToken({
