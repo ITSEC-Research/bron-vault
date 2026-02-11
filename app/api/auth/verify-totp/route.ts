@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { pool } from "@/lib/mysql"
-import { generateToken, getSecureCookieOptions, UserRole, verifyPending2FAToken } from "@/lib/auth"
+import { generateToken, getSecureCookieOptions, isRequestSecure, UserRole, verifyPending2FAToken } from "@/lib/auth"
 import { verifyTOTP, verifyBackupCode } from "@/lib/totp"
 import type { RowDataPacket } from "mysql2"
 import { logUserAction } from "@/lib/audit-log"
@@ -126,12 +126,12 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    response.cookies.set("auth", token, getSecureCookieOptions())
+    response.cookies.set("auth", token, getSecureCookieOptions(request))
 
     // SECURITY: Clear the pending_2fa cookie after successful verification
     response.cookies.set("pending_2fa", "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isRequestSecure(request),
       sameSite: 'strict',
       path: '/api/auth/verify-totp',
       maxAge: 0,

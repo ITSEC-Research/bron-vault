@@ -287,11 +287,30 @@ export async function verifyPending2FAToken(token: string): Promise<string | nul
   }
 }
 
-// Helper function to create secure cookie options
-export function getSecureCookieOptions() {
+/**
+ * Detect if the request was made over HTTPS (so we can set cookie Secure flag correctly).
+ * - Direct HTTPS (no proxy): request URL is https://... → we use that. No proxy or headers needed.
+ * - Behind reverse proxy: proxy often forwards as HTTP; we check X-Forwarded-Proto so we still
+ *   set Secure when the user actually used HTTPS. If the header is missing, we fall back to
+ *   request URL (usually http internally) → secure=false; cookie still works, we just don't set Secure.
+ * No env var needed.
+ */
+export function isRequestSecure(request: NextRequest): boolean {
+  const proto = request.headers.get('x-forwarded-proto')
+  if (proto === 'https') return true
+  try {
+    const url = new URL(request.url)
+    return url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/** Cookie options for auth cookie; secure flag is derived from the request (HTTPS vs HTTP). */
+export function getSecureCookieOptions(request: NextRequest) {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isRequestSecure(request),
     sameSite: 'strict' as const,
     maxAge: 24 * 60 * 60, // 24 hours in seconds
     path: '/',
