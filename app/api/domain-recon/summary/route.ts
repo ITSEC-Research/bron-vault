@@ -85,15 +85,17 @@ async function getSummaryStats(whereClause: string, params: Record<string, unkno
   // IMPORTANT: path() returns empty string for root, so we return '/'
   const pathExpr = `if(length(path(url)) > 0, path(url), '/')`
 
+  // Use alias "c" for credentials — WHERE from buildDomainReconCondition/buildKeywordReconCondition uses c.domain, c.url
+  const fromClause = "FROM credentials c"
   // Execute all counts in parallel
   const [subRes, pathRes, credRes, reusedRes, devRes] = await Promise.all([
-    executeClickHouseQuery(`SELECT uniq(${hostnameExpr}) as total FROM credentials ${whereClause}`, params, signal),
-    executeClickHouseQuery(`SELECT uniq(${pathExpr}) as total FROM credentials ${whereClause}`, params, signal),
-    executeClickHouseQuery(`SELECT count() as total FROM credentials ${whereClause}`, params, signal),
+    executeClickHouseQuery(`SELECT uniq(${hostnameExpr}) as total ${fromClause} ${whereClause}`, params, signal),
+    executeClickHouseQuery(`SELECT uniq(${pathExpr}) as total ${fromClause} ${whereClause}`, params, signal),
+    executeClickHouseQuery(`SELECT count() as total ${fromClause} ${whereClause}`, params, signal),
     executeClickHouseQuery(`SELECT count() as total FROM (
-      SELECT username, password, url FROM credentials ${whereClause} GROUP BY username, password, url HAVING count() > 1
+      SELECT c.username, c.password, c.url ${fromClause} ${whereClause} GROUP BY c.username, c.password, c.url HAVING count() > 1
     )`, params, signal),
-    executeClickHouseQuery(`SELECT uniq(device_id) as total FROM credentials ${whereClause}`, params, signal)
+    executeClickHouseQuery(`SELECT uniq(c.device_id) as total ${fromClause} ${whereClause}`, params, signal)
   ])
 
   // IMPORTANT: Cast all results to Number (ClickHouse returns String)
