@@ -20,6 +20,7 @@ Our goal is to support the day-to-day needs of security teams on the front lines
     
   * **Advanced Search**: Instantly find credentials and pivot to the full context of the breach.
     - Search by specific email addresses or entire domains across all logs.
+    - Combine terms with **OR** (`,`), **AND** (`+`), or **NOT** (`-`) for more precise queries.
     - A successful match reveals a "Supporting Files" tab with all data from the same device.
     - Seamlessly explore correlated cookies, browser history, and system files in a single click.
 
@@ -54,10 +55,27 @@ Our goal is to support the day-to-day needs of security teams on the front lines
       - Top 10 TLDs
       - Top 10 most affected browsers
       - Top 10 most used software
-        
+      - **Country heatmap**: World map showing compromised devices by country for geographic insight at a glance.
+
+  * **Domain Monitoring**: Watch domains of interest and get notified when new uploads contain matching credentials or URLs.
+    - Define monitors with one or more domains and match by credential (email/username), URL, or both.
+    - Attach webhook endpoints (e.g. Slack, custom APIs) to each monitor to receive alerts with device and match details.
+    - View alert history and webhook delivery status in the Domain Monitoring UI.
+
+  * **S3-Compatible Object Storage**: Store uploaded files in object storage instead of the local filesystem.
+    - Supports **AWS S3**, **MinIO**, and any S3-compatible service; optional MinIO service is included in the Docker setup.
+    - Configure endpoint, bucket, and credentials in Settings → Storage; optionally migrate existing local files to S3 in one go.
+
   * **Debug-Zip Utility**: Perform a quick check on `.zip` files to analyze their internal structure, ensure they match supported formats, and flag directories missing a password file.
-    
-  * **Simple RSS Feeds**: Integrated RSS feeds from **ransomware.live** and **malware-traffic-analysis.net** to keep you updated on the latest threats.
+
+  * **Roles**: Two built-in roles for access control.
+    - **Admin**: Full access — upload data, manage settings, users, domain monitors and webhooks, audit logs, and API keys.
+    - **Analyst**: Read and search access — dashboard, search, device and domain discovery; cannot upload, change settings, or manage users/monitors.
+
+  * **API (v1)**: REST API with API-key auth for search, lookup, and upload.
+    - Create and manage API keys in the API Keys page; each key has a role (admin or analyst) and optional rate limit and expiry.
+    - **Search**: `GET /api/v1/search/credentials` and `GET /api/v1/search/domain` for credential and domain/keyword search.
+    - **Upload**: `POST /api/v1/upload` (admin keys only) with async job tracking via `GET /api/v1/upload/status/{jobId}`.
   
 ![alt text](images/Bron-Vault-Search-1.png "Bron Vault Search 1")
 

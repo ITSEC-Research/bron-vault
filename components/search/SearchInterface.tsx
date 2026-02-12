@@ -157,9 +157,9 @@ export function SearchInterface({
             <button
               type="button"
               onClick={() => setShowBuilder(!showBuilder)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-primary transition"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm text-foreground/75 bg-muted/40 border border-primary/20 hover:border-primary/35 hover:bg-primary/5 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 focus:ring-offset-2 focus:ring-offset-background [&>svg]:text-primary/70"
             >
-              <Blocks className="h-3.5 w-3.5" />
+              <Blocks className="h-4 w-4 shrink-0" />
               {showBuilder ? "Switch to text mode" : "Switch to visual query builder"}
             </button>
           </div>
