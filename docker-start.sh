@@ -3,7 +3,7 @@
 # =====================================================
 # Bron Vault - Docker Start Script with Summary
 # =====================================================
-# Wrapper script for docker-compose up with summary
+# Wrapper for: docker compose up -d --build
 # =====================================================
 
 set -e
@@ -16,66 +16,77 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-# Check if docker-compose is available
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo -e "${RED}❌ [ERROR] docker-compose not found!${NC}"
+# --- Docker & Compose v2 detection ---
+
+# Ensure Docker binary exists
+if ! command -v docker &> /dev/null; then
+    echo -e "${YELLOW}⚠ Docker not detected.${NC}"
     echo ""
-    echo "Make sure Docker is installed and running."
+
+    if grep -qi ubuntu /etc/os-release 2>/dev/null; then
+        echo -e "${BLUE}ℹ Ubuntu detected. Running install_docker.sh...${NC}"
+        echo ""
+
+        if [ -f "./install_docker.sh" ]; then
+            chmod +x ./install_docker.sh
+            ./install_docker.sh
+        else
+            echo -e "${RED}❌ install_docker.sh not found.${NC}"
+            exit 1
+        fi
+
+        echo ""
+        echo -e "${GREEN}✅ Docker installed.${NC}"
+        echo -e "${YELLOW}⚠ Please logout and login again before running this script.${NC}"
+        exit 0
+    else
+        echo -e "${RED}❌ Docker not found and auto-install only supported on Ubuntu.${NC}"
+        exit 1
+    fi
+fi
+
+# Ensure Docker Compose v2 exists
+if ! docker compose version &> /dev/null; then
+    echo -e "${YELLOW}⚠ Docker Compose v2 not detected.${NC}"
     echo ""
-    echo "For Docker Desktop:"
-    echo "  Download from: https://www.docker.com/products/docker-desktop"
+    echo "Please ensure docker-compose-plugin is installed."
+    echo "On Ubuntu:"
+    echo "  sudo apt install docker-compose-plugin"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Docker Compose v2 detected.${NC}"
+echo ""
+
+# Check Docker daemon
+if ! docker info &> /dev/null; then
+    echo -e "${RED}❌ Cannot connect to Docker daemon.${NC}"
     echo ""
-    echo "For Linux (standalone):"
-    echo "  Install docker-compose:"
-    echo "    sudo apt-get update"
-    echo "    sudo apt-get install docker.io docker-compose"
+    echo "If you just installed Docker, logout/login first."
+    echo "Or try:"
+    echo "  sudo systemctl start docker"
     echo ""
     exit 1
 fi
 
+echo -e "${GREEN}✅ Docker daemon is running.${NC}"
+echo ""
+
+# --- Start services ---
+
 echo -e "${CYAN}🚀 Starting Bron Vault Services...${NC}"
 echo ""
 
-# Ensure uploads directory exists with proper structure
+# Ensure uploads directory exists (container entrypoint will fix ownership at startup)
+# Best practice: run without sudo; no host UID/GID matching needed
 echo -e "${BLUE}ℹ️  Ensuring uploads directory exists...${NC}"
 mkdir -p ./uploads/chunks
 mkdir -p ./uploads/extracted_files
-
-# Get current user's UID and GID
-# Note: UID is a readonly variable in bash, so we use HOST_UID and HOST_GID
-# If running with sudo, get the original user's UID/GID instead of root (0)
-if [ -n "$SUDO_USER" ]; then
-  # Running with sudo, use the original user's UID/GID
-  export HOST_UID=$(id -u "$SUDO_USER")
-  export HOST_GID=$(id -g "$SUDO_USER")
-  echo -e "${BLUE}ℹ️  Running with sudo, using original user's UID:GID ${HOST_UID}:${HOST_GID}${NC}"
-else
-  # Not running with sudo, use current user's UID/GID
-  export HOST_UID=$(id -u)
-  export HOST_GID=$(id -g)
-  echo -e "${BLUE}ℹ️  Using UID:GID ${HOST_UID}:${HOST_GID} for container user${NC}"
-fi
-
-# Set proper permissions (rwx for owner and group, r-x for others)
-# This ensures the container can write to the directories
-chmod -R 775 ./uploads 2>/dev/null || true
-
-# Note: chown might fail if running without sudo, but that's okay
-# The important thing is that the container will run with matching UID/GID
-chown -R ${HOST_UID}:${HOST_GID} ./uploads 2>/dev/null || {
-  echo -e "${YELLOW}⚠️  Warning: Could not change ownership of ./uploads directory${NC}"
-  echo -e "${YELLOW}   This is okay if you have proper permissions. Container will use UID:GID ${HOST_UID}:${HOST_GID}${NC}"
-}
-
 echo -e "${GREEN}✅ Uploads directory ready${NC}"
 echo ""
 
-# Always use --build but Docker will use cache for unchanged layers
-# This ensures code updates are picked up while staying fast due to caching
-# UID and GID are exported and will be used by docker-compose.yml
-echo -e "${BLUE}ℹ️  Building with UID: ${HOST_UID}, GID: ${HOST_GID}${NC}"
 echo -e "${BLUE}ℹ️  Building and starting services (using cache for unchanged layers)...${NC}"
-docker-compose up -d --build
+docker compose up -d --build
 
 echo ""
 echo -e "${GREEN}✅ All services started!${NC}"
@@ -94,7 +105,7 @@ else
     echo -e "${CYAN}📊 Bron Vault Service Status${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    docker-compose ps
+    docker compose ps
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${GREEN}📍 Access URLs:${NC}"

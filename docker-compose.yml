@@ -83,14 +83,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        # Use host UID/GID if provided, otherwise default to 1001
-        BUILD_UID: ${HOST_UID:-1001}
-        BUILD_GID: ${HOST_GID:-1001}
     container_name: bronvault_app
     restart: on-failure # SECURITY: Don't restart infinitely on crash loops (LOW-09)
-    # Run container with UID/GID matching host user for proper file permissions
-    user: "${HOST_UID:-1001}:${HOST_GID:-1001}"
     ports:
       - "3000:3000"
     environment:
