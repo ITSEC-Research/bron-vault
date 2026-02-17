@@ -564,7 +564,7 @@ export default function AuditLogsPage() {
 
         {/* Detail Dialog */}
         <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-          <DialogContent className="glass-modal sm:max-w-[600px]">
+          <DialogContent className="glass-modal sm:max-w-[600px] w-full max-w-full overflow-hidden">
             <DialogHeader>
               <DialogTitle className="text-foreground">Audit Log Details</DialogTitle>
               <DialogDescription className="text-muted-foreground">
@@ -609,11 +609,15 @@ export default function AuditLogsPage() {
                   </div>
                 )}
                 
-                <div>
+                <div className="min-w-0">
                   <Label className="text-muted-foreground text-xs">Details</Label>
-                  <pre className="text-foreground text-sm bg-secondary/50 p-3 rounded-lg overflow-auto max-h-[200px]">
-                    {JSON.stringify(selectedLog.details, null, 2)}
-                  </pre>
+                  <div className="text-foreground text-sm bg-secondary/50 p-3 rounded-lg max-h-[200px] overflow-auto min-w-0 w-full max-w-full">
+                    <code className="whitespace-pre-wrap break-all block">
+                      {typeof selectedLog.details === "object" && selectedLog.details !== null
+                        ? JSON.stringify(selectedLog.details, null, 2)
+                        : String(selectedLog.details ?? "")}
+                    </code>
+                  </div>
                 </div>
               </div>
             )}
