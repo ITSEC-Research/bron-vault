@@ -114,9 +114,9 @@ Follow these steps to get Broń Vault up and running locally.
 
 ### Prerequisites
 
-  * **Docker** and **Docker Compose** installed and running
+  * **Docker** and **Docker Compose v2** installed and running
     * Docker Desktop: [Download here](https://www.docker.com/products/docker-desktop)
-    * Linux: Install via package manager (e.g., `sudo apt-get install docker.io docker-compose`)
+    * Linux (Ubuntu): Use `./install_docker.sh` or install: `docker-ce` + `docker-compose-plugin`
   * Git (for cloning the repository)
 
 ### Tested Environments
@@ -196,17 +196,17 @@ Once all services are running, you can access:
 ./docker-status.sh
 
 # View logs:
-docker-compose logs -f
+docker compose logs -f
 ```
 
 **Stop all services:**
 ```bash
-docker-compose down
+docker compose down
 ```
 
 **Restart services:**
 ```bash
-docker-compose restart
+docker compose restart
 ```
 
 ### Initial Setup

@@ -20,7 +20,7 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Check service status
-docker-compose ps
+docker compose ps
 
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -43,9 +43,9 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "${BLUE}💡 Useful Commands:${NC}"
 echo ""
-echo -e "  View logs:        ${YELLOW}docker-compose logs -f${NC}"
-echo -e "  Stop services:    ${YELLOW}docker-compose down${NC}"
-echo -e "  Restart services: ${YELLOW}docker-compose restart${NC}"
+echo -e "  View logs:        ${YELLOW}docker compose logs -f${NC}"
+echo -e "  Stop services:    ${YELLOW}docker compose down${NC}"
+echo -e "  Restart services: ${YELLOW}docker compose restart${NC}"
 echo -e "  Check status:     ${YELLOW}./docker-status.sh${NC}"
 echo ""
 

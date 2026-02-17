@@ -4,7 +4,7 @@
 # Bron Vault - Dockerized Setup Script
 # =====================================================
 # This script is designed to run INSIDE a Docker container
-# Uses service names from docker-compose (mysql, clickhouse)
+# Uses service names from docker compose (mysql, clickhouse)
 # =====================================================
 
 set -e
@@ -23,15 +23,15 @@ log_warning() { echo -e "${YELLOW}⚠️  [SETUP]${NC} $1"; }
 
 # -----------------------------------------------------
 # HOST CONFIGURATION
-# (According to service names in docker-compose.yml)
+# (According to service names in docker compose project)
 # -----------------------------------------------------
 
 # For container-to-container connections, use SERVICE NAME
-DB_HOST="mysql"           # Service name from docker-compose
-CH_HOST="clickhouse"      # Service name from docker-compose
+DB_HOST="mysql"           # Service name from docker compose
+CH_HOST="clickhouse"      # Service name from docker compose
 
 # For MaterializedMySQL, ClickHouse needs to connect to MySQL
-# Using hostname set in docker-compose (mysql_host)
+# Using hostname set in docker compose (mysql_host)
 # But we need to ensure ClickHouse can resolve this
 MYSQL_HOSTNAME_FOR_CH="mysql_host"  # MySQL container hostname
 
@@ -98,7 +98,7 @@ done
 
 if [ $count -eq $MAX_RETRIES ]; then
     log_error "MySQL Connection Timeout after $MAX_RETRIES attempts"
-    log_error "Please check MySQL container logs: docker-compose logs mysql"
+    log_error "Please check MySQL container logs: docker compose logs mysql"
     exit 1
 fi
 
@@ -129,7 +129,7 @@ done
 
 if [ $count -eq $MAX_RETRIES ]; then
     log_error "ClickHouse Connection Timeout after $MAX_RETRIES attempts"
-    log_error "Please check ClickHouse container logs: docker-compose logs clickhouse"
+    log_error "Please check ClickHouse container logs: docker compose logs clickhouse"
     exit 1
 fi
 
@@ -227,16 +227,16 @@ if echo "$RESPONSE" | grep -q "Exception"; then
     echo ""
     log_info "Troubleshooting steps:"
     echo "  1. Verify MySQL replication user exists:"
-    echo "     docker-compose exec mysql mysql -u root -p -e \"SELECT User, Host FROM mysql.user WHERE User = '${SYNC_USER}'\""
+    echo "     docker compose exec mysql mysql -u root -p -e \"SELECT User, Host FROM mysql.user WHERE User = '${SYNC_USER}'\""
     echo ""
     echo "  2. Verify MySQL hostname is correct:"
-    echo "     docker-compose exec mysql hostname"
+    echo "     docker compose exec mysql hostname"
     echo ""
     echo "  3. Test connection from ClickHouse to MySQL:"
-    echo "     docker-compose exec clickhouse ping mysql_host"
+    echo "     docker compose exec clickhouse ping mysql_host"
     echo ""
     echo "  4. Check MySQL binlog configuration:"
-    echo "     docker-compose exec mysql mysql -u root -p -e \"SHOW VARIABLES LIKE 'log_bin'\""
+    echo "     docker compose exec mysql mysql -u root -p -e \"SHOW VARIABLES LIKE 'log_bin'\""
     echo ""
     exit 1
 else
