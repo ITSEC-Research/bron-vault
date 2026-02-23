@@ -79,13 +79,13 @@ interface LazyPool {
 // Export pool getter for backwards compatibility with full type support
 export const pool: LazyPool = {
   execute: <T extends RowDataPacket[][] | RowDataPacket[] | OkPacket | OkPacket[] | ResultSetHeader>(
-    sql: string, 
+    sql: string,
     values?: any[]
-  ) => getPool().execute<T>(sql, values),
+  ) => getPool().execute<T>(sql, values ?? []),
   query: <T extends RowDataPacket[][] | RowDataPacket[] | OkPacket | OkPacket[] | ResultSetHeader | ProcedureCallPacket>(
-    sql: string, 
+    sql: string,
     values?: any[]
-  ) => getPool().query<T>(sql, values),
+  ) => getPool().query<T>(sql, values ?? []),
   getConnection: () => getPool().getConnection(),
   end: () => getPool().end(),
 }
