@@ -2,6 +2,7 @@
 .env.local
 node_modules/*
 .next/*
+tsconfig.tsbuildinfo
 .vscode
 uploads/*
 error.log

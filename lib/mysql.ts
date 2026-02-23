@@ -1,4 +1,6 @@
 import mysql, { Pool, PoolConnection, QueryResult, RowDataPacket, FieldPacket, ResultSetHeader, OkPacket, ProcedureCallPacket } from "mysql2/promise"
+import path from "path"
+import { existsSync } from "fs"
 
 // MySQL connection configuration - lazy loaded
 // SECURITY: No fallback defaults for credentials (HIGH-12)
@@ -48,10 +50,8 @@ function getPool(): Pool {
     ...dbConfig,
     waitForConnections: true,
     connectionLimit: 50,
-    queueLimit: 100, // SECURITY: Limit queue to prevent resource exhaustion (MED-17)
-    // Add connection timeout to prevent hanging
+    queueLimit: 0, // Unlimited queue: requests wait instead of throwing "Queue limit reached"
     connectTimeout: 10000,
-    // Enable keep-alive
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
   })
@@ -100,37 +100,73 @@ export async function executeQuery(query: string, params: any[] = []) {
   }
 }
 
-export async function initializeDatabase() {
+// Guard: run full initialization only once per process
+let initPromise: Promise<void> | null = null
+
+export async function initializeDatabase(): Promise<void> {
+  if (initPromise !== null) {
+    return initPromise
+  }
+  initPromise = (async () => {
+    try {
+      const dbConfig = getDbConfig()
+
+      const connection = await mysql.createConnection({
+        host: dbConfig.host,
+        port: dbConfig.port,
+        user: dbConfig.user,
+        password: dbConfig.password,
+        charset: "utf8mb4",
+      })
+
+      await connection.execute(
+        `CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
+      )
+      await connection.end()
+
+      await createTables()
+      await ensureLocalFilePathColumn()
+      await ensurePerformanceIndexes()
+
+      await cleanupOldTempUploads()
+
+      console.log("Database initialized successfully")
+    } catch (error) {
+      console.error("Database initialization error:", error)
+      initPromise = null // Allow retry on failure
+      throw error
+    }
+  })()
+  return initPromise
+}
+
+/**
+ * Remove orphan temp upload files (pattern: {uuid}_{filename}) older than upload_temp_cleanup_hours.
+ * Reads retention from app_settings via executeQuery to avoid circular dependency with lib/settings.
+ */
+async function cleanupOldTempUploads(): Promise<void> {
   try {
-    const dbConfig = getDbConfig()
-    
-    // Create database if not exists
-    const connection = await mysql.createConnection({
-      host: dbConfig.host,
-      port: dbConfig.port,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      charset: "utf8mb4",
-    })
-
-    await connection.execute(
-      `CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`,
-    )
-    await connection.end()
-
-    // Create tables
-    await createTables()
-
-    // IMPORTANT: Ensure local_file_path column exists
-    await ensureLocalFilePathColumn()
-
-    // IMPORTANT: Ensure performance indexes exist for optimal query performance
-    await ensurePerformanceIndexes()
-
-    console.log("Database initialized successfully")
-  } catch (error) {
-    console.error("Database initialization error:", error)
-    throw error
+    const uploadsDir = path.join(process.cwd(), "uploads")
+    if (!existsSync(uploadsDir)) return
+    const fs = await import("fs/promises")
+    const entries = await fs.readdir(uploadsDir, { withFileTypes: true })
+    const uuidPrefix = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_.+$/i
+    const rows = (await executeQuery(
+      "SELECT value FROM app_settings WHERE key_name = 'upload_temp_cleanup_hours' LIMIT 1",
+    )) as { value: string }[]
+    const hours = rows.length ? parseInt(rows[0].value, 10) || 24 : 24
+    const maxAgeMs = hours * 60 * 60 * 1000
+    const now = Date.now()
+    for (const e of entries) {
+      if (!e.isFile() || !uuidPrefix.test(e.name)) continue
+      const fullPath = path.join(uploadsDir, e.name)
+      const stat = await fs.stat(fullPath)
+      if (now - stat.mtimeMs > maxAgeMs) {
+        await fs.unlink(fullPath).catch(() => {})
+      }
+    }
+  } catch (_) {
+    // Do not fail init if cleanup errors
   }
 }
 
@@ -534,6 +570,20 @@ async function createAppSettingsTable() {
     await executeQuery(
       'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
       ['file_write_parallel_limit', '10', 'Maximum concurrent file writes (default: 10)']
+    )
+
+    // Upload via API key: concurrency, temp cleanup retention, max duration (recommended values)
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['upload_api_concurrency', '2', 'Max concurrent API key upload jobs (recommended: 2). For upload via API key only.']
+    )
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['upload_temp_cleanup_hours', '24', 'Age in hours after which orphan temp files in uploads/ are removed at startup (recommended: 24). For API key upload temp files.']
+    )
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['upload_api_max_duration_seconds', '300', 'Max request duration in seconds for upload API (receive file + 202). Recommended: 300. Display only; route uses static maxDuration.']
     )
 
     console.log("✅ app_settings table ensured")

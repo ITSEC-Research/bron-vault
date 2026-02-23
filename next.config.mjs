@@ -7,7 +7,8 @@ const nextConfig = {
   // Enable instrumentation hook for global error handlers
   experimental: {
     instrumentationHook: true,
-    webpackBuildWorker: true, // Use separate worker process for faster builds
+    // Disabled: worker process duplicates memory; single-process build uses less RAM (avoids OOM on large apps)
+    webpackBuildWorker: false,
     // Exclude large data folders from output file tracing (fixes slow builds)
     outputFileTracingExcludes: {
       '*': [

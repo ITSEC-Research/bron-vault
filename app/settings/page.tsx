@@ -17,12 +17,18 @@ interface UploadSettings {
   maxFileSize: number
   chunkSize: number
   maxConcurrentChunks: number
+  apiConcurrency: number
+  tempCleanupHours: number
+  apiMaxDurationSeconds: number
 }
 
 interface SettingsFormData {
   maxFileSizeGB: number
   chunkSizeMB: number
   maxConcurrentChunks: number
+  apiConcurrency: number
+  tempCleanupHours: number
+  apiMaxDurationSeconds: number
 }
 
 interface BatchSettings {
@@ -178,6 +184,9 @@ function UploadConfigurationTab() {
     maxFileSizeGB: 10,
     chunkSizeMB: 10,
     maxConcurrentChunks: 3,
+    apiConcurrency: 2,
+    tempCleanupHours: 24,
+    apiMaxDurationSeconds: 300,
   })
   const [errors, setErrors] = useState<Partial<Record<keyof SettingsFormData, string>>>({})
 
@@ -199,6 +208,9 @@ function UploadConfigurationTab() {
           maxFileSizeGB: Math.round(data.maxFileSize / (1024 * 1024 * 1024) * 100) / 100,
           chunkSizeMB: Math.round(data.chunkSize / (1024 * 1024) * 100) / 100,
           maxConcurrentChunks: data.maxConcurrentChunks,
+          apiConcurrency: data.apiConcurrency ?? 2,
+          tempCleanupHours: data.tempCleanupHours ?? 24,
+          apiMaxDurationSeconds: data.apiMaxDurationSeconds ?? 300,
         })
       } else {
         throw new Error("Failed to load settings")
@@ -238,6 +250,17 @@ function UploadConfigurationTab() {
     const chunkSizeBytes = formData.chunkSizeMB * 1024 * 1024
     if (chunkSizeBytes > maxFileSizeBytes / 10) {
       newErrors.chunkSizeMB = `Chunk size should be at most ${formatBytes(maxFileSizeBytes / 10)} (10% of max file size)`
+    }
+
+    // API key upload: concurrency 1–10, temp cleanup 1–168 h, max duration 60–86400 s
+    if (formData.apiConcurrency < 1 || formData.apiConcurrency > 10) {
+      newErrors.apiConcurrency = "API concurrency must be between 1 and 10"
+    }
+    if (formData.tempCleanupHours < 1 || formData.tempCleanupHours > 168) {
+      newErrors.tempCleanupHours = "Temp cleanup hours must be between 1 and 168"
+    }
+    if (formData.apiMaxDurationSeconds < 60 || formData.apiMaxDurationSeconds > 86400) {
+      newErrors.apiMaxDurationSeconds = "API max duration must be between 60 and 86400 seconds"
     }
 
     setErrors(newErrors)
@@ -281,6 +304,18 @@ function UploadConfigurationTab() {
               key_name: "upload_max_concurrent_chunks",
               value: formData.maxConcurrentChunks.toString(),
             },
+            {
+              key_name: "upload_api_concurrency",
+              value: formData.apiConcurrency.toString(),
+            },
+            {
+              key_name: "upload_temp_cleanup_hours",
+              value: formData.tempCleanupHours.toString(),
+            },
+            {
+              key_name: "upload_api_max_duration_seconds",
+              value: formData.apiMaxDurationSeconds.toString(),
+            },
           ],
         }),
       })
@@ -316,6 +351,9 @@ function UploadConfigurationTab() {
         maxFileSizeGB: Math.round(settings.maxFileSize / (1024 * 1024 * 1024) * 100) / 100,
         chunkSizeMB: Math.round(settings.chunkSize / (1024 * 1024) * 100) / 100,
         maxConcurrentChunks: settings.maxConcurrentChunks,
+        apiConcurrency: settings.apiConcurrency ?? 2,
+        tempCleanupHours: settings.tempCleanupHours ?? 24,
+        apiMaxDurationSeconds: settings.apiMaxDurationSeconds ?? 300,
       })
       setErrors({})
     }
@@ -467,6 +505,96 @@ function UploadConfigurationTab() {
                   Current: {settings.maxConcurrentChunks}
                 </p>
               )}
+            </div>
+
+            {/* Parameter upload via API key */}
+            <div className="rounded-lg border-2 border-amber-500/30 bg-amber-500/10 p-4 space-y-4">
+              <p className="text-sm text-foreground font-medium">
+                Parameter upload via API key
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Parameter berikut hanya berlaku untuk upload via API key. Ketiga nilai di bawah adalah nilai yang disarankan.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="apiConcurrency" className="text-foreground">
+                    API concurrency
+                  </Label>
+                  <Input
+                    id="apiConcurrency"
+                    type="number"
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={formData.apiConcurrency}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10)
+                      setFormData({ ...formData, apiConcurrency: isNaN(value) ? 1 : value })
+                      if (errors.apiConcurrency) setErrors({ ...errors, apiConcurrency: undefined })
+                    }}
+                    className={`glass-card border-border/50 text-foreground ${errors.apiConcurrency ? "border-destructive" : ""}`}
+                  />
+                  {errors.apiConcurrency && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.apiConcurrency}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">Max concurrent API upload jobs. Recommended: 2</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tempCleanupHours" className="text-foreground">
+                    Temp cleanup (hours)
+                  </Label>
+                  <Input
+                    id="tempCleanupHours"
+                    type="number"
+                    min={1}
+                    max={168}
+                    step={1}
+                    value={formData.tempCleanupHours}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10)
+                      setFormData({ ...formData, tempCleanupHours: isNaN(value) ? 24 : value })
+                      if (errors.tempCleanupHours) setErrors({ ...errors, tempCleanupHours: undefined })
+                    }}
+                    className={`glass-card border-border/50 text-foreground ${errors.tempCleanupHours ? "border-destructive" : ""}`}
+                  />
+                  {errors.tempCleanupHours && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.tempCleanupHours}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">Remove orphan temp files after (hours). Recommended: 24</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="apiMaxDurationSeconds" className="text-foreground">
+                    API max duration (s)
+                  </Label>
+                  <Input
+                    id="apiMaxDurationSeconds"
+                    type="number"
+                    min={60}
+                    max={86400}
+                    step={60}
+                    value={formData.apiMaxDurationSeconds}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value, 10)
+                      setFormData({ ...formData, apiMaxDurationSeconds: isNaN(value) ? 300 : value })
+                      if (errors.apiMaxDurationSeconds) setErrors({ ...errors, apiMaxDurationSeconds: undefined })
+                    }}
+                    className={`glass-card border-border/50 text-foreground ${errors.apiMaxDurationSeconds ? "border-destructive" : ""}`}
+                  />
+                  {errors.apiMaxDurationSeconds && (
+                    <p className="text-sm text-destructive flex items-center gap-1">
+                      <AlertCircle className="h-4 w-4" />
+                      {errors.apiMaxDurationSeconds}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">Max request duration (display). Recommended: 300</p>
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons */}

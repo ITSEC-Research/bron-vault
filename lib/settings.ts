@@ -15,6 +15,9 @@ export const SETTING_KEYS = {
   UPLOAD_MAX_FILE_SIZE: 'upload_max_file_size',
   UPLOAD_CHUNK_SIZE: 'upload_chunk_size',
   UPLOAD_MAX_CONCURRENT_CHUNKS: 'upload_max_concurrent_chunks',
+  UPLOAD_API_CONCURRENCY: 'upload_api_concurrency',
+  UPLOAD_TEMP_CLEANUP_HOURS: 'upload_temp_cleanup_hours',
+  UPLOAD_API_MAX_DURATION_SECONDS: 'upload_api_max_duration_seconds',
   // Database batch size settings
   DB_BATCH_SIZE_CREDENTIALS: 'db_batch_size_credentials',
   DB_BATCH_SIZE_PASSWORD_STATS: 'db_batch_size_password_stats',
@@ -39,6 +42,9 @@ export interface UploadSettings {
   maxFileSize: number
   chunkSize: number
   maxConcurrentChunks: number
+  apiConcurrency: number
+  tempCleanupHours: number
+  apiMaxDurationSeconds: number
 }
 
 export interface BatchSettings {
@@ -268,16 +274,29 @@ class SettingsManager {
    * Get upload-specific settings (convenience method)
    */
   async getUploadSettings(): Promise<UploadSettings> {
-    const [maxFileSize, chunkSize, maxConcurrentChunks] = await Promise.all([
+    const [
+      maxFileSize,
+      chunkSize,
+      maxConcurrentChunks,
+      apiConcurrency,
+      tempCleanupHours,
+      apiMaxDurationSeconds,
+    ] = await Promise.all([
       this.getSettingNumber(SETTING_KEYS.UPLOAD_MAX_FILE_SIZE, 10737418240), // 10GB default
       this.getSettingNumber(SETTING_KEYS.UPLOAD_CHUNK_SIZE, 10485760), // 10MB default
       this.getSettingNumber(SETTING_KEYS.UPLOAD_MAX_CONCURRENT_CHUNKS, 3), // 3 default
+      this.getSettingNumber(SETTING_KEYS.UPLOAD_API_CONCURRENCY, 2), // recommended: 2
+      this.getSettingNumber(SETTING_KEYS.UPLOAD_TEMP_CLEANUP_HOURS, 24), // recommended: 24
+      this.getSettingNumber(SETTING_KEYS.UPLOAD_API_MAX_DURATION_SECONDS, 300), // recommended: 300
     ])
 
     return {
       maxFileSize,
       chunkSize,
       maxConcurrentChunks,
+      apiConcurrency,
+      tempCleanupHours,
+      apiMaxDurationSeconds,
     }
   }
 
