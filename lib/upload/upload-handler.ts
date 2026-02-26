@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { validateRequest, requireAdminRole } from "@/lib/auth"
 import { broadcastLogToSession, closeLogSession } from "@/lib/upload-connections"
 import { processFileUpload } from "./file-upload-processor"
-import { createImportLog, logUploadAction } from "@/lib/audit-log"
+import { createImportLog, updateImportLog, logUploadAction } from "@/lib/audit-log"
 import { v4 as uuidv4 } from "uuid"
 
 export async function handleUploadRequest(request: NextRequest): Promise<NextResponse> {
@@ -52,30 +52,70 @@ export async function handleUploadRequest(request: NextRequest): Promise<NextRes
       request
     )
 
+    // Create import log with pending status BEFORE processing starts
+    await createImportLog({
+      job_id: jobId,
+      user_id: Number(user.userId),
+      user_email: user.email || null,
+      api_key_id: null,
+      source: 'web',
+      filename: file.name,
+      file_size: file.size,
+      status: 'pending',
+      total_devices: 0,
+      processed_devices: 0,
+      total_credentials: 0,
+      total_files: 0,
+      error_message: null,
+      started_at: null,
+      completed_at: null
+    })
+
+    // Update to processing status when processing starts
+    await updateImportLog(jobId, {
+      status: 'processing',
+      started_at: startedAt,
+    })
+
+    // Enhanced log function that also updates import log progress
+    let lastProgress = 0
+    const logWithProgressUpdate = (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
+      logWithBroadcast(message, type)
+      
+      // Check for progress updates in log messages
+      const progressMatch = message.match(/\[PROGRESS\]\s*(\d+)\/(\d+)/)
+      if (progressMatch) {
+        const current = parseInt(progressMatch[1], 10)
+        const total = parseInt(progressMatch[2], 10)
+        if (total > 0) {
+          const progressPercent = Math.min(99, Math.floor((current / total) * 100))
+          if (progressPercent > lastProgress) {
+            lastProgress = progressPercent
+            // Update import log with progress (non-blocking)
+            updateImportLog(jobId, {
+              processed_devices: current,
+              total_devices: total,
+            }).catch(err => console.error('Failed to update import log progress:', err))
+          }
+        }
+      }
+    }
+
     // Process file upload
-    const result = await processFileUpload(file, sessionId, logWithBroadcast)
+    const result = await processFileUpload(file, sessionId, logWithProgressUpdate)
 
     // Close log session
     setTimeout(() => closeLogSession(sessionId), 1000)
 
     if (result.success) {
-      // Create import log with complete data AFTER processing is done
+      // Update import log with complete data AFTER processing is done
       // Note: result.details contains devicesFound, devicesProcessed from zip processor
-      await createImportLog({
-        job_id: jobId,
-        user_id: Number(user.userId),
-        user_email: user.email || null,
-        api_key_id: null,
-        source: 'web',
-        filename: file.name,
-        file_size: file.size,
+      await updateImportLog(jobId, {
         status: 'completed',
         total_devices: result.details?.devicesFound || 0,
         processed_devices: result.details?.devicesProcessed || 0,
         total_credentials: result.details?.totalCredentials || 0,
         total_files: result.details?.totalFiles || 0,
-        error_message: null,
-        started_at: startedAt,
         completed_at: new Date()
       })
 
@@ -97,22 +137,10 @@ export async function handleUploadRequest(request: NextRequest): Promise<NextRes
         details: result.details,
       })
     } else {
-      // Create import log for failed upload
-      await createImportLog({
-        job_id: jobId,
-        user_id: Number(user.userId),
-        user_email: user.email || null,
-        api_key_id: null,
-        source: 'web',
-        filename: file.name,
-        file_size: file.size,
+      // Update import log for failed upload
+      await updateImportLog(jobId, {
         status: 'failed',
-        total_devices: 0,
-        processed_devices: 0,
-        total_credentials: 0,
-        total_files: 0,
         error_message: result.error || 'Unknown error',
-        started_at: startedAt,
         completed_at: new Date()
       })
 
@@ -136,24 +164,31 @@ export async function handleUploadRequest(request: NextRequest): Promise<NextRes
   } catch (error) {
     logWithBroadcast("💥 Upload processing error:" + error, "error")
 
-    // Create import log for error
+    // Update import log for error (it should already exist from before processing)
     const file = formData.get("file") as File
-    await createImportLog({
-      job_id: jobId,
-      user_id: Number(user.userId),
-      user_email: user.email || null,
-      api_key_id: null,
-      source: 'web',
-      filename: file?.name || 'unknown',
-      file_size: file?.size || 0,
+    await updateImportLog(jobId, {
       status: 'failed',
-      total_devices: 0,
-      processed_devices: 0,
-      total_credentials: 0,
-      total_files: 0,
       error_message: error instanceof Error ? error.message : 'Unknown error',
-      started_at: startedAt,
       completed_at: new Date()
+    }).catch(async () => {
+      // If update fails, try to create it (fallback)
+      await createImportLog({
+        job_id: jobId,
+        user_id: Number(user.userId),
+        user_email: user.email || null,
+        api_key_id: null,
+        source: 'web',
+        filename: file?.name || 'unknown',
+        file_size: file?.size || 0,
+        status: 'failed',
+        total_devices: 0,
+        processed_devices: 0,
+        total_credentials: 0,
+        total_files: 0,
+        error_message: error instanceof Error ? error.message : 'Unknown error',
+        started_at: startedAt,
+        completed_at: new Date()
+      })
     })
 
     // Log the upload failure in audit log

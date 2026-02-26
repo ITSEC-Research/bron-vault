@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { 
   FileUp, 
   Search, 
@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth, isAdmin as checkIsAdmin } from "@/hooks/useAuth"
 import {
@@ -164,6 +165,15 @@ export default function ImportLogsPage() {
     search: ''
   })
   const [showFilters, setShowFilters] = useState(false)
+  
+  // Polling ref for processing logs
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const logsRef = useRef<ImportLog[]>([])
+
+  // Keep logsRef in sync with logs
+  useEffect(() => {
+    logsRef.current = logs
+  }, [logs])
 
   // Load logs when filters change
   useEffect(() => {
@@ -172,6 +182,91 @@ export default function ImportLogsPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userIsAdmin, pagination.page, filters])
+
+  // Polling for processing logs to get real-time updates
+  useEffect(() => {
+    if (!userIsAdmin) return
+
+    const pollProcessingLogs = async () => {
+      try {
+        const currentLogs = logsRef.current
+        // Check if there are processing or pending logs
+        const hasProcessingLogs = currentLogs.some(log => log.status === 'processing' || log.status === 'pending')
+        
+        const params = new URLSearchParams({
+          page: String(pagination.page),
+          limit: String(pagination.limit)
+        })
+        
+        if (filters.source) params.set('source', filters.source)
+        if (filters.status) params.set('status', filters.status)
+        if (filters.user_id) params.set('user_id', filters.user_id)
+        if (filters.start_date) params.set('start_date', filters.start_date)
+        if (filters.end_date) params.set('end_date', filters.end_date)
+        if (filters.search) params.set('search', filters.search)
+        
+        const response = await fetch(`/api/import-logs?${params}`, {
+          credentials: 'include'
+        })
+        const data = await response.json()
+        
+        if (data.success) {
+          const newLogs = data.logs as ImportLog[]
+          
+          // Always update logs if there are processing logs (for real-time progress updates)
+          if (hasProcessingLogs) {
+            setLogs(newLogs)
+            setStats(data.stats)
+            setPagination((prev: Pagination) => ({
+              ...prev,
+              total: data.pagination.total,
+              totalPages: data.pagination.totalPages
+            }))
+          } else {
+            // Check if any log changed from processing/pending to completed
+            const oldLogsMap = new Map(currentLogs.map(log => [log.id, log.status]))
+            const hasStatusChanged = newLogs.some(newLog => {
+              const oldStatus = oldLogsMap.get(newLog.id)
+              return (oldStatus === 'processing' || oldStatus === 'pending') && newLog.status === 'completed'
+            })
+
+            if (hasStatusChanged) {
+              // Update logs and stats when status changes to completed
+              setLogs(newLogs)
+              setStats(data.stats)
+              setPagination((prev: Pagination) => ({
+                ...prev,
+                total: data.pagination.total,
+                totalPages: data.pagination.totalPages
+              }))
+              
+              // Auto-refresh to get updated stats after completion
+              setTimeout(() => {
+                loadLogs()
+              }, 500)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Polling error:', error)
+      }
+    }
+
+    // Start polling every 2 seconds
+    pollingIntervalRef.current = setInterval(pollProcessingLogs, 2000)
+    
+    // Initial poll after a short delay
+    const initialTimeout = setTimeout(pollProcessingLogs, 1000)
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+      clearTimeout(initialTimeout)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userIsAdmin, pagination.page, pagination.limit, filters])
 
   const loadLogs = useCallback(async () => {
     try {
@@ -459,7 +554,7 @@ export default function ImportLogsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by email, filename, or job ID..."
+              placeholder="Search by user or filename..."
               value={filters.search}
               onChange={e => handleFilterChange('search', e.target.value)}
               className="pl-10 glass-card border-border/50"
@@ -536,25 +631,49 @@ export default function ImportLogsPage() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="outline" className={statusCfg.color}>
-                                  <StatusIcon className={`h-3 w-3 mr-1 ${log.status === 'processing' ? 'animate-spin' : ''}`} />
-                                  {statusCfg.label}
-                                </Badge>
-                              </TooltipTrigger>
-                              {log.error_message && (
-                                <TooltipContent className="max-w-sm">
-                                  <p className="text-sm">{log.error_message}</p>
-                                </TooltipContent>
+                            <div className="space-y-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className={statusCfg.color}>
+                                    <StatusIcon className={`h-3 w-3 mr-1 ${log.status === 'processing' ? 'animate-spin' : ''}`} />
+                                    {log.status === 'processing' && log.total_devices > 0
+                                      ? `${statusCfg.label} (${Math.round((log.processed_devices / log.total_devices) * 100)}%)`
+                                      : statusCfg.label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                {log.error_message && (
+                                  <TooltipContent className="max-w-sm">
+                                    <p className="text-sm">{log.error_message}</p>
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                              {/* Progress bar for processing status */}
+                              {log.status === 'processing' && (
+                                <div className="space-y-1">
+                                  {log.total_devices > 0 ? (
+                                    <Progress 
+                                      value={Math.round((log.processed_devices / log.total_devices) * 100)} 
+                                      className="h-1.5 w-full"
+                                    />
+                                  ) : (
+                                    <div className="text-xs text-muted-foreground">
+                                      Initializing...
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                            </Tooltip>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="space-y-1 text-sm">
                               <p className="text-foreground flex items-center justify-end gap-1">
                                 <HardDrive className="h-3 w-3 text-muted-foreground" />
                                 {Number(log.processed_devices || 0).toLocaleString()}/{Number(log.total_devices || 0).toLocaleString()}
+                                {log.status === 'processing' && log.total_devices > 0 && (
+                                  <span className="text-xs text-primary font-medium ml-1">
+                                    ({Math.round((log.processed_devices / log.total_devices) * 100)}%)
+                                  </span>
+                                )}
                               </p>
                               <p className="text-muted-foreground flex items-center justify-end gap-1">
                                 <FileText className="h-3 w-3" />

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { pool } from "@/lib/mysql"
+import { executeQuery as executeClickHouseQuery } from "@/lib/clickhouse"
 import { validateRequest, requireAdminRole } from "@/lib/auth"
 import type { RowDataPacket } from "mysql2"
 
@@ -115,19 +116,65 @@ export async function GET(request: NextRequest) {
       [...params, limit, offset]
     )
     
-    // Calculate statistics
-    const [stats] = await pool.query<RowDataPacket[]>(
+    // Calculate statistics from import_logs (MySQL)
+    const [importStats] = await pool.query<RowDataPacket[]>(
       `SELECT 
         COUNT(*) as total_imports,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_imports,
         SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_imports,
         SUM(CASE WHEN source = 'web' THEN 1 ELSE 0 END) as web_imports,
-        SUM(CASE WHEN source = 'api' THEN 1 ELSE 0 END) as api_imports,
-        SUM(total_devices) as total_devices,
-        SUM(total_credentials) as total_credentials,
-        SUM(total_files) as total_files
+        SUM(CASE WHEN source = 'api' THEN 1 ELSE 0 END) as api_imports
        FROM import_logs`
     )
+    
+    // Get actual device/credentials/files counts from ClickHouse (same as dashboard)
+    // This ensures consistency between dashboard and import logs
+    let totalDevices = 0
+    let totalCredentials = 0
+    let totalFiles = 0
+    
+    try {
+      // Query devices count (same as dashboard)
+      const deviceStatsResult = (await executeClickHouseQuery(`
+        SELECT count() as total_devices
+        FROM devices
+      `)) as any[]
+      
+      if (deviceStatsResult && deviceStatsResult.length > 0) {
+        totalDevices = Number(deviceStatsResult[0]?.total_devices) || 0
+      }
+      
+      // Query total credentials from devices table (aggregated sum, same as dashboard)
+      const credentialsStatsResult = (await executeClickHouseQuery(`
+        SELECT sum(total_credentials) as total_credentials
+        FROM devices
+      `)) as any[]
+      
+      if (credentialsStatsResult && credentialsStatsResult.length > 0) {
+        totalCredentials = Number(credentialsStatsResult[0]?.total_credentials) || 0
+      }
+      
+      // Query total files count (same as dashboard)
+      const filesStatsResult = (await executeClickHouseQuery(`
+        SELECT count() as total_files
+        FROM files
+        WHERE is_directory = 0
+      `)) as any[]
+      
+      if (filesStatsResult && filesStatsResult.length > 0) {
+        totalFiles = Number(filesStatsResult[0]?.total_files) || 0
+      }
+    } catch (clickhouseError) {
+      console.error("Error querying ClickHouse for stats:", clickhouseError)
+      // Continue with 0 values if ClickHouse query fails
+    }
+    
+    const stats = {
+      ...(importStats[0] || {}),
+      total_devices: totalDevices,
+      total_credentials: totalCredentials,
+      total_files: totalFiles
+    }
     
     return NextResponse.json({
       success: true,
@@ -138,7 +185,7 @@ export async function GET(request: NextRequest) {
         total,
         totalPages: Math.ceil(total / limit)
       },
-      stats: stats[0] || {}
+      stats
     })
   } catch (err) {
     console.error("Get import logs error:", err)

@@ -9,7 +9,7 @@ import { pipeline } from "stream/promises"
 import { mkdir } from "fs/promises"
 import { processFileUploadFromPath } from "@/lib/upload/file-upload-processor"
 import { broadcastLogToSession, closeLogSession } from "@/lib/upload-connections"
-import { createImportLog, logUploadAction } from "@/lib/audit-log"
+import { createImportLog, updateImportLog, logUploadAction } from "@/lib/audit-log"
 import { v4 as uuidv4 } from "uuid"
 
 /**
@@ -178,11 +178,55 @@ export async function POST(request: NextRequest) {
       request
     )
 
+    // Create import log with pending status BEFORE processing starts
+    await createImportLog({
+      job_id: jobId,
+      user_id: Number(user.userId),
+      user_email: user.email || null,
+      api_key_id: null,
+      source: 'web',
+      filename: fileName,
+      file_size: stats.size,
+      status: 'pending',
+      total_devices: 0,
+      processed_devices: 0,
+      total_credentials: 0,
+      total_files: 0,
+      error_message: null,
+      started_at: null,
+      completed_at: null
+    })
+
+    // Update to processing status when processing starts
+    await updateImportLog(jobId, {
+      status: 'processing',
+      started_at: startedAt,
+    })
+
     // Process the assembled file (same processing logic as regular upload)
     // This uses the EXACT SAME processing functions - no changes to parsing logic
+    let lastProgress = 0
     const logWithBroadcast = (message: string, type: "info" | "success" | "warning" | "error" = "info") => {
       console.log(message)
       broadcastLogToSession(sessionId, message, type)
+      
+      // Check for progress updates in log messages
+      const progressMatch = message.match(/\[PROGRESS\]\s*(\d+)\/(\d+)/)
+      if (progressMatch) {
+        const current = parseInt(progressMatch[1], 10)
+        const total = parseInt(progressMatch[2], 10)
+        if (total > 0) {
+          const progressPercent = Math.min(99, Math.floor((current / total) * 100))
+          if (progressPercent > lastProgress) {
+            lastProgress = progressPercent
+            // Update import log with progress (non-blocking)
+            updateImportLog(jobId, {
+              processed_devices: current,
+              total_devices: total,
+            }).catch(err => console.error('Failed to update import log progress:', err))
+          }
+        }
+      }
     }
 
     logWithBroadcast("📦 File assembled successfully, starting processing...", "info")
@@ -202,22 +246,10 @@ export async function POST(request: NextRequest) {
       const errorMsg = processError instanceof Error ? processError.message : String(processError)
       logWithBroadcast(`❌ Processing threw an error: ${errorMsg}`, "error")
       
-      // Create import log for error - AFTER processing failed
-      await createImportLog({
-        job_id: jobId,
-        user_id: Number(user.userId),
-        user_email: user.email || null,
-        api_key_id: null,
-        source: 'web',
-        filename: fileName,
-        file_size: stats.size,
+      // Update import log for error - AFTER processing failed
+      await updateImportLog(jobId, {
         status: 'failed',
-        total_devices: 0,
-        processed_devices: 0,
-        total_credentials: 0,
-        total_files: 0,
         error_message: errorMsg,
-        started_at: startedAt,
         completed_at: new Date()
       })
 
@@ -248,23 +280,14 @@ export async function POST(request: NextRequest) {
     setTimeout(() => closeLogSession(sessionId), 1000)
 
     if (processingResult.success) {
-      // Create import log with complete data AFTER processing is done
+      // Update import log with complete data AFTER processing is done
       // Note: processingResult.details contains devicesFound, devicesProcessed from zip processor
-      await createImportLog({
-        job_id: jobId,
-        user_id: Number(user.userId),
-        user_email: user.email || null,
-        api_key_id: null,
-        source: 'web',
-        filename: fileName,
-        file_size: stats.size,
+      await updateImportLog(jobId, {
         status: 'completed',
         total_devices: processingResult.details?.devicesFound || 0,
         processed_devices: processingResult.details?.devicesProcessed || 0,
         total_credentials: processingResult.details?.totalCredentials || 0,
         total_files: processingResult.details?.totalFiles || 0,
-        error_message: null,
-        started_at: startedAt,
         completed_at: new Date()
       })
 
@@ -289,22 +312,10 @@ export async function POST(request: NextRequest) {
         message: "File assembled and processed successfully",
       })
     } else {
-      // Create import log for failed processing
-      await createImportLog({
-        job_id: jobId,
-        user_id: Number(user.userId),
-        user_email: user.email || null,
-        api_key_id: null,
-        source: 'web',
-        filename: fileName,
-        file_size: stats.size,
+      // Update import log for failed processing
+      await updateImportLog(jobId, {
         status: 'failed',
-        total_devices: 0,
-        processed_devices: 0,
-        total_credentials: 0,
-        total_files: 0,
         error_message: processingResult.error || 'Unknown error',
-        started_at: startedAt,
         completed_at: new Date()
       })
 

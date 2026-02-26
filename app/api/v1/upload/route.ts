@@ -100,6 +100,11 @@ async function processUploadFromPathWithJob(
               processedDevices: current,
               totalDevices: total,
             })
+            // Also update import log for real-time progress in import-logs page
+            await updateImportLog(jobId, {
+              processed_devices: current,
+              total_devices: total,
+            }).catch(err => console.error('Failed to update import log progress:', err))
           }
         }
       }
