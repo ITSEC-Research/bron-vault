@@ -9,11 +9,13 @@ import { createClient, type ClickHouseClient } from '@clickhouse/client'
  * THROWS ERROR if not found (no fallback)
  */
 function validateEnvVars() {
+  // CLICKHOUSE_DATABASE can come from .env as CLICKHOUSE_DB (docker-compose uses CLICKHOUSE_DB; app expects CLICKHOUSE_DATABASE)
+  const database = process.env.CLICKHOUSE_DATABASE || process.env.CLICKHOUSE_DB
   const requiredEnvVars = {
     CLICKHOUSE_HOST: process.env.CLICKHOUSE_HOST,
     CLICKHOUSE_USER: process.env.CLICKHOUSE_USER,
     CLICKHOUSE_PASSWORD: process.env.CLICKHOUSE_PASSWORD,
-    CLICKHOUSE_DATABASE: process.env.CLICKHOUSE_DATABASE,
+    CLICKHOUSE_DATABASE: database,
   }
 
   // Check if all required variables are set

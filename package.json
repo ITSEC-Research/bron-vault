@@ -7,7 +7,8 @@
     "dev": "next dev",
     "dev:turbo": "next dev --turbo",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "docker:infra": "docker compose up -d mysql clickhouse minio setup"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.985.0",

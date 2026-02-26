@@ -209,6 +209,39 @@ docker compose down
 docker compose restart
 ```
 
+#### Development with hot reload (npm run dev)
+
+If you want code changes to be reflected immediately without rebuilding Docker (as with `npm run dev`), run only the infrastructure in Docker and the Next.js app on your machine:
+
+1. **Start only MySQL, ClickHouse, MinIO, and setup** (no app container):
+
+   ```bash
+   npm run docker:infra
+   ```
+   Or: `bash docker-start-infra.sh`
+
+2. **Configure local env** so the app can reach the containers on localhost:
+
+   ```bash
+   cp env.local.example .env.local
+   ```
+
+   Edit `.env.local`: set `DATABASE_URL` and ensure `MYSQL_HOST=127.0.0.1`, `CLICKHOUSE_HOST=http://127.0.0.1:8123`. Use the same `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE` and other values as in your `.env`.
+
+3. **Install dependencies** (if not already done):
+
+   ```bash
+   npm install
+   ```
+
+4. **Run the app locally** (hot reload):
+
+   ```bash
+   npm run dev
+   ```
+
+   Open http://localhost:3000. MySQL (3306), ClickHouse (8123), and MinIO (S3 API 9001, Console 9002) stay in Docker; only the app runs locally so changes apply instantly.
+
 ### Initial Setup
 
 The first time you start the services:
