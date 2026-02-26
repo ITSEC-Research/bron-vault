@@ -155,10 +155,10 @@ export default function ImportLogsPage() {
     totalPages: 0
   })
   
-  // Filter states
+  // Filter states (use 'all' for source/status so Select.Item never has value="")
   const [filters, setFilters] = useState<FilterState>({
-    source: '',
-    status: '',
+    source: 'all',
+    status: 'all',
     user_id: '',
     start_date: '',
     end_date: '',
@@ -198,8 +198,8 @@ export default function ImportLogsPage() {
           limit: String(pagination.limit)
         })
         
-        if (filters.source) params.set('source', filters.source)
-        if (filters.status) params.set('status', filters.status)
+        if (filters.source && filters.source !== 'all') params.set('source', filters.source)
+        if (filters.status && filters.status !== 'all') params.set('status', filters.status)
         if (filters.user_id) params.set('user_id', filters.user_id)
         if (filters.start_date) params.set('start_date', filters.start_date)
         if (filters.end_date) params.set('end_date', filters.end_date)
@@ -277,8 +277,8 @@ export default function ImportLogsPage() {
         limit: String(pagination.limit)
       })
       
-      if (filters.source) params.set('source', filters.source)
-      if (filters.status) params.set('status', filters.status)
+      if (filters.source && filters.source !== 'all') params.set('source', filters.source)
+      if (filters.status && filters.status !== 'all') params.set('status', filters.status)
       if (filters.user_id) params.set('user_id', filters.user_id)
       if (filters.start_date) params.set('start_date', filters.start_date)
       if (filters.end_date) params.set('end_date', filters.end_date)
@@ -323,8 +323,8 @@ export default function ImportLogsPage() {
 
   const clearFilters = () => {
     setFilters({
-      source: '',
-      status: '',
+      source: 'all',
+      status: 'all',
       user_id: '',
       start_date: '',
       end_date: '',
@@ -413,7 +413,7 @@ export default function ImportLogsPage() {
                   <Button variant="outline" className="glass-card border-border/50">
                     <Filter className="mr-2 h-4 w-4" />
                     Filters
-                    {Object.values(filters).some(Boolean) && (
+                    {(filters.source !== 'all' || filters.status !== 'all' || filters.user_id || filters.start_date || filters.end_date || filters.search) && (
                       <Badge variant="secondary" className="ml-2">Active</Badge>
                     )}
                   </Button>
@@ -427,7 +427,7 @@ export default function ImportLogsPage() {
                           <SelectValue placeholder="All sources" />
                         </SelectTrigger>
                         <SelectContent className="glass-modal">
-                          <SelectItem value="">All sources</SelectItem>
+                          <SelectItem value="all">All sources</SelectItem>
                           <SelectItem value="web">Web Upload</SelectItem>
                           <SelectItem value="api">API Upload</SelectItem>
                         </SelectContent>
@@ -441,7 +441,7 @@ export default function ImportLogsPage() {
                           <SelectValue placeholder="All statuses" />
                         </SelectTrigger>
                         <SelectContent className="glass-modal">
-                          <SelectItem value="">All statuses</SelectItem>
+                          <SelectItem value="all">All statuses</SelectItem>
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="processing">Processing</SelectItem>
                           <SelectItem value="completed">Completed</SelectItem>
