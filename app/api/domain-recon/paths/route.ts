@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     throwIfAborted(request)
     
     const body = await request.json()
-    const { hostname, limit = 20 } = body
+    const { hostname, limit = 20, offset = 0 } = body
 
     if (!hostname || typeof hostname !== 'string') {
       return NextResponse.json({ error: "hostname is required" }, { status: 400 })
@@ -65,13 +65,14 @@ export async function POST(request: NextRequest) {
     // Get signal for passing to database queries
     const signal = getRequestSignal(request)
 
-    // Validate limit
+    // Validate limit and offset for pagination
     const safeLimit = Math.max(1, Math.min(Number(limit) || 20, 100))
+    const safeOffset = Math.max(0, Math.floor(Number(offset) || 0))
 
     // Check abort before expensive operations
     throwIfAborted(request)
 
-    // Query paths for specific hostname
+    // Query paths for specific hostname (with pagination)
     const dataQuery = `
       SELECT 
         ${PATH_EXPR} as path,
@@ -80,12 +81,13 @@ export async function POST(request: NextRequest) {
       WHERE ${HOSTNAME_EXPR} = {hostname:String}
       GROUP BY ${PATH_EXPR}
       ORDER BY credential_count DESC
-      LIMIT {queryLimit:UInt32}
+      LIMIT {queryLimit:UInt32} OFFSET {queryOffset:UInt32}
     `
 
     const data = (await executeClickHouseQuery(dataQuery, { 
       hostname: hostname.trim(),
-      queryLimit: safeLimit 
+      queryLimit: safeLimit,
+      queryOffset: safeOffset,
     }, signal)) as any[]
 
     // Get total paths count
@@ -108,7 +110,9 @@ export async function POST(request: NextRequest) {
         credentialCount: Number(row.credential_count || 0),
       })),
       total: totalPaths,
-      hasMore: totalPaths > safeLimit,
+      hasMore: totalPaths > safeOffset + safeLimit,
+      limit: safeLimit,
+      offset: safeOffset,
     })
   } catch (error) {
     // Handle abort errors gracefully

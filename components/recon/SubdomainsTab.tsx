@@ -30,10 +30,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface SubdomainItem {
   fullHostname: string
@@ -65,38 +66,61 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
   const [jumpToPage, setJumpToPage] = useState("")
   const [limit, setLimit] = useState(50)
   
-  // Paths popup state
-  const [pathsData, setPathsData] = useState<{ [hostname: string]: { paths: PathItem[], total: number, hasMore: boolean, loading: boolean } }>({})
+  const PATHS_PAGE_SIZE = 20
 
-  // Load paths for a specific hostname
-  const loadPaths = async (hostname: string) => {
-    if (pathsData[hostname]?.paths) return // Already loaded
-    
-    setPathsData(prev => ({ ...prev, [hostname]: { ...prev[hostname], loading: true, paths: [], total: 0, hasMore: false } }))
-    
+  // Paths modal state: which hostname is open and current page
+  const [pathsModalHostname, setPathsModalHostname] = useState<string | null>(null)
+  const [pathsPage, setPathsPage] = useState(1)
+  const [pathsData, setPathsData] = useState<{ [hostname: string]: { paths: PathItem[], total: number, loading: boolean } }>({})
+
+  // Load paths for a specific hostname and page (used by modal with pagination)
+  const loadPaths = async (hostname: string, page: number = 1) => {
+    const offset = (page - 1) * PATHS_PAGE_SIZE
+    setPathsData(prev => ({ ...prev, [hostname]: { ...prev[hostname], loading: true, paths: [], total: prev[hostname]?.total ?? 0 } }))
+
     try {
       const response = await fetch("/api/domain-recon/paths", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ hostname, limit: 20 }),
+        body: JSON.stringify({ hostname, limit: PATHS_PAGE_SIZE, offset }),
       })
-      
+
       if (response.ok) {
         const result = await response.json()
-        setPathsData(prev => ({ 
-          ...prev, 
-          [hostname]: { 
-            paths: result.paths || [], 
-            total: result.total || 0, 
-            hasMore: result.hasMore || false,
-            loading: false 
-          } 
+        setPathsData(prev => ({
+          ...prev,
+          [hostname]: {
+            paths: result.paths || [],
+            total: result.total || 0,
+            loading: false,
+          },
         }))
+      } else {
+        setPathsData(prev => ({ ...prev, [hostname]: { ...prev[hostname], loading: false, paths: [], total: 0 } }))
       }
     } catch (error) {
       console.error("Error loading paths:", error)
-      setPathsData(prev => ({ ...prev, [hostname]: { ...prev[hostname], loading: false, paths: [], total: 0, hasMore: false } }))
+      setPathsData(prev => ({ ...prev, [hostname]: { ...prev[hostname], loading: false, paths: [], total: 0 } }))
     }
+  }
+
+  const openPathsModal = (hostname: string) => {
+    setPathsModalHostname(hostname)
+    setPathsPage(1)
+    loadPaths(hostname, 1)
+  }
+
+  const closePathsModal = () => {
+    setPathsModalHostname(null)
+  }
+
+  const goToPathsPage = (newPage: number) => {
+    if (!pathsModalHostname) return
+    const total = pathsData[pathsModalHostname]?.total ?? 0
+    const totalPages = Math.max(1, Math.ceil(total / PATHS_PAGE_SIZE))
+    if (newPage < 1 || newPage > totalPages) return
+    setPathsPage(newPage)
+    loadPaths(pathsModalHostname, newPage)
   }
 
   // Reset to page 1 when limit changes
@@ -270,6 +294,7 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
   }
 
   return (
+    <>
     <Card className="glass-card border-border/50">
       <CardHeader className="!p-4">
         <CardTitle className="flex items-center text-foreground text-lg">
@@ -373,52 +398,13 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
                       </TableCell>
                       <TableCell className="text-xs py-2 px-3">
                         {item.path === '(multiple)' ? (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <button
-                                onClick={() => loadPaths(item.fullHostname)}
-                                className="italic text-primary underline underline-offset-2 hover:text-primary/80 cursor-pointer"
-                              >
-                                (multiple paths)
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-0 glass-card border-border/50" align="start">
-                              <div className="p-3 border-b border-border/50">
-                                <div className="font-medium text-sm text-foreground">Paths for {item.fullHostname}</div>
-                                {pathsData[item.fullHostname]?.total > 0 && (
-                                  <div className="text-xs text-muted-foreground mt-1">
-                                    Showing {pathsData[item.fullHostname]?.paths.length} of {pathsData[item.fullHostname]?.total} paths
-                                  </div>
-                                )}
-                              </div>
-                              <div className="max-h-64 overflow-y-auto">
-                                {pathsData[item.fullHostname]?.loading ? (
-                                  <div className="flex items-center justify-center py-4">
-                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                                    <span className="ml-2 text-xs text-muted-foreground">Loading paths...</span>
-                                  </div>
-                                ) : pathsData[item.fullHostname]?.paths.length > 0 ? (
-                                  <div className="divide-y divide-border/50">
-                                    {pathsData[item.fullHostname].paths.map((pathItem, pathIndex) => (
-                                      <div key={pathIndex} className="px-3 py-2 hover:bg-white/5 flex justify-between items-center">
-                                        <span className="font-mono text-xs text-foreground truncate mr-2">{pathItem.path}</span>
-                                        <span className="text-xs text-muted-foreground shrink-0">{pathItem.credentialCount.toLocaleString()} creds</span>
-                                      </div>
-                                    ))}
-                                    {pathsData[item.fullHostname]?.hasMore && (
-                                      <div className="px-3 py-2 text-center text-xs text-muted-foreground">
-                                        ...and {pathsData[item.fullHostname].total - pathsData[item.fullHostname].paths.length} more paths
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                                    No paths found
-                                  </div>
-                                )}
-                              </div>
-                            </PopoverContent>
-                          </Popover>
+                          <button
+                            type="button"
+                            onClick={() => openPathsModal(item.fullHostname)}
+                            className="italic text-primary underline underline-offset-2 hover:text-primary/80 cursor-pointer"
+                          >
+                            (multiple paths)
+                          </button>
                         ) : (
                           <span className="font-mono">{item.path || "/"}</span>
                         )}
@@ -538,6 +524,75 @@ export function SubdomainsTab({ targetDomain, searchType = 'domain', keywordMode
         )}
       </CardContent>
     </Card>
+
+    {/* Modal: Multiple paths for a hostname (with pagination) */}
+    <Dialog open={!!pathsModalHostname} onOpenChange={(open) => !open && closePathsModal()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col gap-0 p-0 glass-card border-border/50">
+        <DialogHeader className="p-4 pb-2 border-b border-border/50">
+          <DialogTitle className="text-base font-medium text-foreground">
+            Paths for {pathsModalHostname ?? ""}
+          </DialogTitle>
+          {pathsModalHostname && (pathsData[pathsModalHostname]?.total ?? 0) > 0 && (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pathsData[pathsModalHostname].total.toLocaleString()} path(s) total
+            </p>
+          )}
+        </DialogHeader>
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col px-4">
+          {pathsModalHostname && (
+            <>
+              <div className="flex-1 min-h-[240px] max-h-[50vh] overflow-y-auto py-2">
+                {pathsData[pathsModalHostname]?.loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading paths...</span>
+                  </div>
+                ) : pathsData[pathsModalHostname]?.paths?.length > 0 ? (
+                  <div className="divide-y divide-border/50">
+                    {pathsData[pathsModalHostname].paths.map((pathItem, pathIndex) => (
+                      <div key={pathIndex} className="py-2.5 hover:bg-white/5 flex justify-between items-center gap-3">
+                        <span className="font-mono text-xs text-foreground break-all">{pathItem.path}</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{pathItem.credentialCount.toLocaleString()} creds</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No paths found
+                  </div>
+                )}
+              </div>
+              {pathsModalHostname && (pathsData[pathsModalHostname]?.total ?? 0) > PATHS_PAGE_SIZE && (
+                <div className="py-3 border-t border-border/50 flex items-center justify-center gap-2">
+                  <Pagination className="w-auto mx-0">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => goToPathsPage(pathsPage - 1)}
+                          className={pathsPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="px-3 text-sm text-muted-foreground">
+                          Page {pathsPage} of {Math.max(1, Math.ceil((pathsData[pathsModalHostname]?.total ?? 0) / PATHS_PAGE_SIZE))}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => goToPathsPage(pathsPage + 1)}
+                          className={pathsPage >= Math.ceil((pathsData[pathsModalHostname]?.total ?? 0) / PATHS_PAGE_SIZE) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  </>
   )
 }
 
