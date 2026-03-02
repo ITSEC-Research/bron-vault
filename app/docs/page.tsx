@@ -297,7 +297,19 @@ export default function DocsPage() {
         "passwordMasked": "p********d",
         "browser": "Chrome",
         "country": "US",
-        "uploadDate": "2024-01-15T10:30:00Z"
+        "uploadDate": "2024-01-15T10:30:00Z",
+        "hostInfo": {
+          "os": "Windows 10 Pro",
+          "ipAddress": "203.0.113.45",
+          "machineUsername": "john",
+          "cpu": "Intel Core i7-10700",
+          "ram": "16 GB",
+          "gpu": "NVIDIA GeForce RTX 3060",
+          "hwid": "ABCD-1234-EFGH-5678",
+          "antivirus": "Windows Defender",
+          "stealerType": "RedLine",
+          "logDate": "2024-01-15"
+        }
       }
     ],
     "pagination": {
@@ -307,6 +319,11 @@ export default function DocsPage() {
       "totalPages": 3,
       "hasMore": true
     }
+  },
+  "meta": {
+    "query": "john@example.com",
+    "type": "email",
+    "searchedAt": "2024-01-15T10:30:00Z"
   }
 }`}
                   />
@@ -389,7 +406,20 @@ export default function DocsPage() {
         "username": "admin@example.com",
         "passwordMasked": "a********n",
         "browser": "Firefox",
-        "country": "DE"
+        "country": "DE",
+        "uploadDate": "2024-01-15T10:30:00Z",
+        "hostInfo": {
+          "os": "Windows 11",
+          "ipAddress": "198.51.100.22",
+          "machineUsername": "admin",
+          "cpu": "AMD Ryzen 9 5900X",
+          "ram": "32 GB",
+          "gpu": "AMD Radeon RX 6800",
+          "hwid": "WXYZ-9876-ABCD-5432",
+          "antivirus": "Norton",
+          "stealerType": "Lumma",
+          "logDate": "2024-01-14"
+        }
       }
     ],
     "pagination": {
@@ -398,7 +428,20 @@ export default function DocsPage() {
       "total": 75,
       "totalPages": 2,
       "hasMore": true
+    },
+    "summary": {
+      "totalCredentials": 75,
+      "uniqueDevices": 12,
+      "subdomains": [
+        { "domain": "login.example.com", "count": 45 },
+        { "domain": "mail.example.com", "count": 30 }
+      ]
     }
+  },
+  "meta": {
+    "searchedDomain": "example.com",
+    "includeSubdomains": true,
+    "searchedAt": "2024-01-15T10:30:00Z"
   }
 }`}
                   />
