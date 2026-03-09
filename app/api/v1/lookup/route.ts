@@ -150,7 +150,7 @@ async function lookupEmail(
   if (totalMatches > 0) {
     countries = await executeClickHouseQuery(
       `SELECT 
-        si.country,
+        si.country AS country,
         count() as count
       FROM credentials c
       JOIN systeminformation si ON c.device_id = si.device_id
@@ -288,7 +288,7 @@ async function lookupDomain(
   if (totalMatches > 0) {
     countries = await executeClickHouseQuery(
       `SELECT 
-        si.country,
+        si.country AS country,
         count() as count
       FROM credentials c
       JOIN systeminformation si ON c.device_id = si.device_id

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Copy, BookOpen, Key, Search, Upload, Database, Shield, Clock, Zap, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react"
+import { Copy, BookOpen, Key, Search, Upload, Database, Shield, Clock, Zap, CheckCircle2, AlertCircle, ArrowRight, BarChart3, Monitor, ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
@@ -117,9 +117,41 @@ export default function DocsPage() {
     { id: "search-credentials", label: "Search Credentials", icon: Search, method: "POST" },
     { id: "search-domain", label: "Search Domain", icon: Search, method: "POST" },
     { id: "lookup", label: "Lookup", icon: Database, method: "GET" },
+    { id: "summary", label: "Summary", icon: BarChart3, method: "GET" },
+    { id: "device", label: "Device", icon: Monitor, method: "GET" },
     { id: "upload", label: "Upload", icon: Upload, method: "POST" },
     { id: "api-keys", label: "API Keys", icon: Key, method: "CRUD" },
   ]
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  const checkScrollability = useCallback(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1)
+  }, [])
+
+  useEffect(() => {
+    checkScrollability()
+    const el = scrollContainerRef.current
+    if (!el) return
+    el.addEventListener("scroll", checkScrollability)
+    const resizeObserver = new ResizeObserver(checkScrollability)
+    resizeObserver.observe(el)
+    return () => {
+      el.removeEventListener("scroll", checkScrollability)
+      resizeObserver.disconnect()
+    }
+  }, [checkScrollability])
+
+  const scroll = (direction: "left" | "right") => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    el.scrollBy({ left: direction === "left" ? -200 : 200, behavior: "smooth" })
+  }
 
   return (
     <main className="flex-1 p-6 bg-background">
@@ -204,7 +236,20 @@ export default function DocsPage() {
         {/* Navigation */}
         <Card className="glass-card border-border/50">
           <CardContent className="p-3">
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 shrink-0 transition-opacity ${canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                onClick={() => scroll("left")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div
+                ref={scrollContainerRef}
+                className="flex gap-2 overflow-x-auto scrollbar-hide"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
               {sections.map((section) => {
                 const isActive = activeSection === section.id
                 return (
@@ -213,7 +258,7 @@ export default function DocsPage() {
                     variant={isActive ? "default" : "outline"} 
                     size="sm"
                     onClick={() => setActiveSection(section.id)}
-                    className={isActive ? "bg-primary text-primary-foreground" : "glass-card border-border/50"}
+                    className={`shrink-0 ${isActive ? "bg-primary text-primary-foreground" : "glass-card border-border/50"}`}
                   >
                     <section.icon className="h-4 w-4 mr-2" />
                     {section.label}
@@ -234,6 +279,15 @@ export default function DocsPage() {
                   </Button>
                 )
               })}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 shrink-0 transition-opacity ${canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                onClick={() => scroll("right")}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -297,7 +351,19 @@ export default function DocsPage() {
         "passwordMasked": "p********d",
         "browser": "Chrome",
         "country": "US",
-        "uploadDate": "2024-01-15T10:30:00Z"
+        "uploadDate": "2024-01-15T10:30:00Z",
+        "hostInfo": {
+          "os": "Windows 10 Pro",
+          "ipAddress": "203.0.113.45",
+          "machineUsername": "john",
+          "cpu": "Intel Core i7-10700",
+          "ram": "16 GB",
+          "gpu": "NVIDIA GeForce RTX 3060",
+          "hwid": "ABCD-1234-EFGH-5678",
+          "antivirus": "Windows Defender",
+          "stealerType": "RedLine",
+          "logDate": "2024-01-15"
+        }
       }
     ],
     "pagination": {
@@ -307,6 +373,11 @@ export default function DocsPage() {
       "totalPages": 3,
       "hasMore": true
     }
+  },
+  "meta": {
+    "query": "john@example.com",
+    "type": "email",
+    "searchedAt": "2024-01-15T10:30:00Z"
   }
 }`}
                   />
@@ -389,7 +460,20 @@ export default function DocsPage() {
         "username": "admin@example.com",
         "passwordMasked": "a********n",
         "browser": "Firefox",
-        "country": "DE"
+        "country": "DE",
+        "uploadDate": "2024-01-15T10:30:00Z",
+        "hostInfo": {
+          "os": "Windows 11",
+          "ipAddress": "198.51.100.22",
+          "machineUsername": "admin",
+          "cpu": "AMD Ryzen 9 5900X",
+          "ram": "32 GB",
+          "gpu": "AMD Radeon RX 6800",
+          "hwid": "WXYZ-9876-ABCD-5432",
+          "antivirus": "Norton",
+          "stealerType": "Lumma",
+          "logDate": "2024-01-14"
+        }
       }
     ],
     "pagination": {
@@ -398,7 +482,20 @@ export default function DocsPage() {
       "total": 75,
       "totalPages": 2,
       "hasMore": true
+    },
+    "summary": {
+      "totalCredentials": 75,
+      "uniqueDevices": 12,
+      "subdomains": [
+        { "domain": "login.example.com", "count": 45 },
+        { "domain": "mail.example.com", "count": 30 }
+      ]
     }
+  },
+  "meta": {
+    "searchedDomain": "example.com",
+    "includeSubdomains": true,
+    "searchedAt": "2024-01-15T10:30:00Z"
   }
 }`}
                   />
@@ -484,6 +581,294 @@ export default function DocsPage() {
   }
 }`}
                   />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Summary Section */}
+        {activeSection === "summary" && (
+          <div className="space-y-6">
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/summary</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Returns dashboard summary data including overall statistics, top 50 TLDs, and country statistics with heatmap data. Useful for integrations and reporting.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Parameters */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Query Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "startDate", type: "string", required: false, description: "Start date filter (YYYY-MM-DD format)", default: "All time" },
+                    { name: "endDate", type: "string", required: false, description: "End date filter (YYYY-MM-DD format)", default: "All time" },
+                  ]} />
+                </div>
+
+                {/* Example Request */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/summary" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+
+                {/* Example with date filter */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request (with Date Filter)</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/summary?startDate=2024-01-01&endDate=2024-12-31" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+
+                {/* Response */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">200 OK</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "stats": {
+    "totalDevices": 15420,
+    "uniqueDeviceNames": 12350,
+    "duplicateDeviceNames": 3070,
+    "totalFiles": 892450,
+    "totalCredentials": 2450000,
+    "totalDomains": 185000,
+    "totalUrls": 3200000
+  },
+  "topTLDs": [
+    { "tld": "com", "count": 1250000, "affected_devices": 14200 },
+    { "tld": "org", "count": 85000, "affected_devices": 8500 },
+    // ... up to 50 TLDs
+  ],
+  "countryStats": {
+    "summary": {
+      "totalDevices": 14800,
+      "totalCredentials": 2380000,
+      "affectedCountries": 95
+    },
+    "topCountries": [
+      {
+        "rank": 1,
+        "country": "US",
+        "countryName": "United States",
+        "totalDevices": 3200,
+        "totalCredentials": 520000
+      }
+      // ... up to 10 countries
+    ],
+    "countries": [
+      {
+        "country": "US",
+        "countryName": "United States",
+        "totalDevices": 3200,
+        "totalCredentials": 520000
+      }
+      // ... all countries
+    ],
+    "alpha2ToAlpha3Map": {
+      "US": "USA",
+      "GB": "GBR"
+      // ... mapping for all countries
+    }
+  }
+}`}
+                  />
+                </div>
+
+                {/* Data Included */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Data Included</h4>
+                  <div className="grid gap-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Overall statistics (devices, credentials, files, domains, URLs)
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Top 50 TLDs with credential count and affected devices
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Country statistics with geographic distribution
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Alpha-2 to Alpha-3 country code mapping
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Device Section */}
+        {activeSection === "device" && (
+          <div className="space-y-6">
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/device/:deviceId</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Get detailed information about a specific device including summary stats, host/system information, top passwords, top domains, browser distribution, and file statistics. Optionally include all compromised credentials, software list, and file tree.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Path Parameters */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Path Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "deviceId", type: "string", required: true, description: "The unique device identifier" },
+                  ]} />
+                </div>
+
+                {/* Query Parameters */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Query Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "include", type: "string", required: false, description: "Comma-separated list of data to include: 'credentials', 'software', 'files'. Example: include=credentials,software" },
+                    { name: "page", type: "number", required: false, description: "Page number for credentials pagination", default: "1" },
+                    { name: "limit", type: "number", required: false, description: "Number of credentials per page (max 1000)", default: "100" },
+                  ]} />
+                </div>
+
+                {/* Example Request - Summary */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request (Summary Only)</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/device/abc123-device-id" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+
+                {/* Example Request - With Credentials */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request (With All Data)</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/device/abc123-device-id?include=credentials,software,files&page=1&limit=50" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+
+                {/* Response */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">200 OK</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "device": {
+    "deviceId": "abc123-device-id",
+    "deviceName": "DESKTOP-ABC123",
+    "uploadBatch": "batch_2024_01",
+    "uploadDate": "2024-01-15T10:30:00Z"
+  },
+  "hostInfo": {
+    "os": "Windows 10 Pro",
+    "computerName": "DESKTOP-ABC123",
+    "ipAddress": "203.0.113.45",
+    "country": "US",
+    "username": "john",
+    "cpu": "Intel Core i7-12700K",
+    "ram": "32 GB",
+    "gpu": "NVIDIA RTX 3080",
+    "stealerType": "RedLine",
+    "logDate": "2024-01-15",
+    "hwid": "ABC123DEF456",
+    "filePath": "C:/Users/john/AppData",
+    "antivirus": "Windows Defender",
+    "sourceFile": "system_info.txt",
+    "createdAt": "2024-01-15T10:30:00Z"
+  },
+  "summary": {
+    "totalCredentials": 1250,
+    "totalSoftware": 85,
+    "totalFiles": 340,
+    "totalDomains": 420,
+    "totalUrls": 1100
+  },
+  "topPasswords": [
+    { "password": "password123", "count": 15 },
+    { "password": "admin", "count": 8 }
+  ],
+  "topDomains": [
+    { "domain": "facebook.com", "count": 45 },
+    { "domain": "google.com", "count": 38 }
+  ],
+  "browserDistribution": [
+    { "browser": "Chrome", "count": 850 },
+    { "browser": "Firefox", "count": 300 }
+  ],
+  "fileStatistics": {
+    "totalFiles": 340,
+    "totalDirectories": 25,
+    "totalTxtFiles": 180,
+    "totalOtherFiles": 135,
+    "bySize": [
+      { "category": "< 1 KB", "count": 120 },
+      { "category": "1 KB - 10 KB", "count": 95 }
+    ]
+  },
+  // Optional includes (via ?include=credentials,software,files):
+  "credentials": { "data": [...], "pagination": {...} },
+  "software": [{ "name": "Chrome", "version": "120.0", "sourceFile": "" }],
+  "files": [{ "filePath": "/passwords.txt", "fileName": "passwords.txt", "parentPath": "/", "isDirectory": false, "fileSize": 1024, "hasContent": true }]
+}`}
+                  />
+                </div>
+
+                {/* Data Included */}
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Data Included</h4>
+                  <div className="grid gap-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Device info (ID, name, upload date, batch)
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Host/system information (OS, IP, country, CPU, RAM, GPU, stealer type, HWID, antivirus, log date, etc.)
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Summary statistics (credentials, software, files, domains, URLs)
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Top 10 passwords with usage count
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Top 10 domains and browser distribution
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      File statistics (size distribution, directories, txt files)
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      All compromised credentials with pagination (optional: include=credentials)
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Installed software list (optional: include=software)
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                      Full file tree with metadata (optional: include=files)
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
