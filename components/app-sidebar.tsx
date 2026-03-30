@@ -141,7 +141,11 @@ const menuGroups: MenuGroup[] = [
   },
 ]
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  initialUserRole?: string | null;
+}
+
+export function AppSidebar({ initialUserRole }: AppSidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -149,7 +153,9 @@ export function AppSidebar() {
   
   // Get user role for menu filtering
   const { user } = useAuth(false) // Don't require auth here, just get user if available
-  const userIsAdmin = isAdmin(user)
+  // Use auth API result when available, fall back to server-provided cookie hint for initial render.
+  // This eliminates the 2-step menu flash: SSR HTML already contains correct menu items.
+  const userIsAdmin = user ? isAdmin(user) : initialUserRole === 'admin'
 
   // Helper function to check if menu item is active
   // For /domain-search, also match sub-routes like /domain-search/[domain]

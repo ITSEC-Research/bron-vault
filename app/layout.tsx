@@ -6,6 +6,7 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { ThemeProvider } from "@/components/theme-provider"
 import ClientLayoutWithSidebar from "@/components/client-layout-with-sidebar"
 import { Toaster } from "@/components/ui/toaster"
+import { cookies } from "next/headers"
 // Setup global error handlers early (server-side only)
 if (typeof window === 'undefined') {
   require("@/lib/error-handler")
@@ -42,6 +43,11 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Read user_role cookie on the server so the sidebar SSR HTML
+  // already contains the correct menu items (no 2-step flash).
+  const cookieStore = cookies()
+  const initialUserRole = cookieStore.get('user_role')?.value || null
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -141,7 +147,7 @@ export default function RootLayout({
         />
         <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem>
         <SidebarProvider>
-          <ClientLayoutWithSidebar>{children}</ClientLayoutWithSidebar>
+          <ClientLayoutWithSidebar initialUserRole={initialUserRole}>{children}</ClientLayoutWithSidebar>
         </SidebarProvider>
         <Toaster />
         </ThemeProvider>

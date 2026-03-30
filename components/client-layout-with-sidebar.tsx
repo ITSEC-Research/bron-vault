@@ -4,7 +4,12 @@ import { useEffect } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import AppHeader from "@/components/app-header";
 
-export default function ClientLayoutWithSidebar({ children }: { children: React.ReactNode }) {
+interface ClientLayoutWithSidebarProps {
+  children: React.ReactNode;
+  initialUserRole?: string | null;
+}
+
+export default function ClientLayoutWithSidebar({ children, initialUserRole }: ClientLayoutWithSidebarProps) {
   const pathname = usePathname();
 
   // Scroll to top on route change
@@ -28,7 +33,7 @@ export default function ClientLayoutWithSidebar({ children }: { children: React.
 
   return (
     <>
-      <AppSidebar />
+      <AppSidebar initialUserRole={initialUserRole} />
       <div className="flex-1 flex flex-col">
         <AppHeader title={title} />
         <main className="flex-1 bg-background">{children}</main>

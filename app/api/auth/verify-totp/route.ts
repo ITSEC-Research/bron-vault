@@ -128,6 +128,17 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set("auth", token, getSecureCookieOptions(request))
 
+    // UI hint cookie: allows sidebar to render correct menu items immediately
+    // without waiting for async /api/auth/get-user call.
+    // Not httpOnly so client JS can read it. Not used for authorization.
+    response.cookies.set("user_role", userRole, {
+      httpOnly: false,
+      secure: isRequestSecure(request),
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60,
+      path: '/',
+    })
+
     // SECURITY: Clear the pending_2fa cookie after successful verification
     response.cookies.set("pending_2fa", "", {
       httpOnly: true,
