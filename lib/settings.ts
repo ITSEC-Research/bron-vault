@@ -34,6 +34,8 @@ export const SETTING_KEYS = {
   S3_USE_SSL: 'storage_s3_use_ssl',
   STORAGE_MIGRATION_STATUS: 'storage_migration_status',
   STORAGE_MIGRATION_PROGRESS: 'storage_migration_progress',
+  // Feed settings
+  FEED_SYNC_INTERVAL: 'feed_sync_interval',
 } as const
 
 export type SettingKey = typeof SETTING_KEYS[keyof typeof SETTING_KEYS]

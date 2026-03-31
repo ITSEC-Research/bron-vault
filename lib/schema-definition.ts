@@ -631,6 +631,84 @@ export const MONITOR_ALERTS_TABLE: TableDefinition = {
 }
 
 // ===========================================
+// NEWS FEED TABLES
+// ===========================================
+
+// Feed Categories Table - Global categories managed by admins
+export const FEED_CATEGORIES_TABLE: TableDefinition = {
+  name: 'feed_categories',
+  columns: [
+    { name: 'id', type: 'int', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'name', type: 'varchar(255)', nullable: false, comment: 'Category display name' },
+    { name: 'slug', type: 'varchar(255)', nullable: false, key: 'UNI', comment: 'URL-safe slug' },
+    { name: 'display_order', type: 'int', nullable: false, default: '0', comment: 'Sort order in sidebar' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'slug', columns: ['slug'], unique: true },
+    { name: 'idx_feed_categories_display_order', columns: ['display_order'], unique: false },
+  ],
+  foreignKeys: [],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Feed Sources Table - RSS feed URLs assigned to categories
+export const FEED_SOURCES_TABLE: TableDefinition = {
+  name: 'feed_sources',
+  columns: [
+    { name: 'id', type: 'int', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'category_id', type: 'int', nullable: false, key: 'MUL', comment: 'FK to feed_categories' },
+    { name: 'name', type: 'varchar(255)', nullable: false, comment: 'Source display name' },
+    { name: 'website_url', type: 'text', nullable: true, comment: 'Source website URL' },
+    { name: 'rss_url', type: 'text', nullable: false, comment: 'RSS feed URL' },
+    { name: 'is_active', type: 'tinyint(1)', nullable: false, default: '1' },
+    { name: 'last_fetched_at', type: 'timestamp', nullable: true, comment: 'Last successful fetch time' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_feed_sources_category_id', columns: ['category_id'], unique: false },
+    { name: 'idx_feed_sources_is_active', columns: ['is_active'], unique: false },
+  ],
+  foreignKeys: [
+    { name: 'feed_sources_ibfk_1', column: 'category_id', referencedTable: 'feed_categories', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' },
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// Feed Articles Table - Cached articles fetched from RSS sources
+export const FEED_ARTICLES_TABLE: TableDefinition = {
+  name: 'feed_articles',
+  columns: [
+    { name: 'id', type: 'bigint', nullable: false, extra: 'auto_increment', key: 'PRI' },
+    { name: 'source_id', type: 'int', nullable: false, key: 'MUL', comment: 'FK to feed_sources' },
+    { name: 'guid', type: 'varchar(500)', nullable: false, comment: 'Unique article identifier from RSS' },
+    { name: 'title', type: 'text', nullable: false },
+    { name: 'link', type: 'text', nullable: false },
+    { name: 'description', type: 'text', nullable: true },
+    { name: 'pub_date', type: 'timestamp', nullable: true, comment: 'Article publication date' },
+    { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
+  ],
+  indexes: [
+    { name: 'PRIMARY', columns: ['id'], unique: true },
+    { name: 'idx_feed_articles_source_id', columns: ['source_id'], unique: false },
+    { name: 'idx_feed_articles_pub_date', columns: ['pub_date'], unique: false },
+    { name: 'idx_feed_articles_guid_source', columns: ['guid', 'source_id'], unique: true },
+  ],
+  foreignKeys: [
+    { name: 'feed_articles_ibfk_1', column: 'source_id', referencedTable: 'feed_sources', referencedColumn: 'id', onDelete: 'CASCADE', onUpdate: 'RESTRICT' },
+  ],
+  engine: 'InnoDB',
+  charset: 'utf8mb4',
+  collate: 'utf8mb4_unicode_ci'
+}
+
+// ===========================================
 // ALL TABLES (in creation order - respect FK dependencies)
 // ===========================================
 export const ALL_TABLES: TableDefinition[] = [
@@ -653,6 +731,9 @@ export const ALL_TABLES: TableDefinition[] = [
   MONITOR_WEBHOOKS_TABLE,
   MONITOR_WEBHOOK_MAP_TABLE,
   MONITOR_ALERTS_TABLE,
+  FEED_CATEGORIES_TABLE,
+  FEED_SOURCES_TABLE,
+  FEED_ARTICLES_TABLE,
 ]
 
 // ===========================================

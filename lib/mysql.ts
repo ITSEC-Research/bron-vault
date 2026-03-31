@@ -409,6 +409,9 @@ async function createTables() {
 
   // Create domain monitoring tables
   await createMonitoringTables()
+
+  // Create news feed tables
+  await createFeedTables()
 }
 
 /**
@@ -505,6 +508,65 @@ async function createMonitoringTables() {
 }
 
 /**
+ * Create news feed tables for RSS aggregator
+ */
+async function createFeedTables() {
+  try {
+    // Create feed_categories table
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS feed_categories (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL COMMENT 'Category display name',
+        slug VARCHAR(255) NOT NULL UNIQUE COMMENT 'URL-safe slug',
+        display_order INT NOT NULL DEFAULT 0 COMMENT 'Sort order in sidebar',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_feed_categories_display_order (display_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `)
+
+    // Create feed_sources table
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS feed_sources (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        category_id INT NOT NULL COMMENT 'FK to feed_categories',
+        name VARCHAR(255) NOT NULL COMMENT 'Source display name',
+        website_url TEXT NULL COMMENT 'Source website URL',
+        rss_url TEXT NOT NULL COMMENT 'RSS feed URL',
+        is_active TINYINT(1) NOT NULL DEFAULT 1,
+        last_fetched_at TIMESTAMP NULL COMMENT 'Last successful fetch time',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (category_id) REFERENCES feed_categories(id) ON DELETE CASCADE,
+        INDEX idx_feed_sources_category_id (category_id),
+        INDEX idx_feed_sources_is_active (is_active)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `)
+
+    // Create feed_articles table (cached RSS articles)
+    await executeQuery(`
+      CREATE TABLE IF NOT EXISTS feed_articles (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        source_id INT NOT NULL COMMENT 'FK to feed_sources',
+        guid VARCHAR(500) NOT NULL COMMENT 'Unique article identifier from RSS',
+        title TEXT NOT NULL,
+        link TEXT NOT NULL,
+        description TEXT NULL,
+        pub_date TIMESTAMP NULL COMMENT 'Article publication date',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (source_id) REFERENCES feed_sources(id) ON DELETE CASCADE,
+        UNIQUE INDEX idx_feed_articles_guid_source (guid, source_id),
+        INDEX idx_feed_articles_source_id (source_id),
+        INDEX idx_feed_articles_pub_date (pub_date)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `)
+
+    console.log("✅ News feed tables ensured")
+  } catch (error) {
+    console.error("❌ Error creating feed tables:", error)
+    // Don't throw - allow graceful degradation
+  }
+}
+
+/**
  * Create app_settings table if it doesn't exist
  * This is called separately to ensure it's created even if initializeDatabase wasn't called
  */
@@ -584,6 +646,12 @@ async function createAppSettingsTable() {
     await executeQuery(
       'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
       ['upload_api_max_duration_seconds', '300', 'Max request duration in seconds for upload API (receive file + 202). Recommended: 300. Display only; route uses static maxDuration.']
+    )
+
+    // News feed sync interval (in minutes)
+    await executeQuery(
+      'INSERT INTO app_settings (key_name, value, description) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE key_name = key_name',
+      ['feed_sync_interval', '60', 'Auto-refresh interval for RSS feeds in minutes (default: 60). Options: 15, 30, 60, 120.']
     )
 
     console.log("✅ app_settings table ensured")

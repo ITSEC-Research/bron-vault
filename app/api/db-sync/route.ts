@@ -355,7 +355,7 @@ async function checkSchema(): Promise<SchemaCheckResult> {
   const warnings = differences.filter(d => d.severity === 'warning').length
   
   return {
-    isValid: criticalIssues === 0 && missingTables.length === 0,
+    isValid: criticalIssues === 0 && missingTables.length === 0 && warnings === 0,
     schemaVersion: SCHEMA_VERSION,
     differences,
     missingTables,

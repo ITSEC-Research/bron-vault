@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Settings, Save, AlertCircle, Info, Upload, Database, ShieldAlert, HardDrive, CheckCircle2, XCircle, Loader2, AlertTriangle } from "lucide-react"
+import { Settings, Save, AlertCircle, Info, Upload, Database, ShieldAlert, HardDrive, CheckCircle2, XCircle, Loader2, AlertTriangle, Rss } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { FeedConfigurationTab } from "@/components/settings/feed-configuration-tab"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -76,7 +77,7 @@ export default function SettingsPage() {
   if (authLoading) {
     return (
       <main className="flex-1 p-6 bg-background">
-        <div className="max-w-4xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Checking permissions...</p>
@@ -90,7 +91,7 @@ export default function SettingsPage() {
   if (!userIsAdmin) {
     return (
       <main className="flex-1 p-6 bg-background">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-6">
           <Card className="glass-card border-destructive/50">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -124,7 +125,7 @@ export default function SettingsPage() {
 
   return (
     <main className="flex-1 p-6 bg-transparent">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Settings className="h-8 w-8" />
@@ -134,7 +135,7 @@ export default function SettingsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-3 glass-card h-8">
+          <TabsList className="items-center justify-center rounded-md p-1 text-muted-foreground grid w-full grid-cols-2 md:grid-cols-4 glass-card h-auto md:h-8 gap-1">
             <TabsTrigger
               value="upload"
               className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
@@ -156,6 +157,13 @@ export default function SettingsPage() {
               <HardDrive className="h-3 w-3 mr-1" />
               Storage
             </TabsTrigger>
+            <TabsTrigger
+              value="feeds"
+              className="text-xs font-normal data-[state=active]:bg-primary data-[state=active]:text-primary-foreground px-2 py-1 hover:bg-white/5 hover:text-foreground transition-colors"
+            >
+              <Rss className="h-3 w-3 mr-1" />
+              News Feed
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="upload" className="mt-4">
@@ -168,6 +176,10 @@ export default function SettingsPage() {
 
           <TabsContent value="storage" className="mt-4">
             <StorageConfigurationTab />
+          </TabsContent>
+
+          <TabsContent value="feeds" className="mt-4">
+            <FeedConfigurationTab />
           </TabsContent>
         </Tabs>
       </div>
