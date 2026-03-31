@@ -56,7 +56,7 @@ export default function UserProfileDropdown() {
         method: "POST",
         credentials: "include",
       });
-      router.replace("/login");
+      window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);
     } finally {

@@ -28,6 +28,7 @@ interface DashboardDateRangeProps {
   value: DateRangeType | null
   onChange: (range: DateRangeType | null) => void
   className?: string
+  align?: "start" | "center" | "end"
 }
 
 const PRESETS: DateRangePreset[] = [
@@ -140,6 +141,7 @@ export function DashboardDateRange({
   value,
   onChange,
   className,
+  align = "start",
 }: DashboardDateRangeProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined)
@@ -269,7 +271,7 @@ export function DashboardDateRange({
         </PopoverTrigger>
         <PopoverContent 
           className="w-[640px] p-0 shadow-2xl border-2 bg-background z-50" 
-          align="start"
+          align={align}
         >
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="border-b px-3 pt-3">

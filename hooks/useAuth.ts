@@ -79,7 +79,7 @@ export function useAuth(requireAuth: boolean = true) {
         // Redirect to login if authentication is required
         if (requireAuth) {
           const currentPath = window.location.pathname
-          router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
         }
       }
     }

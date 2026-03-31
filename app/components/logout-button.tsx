@@ -14,7 +14,7 @@ export default function LogoutButton() {
       credentials: "include",
     });
     setLoading(false);
-    router.replace("/login");
+    window.location.href = "/login";
   };
 
   return (

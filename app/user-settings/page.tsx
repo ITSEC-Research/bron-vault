@@ -66,7 +66,7 @@ export default function UserSettingsPage() {
   if (authLoading) {
     return (
       <main className="flex-1 p-6 bg-background">
-        <div className="max-w-4xl mx-auto flex items-center justify-center min-h-[400px]">
+        <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading...</p>
@@ -78,7 +78,7 @@ export default function UserSettingsPage() {
 
   return (
     <main className="flex-1 p-6 bg-transparent">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">

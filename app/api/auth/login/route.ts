@@ -117,6 +117,17 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set("auth", token, getSecureCookieOptions(request))
 
+    // UI hint cookie: allows sidebar to render correct menu items immediately
+    // without waiting for async /api/auth/get-user call.
+    // Not httpOnly so client JS can read it. Not used for authorization.
+    response.cookies.set("user_role", userRole, {
+      httpOnly: false,
+      secure: isRequestSecure(request),
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60,
+      path: '/',
+    })
+
     return response
   } catch (err) {
     console.error("Login error:", err)

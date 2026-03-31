@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen, ClipboardList, FileUp, Radio } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen, ClipboardList, FileUp, Radio, Rss } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -141,7 +141,11 @@ const menuGroups: MenuGroup[] = [
   },
 ]
 
-export function AppSidebar() {
+interface AppSidebarProps {
+  initialUserRole?: string | null;
+}
+
+export function AppSidebar({ initialUserRole }: AppSidebarProps) {
   const pathname = usePathname();
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -149,12 +153,30 @@ export function AppSidebar() {
   
   // Get user role for menu filtering
   const { user } = useAuth(false) // Don't require auth here, just get user if available
-  const userIsAdmin = isAdmin(user)
+  // Use auth API result when available, fall back to server-provided cookie hint for initial render.
+  // This eliminates the 2-step menu flash: SSR HTML already contains correct menu items.
+  const userIsAdmin = user ? isAdmin(user) : initialUserRole === 'admin'
+  const [dynamicFeedGroups, setDynamicFeedGroups] = React.useState<MenuGroup[]>([{
+    title: "News Feed",
+    items: [
+      {
+        title: "All Feeds",
+        description: "Global Intelligence",
+        url: "/feeds/all",
+        icon: Rss,
+      }
+    ]
+  }])
 
   // Helper function to check if menu item is active
   // For /domain-search, also match sub-routes like /domain-search/[domain]
   const isMenuItemActive = (url: string) => {
     if (pathname === url) return true;
+
+    // Match dynamic feeds
+    if (url.startsWith("/feeds/") && pathname.startsWith(url)) {
+      return true;
+    }
     
     // For /domain-search, also match sub-routes
     if (url === "/domain-search") {
@@ -171,6 +193,37 @@ export function AppSidebar() {
 
   React.useEffect(() => {
     setMounted(true);
+
+    // Fetch dynamic feed categories
+    fetch("/api/feeds/categories")
+      .then(res => res.json())
+      .then(data => {
+        const baseItems = [
+          {
+            title: "All Feeds",
+            description: "Global Intelligence",
+            url: "/feeds/all",
+            icon: Rss,
+          }
+        ]
+        
+        if (data.success && data.categories && data.categories.length > 0) {
+          const categoryItems = data.categories.map((cat: any) => ({
+            title: cat.name,
+            description: "Security Feeds",
+            url: `/feeds/${cat.slug}`,
+            icon: Rss,
+          }))
+          
+          setDynamicFeedGroups([
+            {
+              title: "News Feed",
+              items: [...baseItems, ...categoryItems]
+            }
+          ])
+        }
+      })
+      .catch(err => console.error("Failed to load feed categories for sidebar", err))
   }, []);
 
   React.useEffect(() => {
@@ -182,7 +235,7 @@ export function AppSidebar() {
   }, [mounted, resolvedTheme]);
 
   // Filter menu groups and items based on user role
-  const filteredMenuGroups = menuGroups
+  const filteredMenuGroups = [...menuGroups, ...dynamicFeedGroups]
     .map(group => ({
       ...group,
       items: group.items.filter(item => !item.adminOnly || userIsAdmin)
