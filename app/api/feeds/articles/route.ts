@@ -28,10 +28,67 @@ export async function GET(request: NextRequest) {
 
     // Handle Grouped View
     if (view === 'grouped') {
+
+      // Per-group page fetch: when source_id is specified, return a single source's paginated articles
+      if (source_id) {
+        const group_page = parseInt(searchParams.get('group_page') || '1')
+        const group_limit = 7
+        const group_offset = (group_page - 1) * group_limit
+
+        let srcQuery = `
+          SELECT a.*, s.name as source_name, c.name as category_name
+          FROM feed_articles a
+          JOIN feed_sources s ON a.source_id = s.id
+          JOIN feed_categories c ON s.category_id = c.id
+          WHERE a.source_id = ?
+        `
+        const srcParams: any[] = [source_id]
+
+        if (category_slug && category_slug !== 'all') {
+          srcQuery += ` AND c.slug = ?`
+          srcParams.push(category_slug)
+        }
+        if (search) {
+          srcQuery += ` AND (a.title LIKE ? OR a.description LIKE ?)`
+          srcParams.push(`%${search}%`, `%${search}%`)
+        }
+        if (startDate) {
+          srcQuery += ` AND DATE(COALESCE(a.pub_date, a.created_at)) >= ?`
+          srcParams.push(startDate)
+        }
+        if (endDate) {
+          srcQuery += ` AND DATE(COALESCE(a.pub_date, a.created_at)) <= ?`
+          srcParams.push(endDate)
+        }
+
+        const countQuery = srcQuery.replace(
+          'SELECT a.*, s.name as source_name, c.name as category_name',
+          'SELECT COUNT(*) as total'
+        )
+        const [countResult]: any = await executeQuery(countQuery, srcParams)
+        const total = countResult?.total || 0
+
+        srcQuery += ` ORDER BY COALESCE(a.pub_date, a.created_at) DESC LIMIT ${Number(group_limit)} OFFSET ${Number(group_offset)}`
+        const articles = await executeQuery(srcQuery, srcParams)
+
+        return NextResponse.json({
+          success: true,
+          articles,
+          pagination: {
+            page: group_page,
+            limit: group_limit,
+            total,
+            totalPages: Math.ceil(total / group_limit)
+          }
+        })
+      }
+
+      // Initial bulk load: all sources, first 7 articles each, with per-source total count
       let groupedQuery = `
         SELECT * FROM (
           SELECT a.*, s.name as source_name, c.name as category_name,
-                 ROW_NUMBER() OVER (PARTITION BY a.source_id ORDER BY COALESCE(a.pub_date, a.created_at) DESC) as rn
+                 ROW_NUMBER() OVER (PARTITION BY a.source_id ORDER BY COALESCE(a.pub_date, a.created_at) DESC) as rn,
+                 COUNT(*) OVER (PARTITION BY a.source_id) as source_total
           FROM feed_articles a
           JOIN feed_sources s ON a.source_id = s.id
           JOIN feed_categories c ON s.category_id = c.id
@@ -42,10 +99,6 @@ export async function GET(request: NextRequest) {
       if (category_slug && category_slug !== 'all') {
         groupedQuery += ` AND c.slug = ?`
         groupedParams.push(category_slug)
-      }
-      if (source_id) {
-        groupedQuery += ` AND s.id = ?`
-        groupedParams.push(source_id)
       }
       if (search) {
         groupedQuery += ` AND (a.title LIKE ? OR a.description LIKE ?)`
@@ -64,14 +117,14 @@ export async function GET(request: NextRequest) {
         ) t WHERE t.rn <= 7
         ORDER BY t.source_name ASC, t.rn ASC
         LIMIT 500
-      ` // Hard limit to prevent massive payload issues if there are tons of sources
+      `
       
       const articles = await executeQuery(groupedQuery, groupedParams)
       
       return NextResponse.json({ 
         success: true, 
         articles,
-        pagination: { // Pagination is less relevant in complete grouped view, simulate 1 page
+        pagination: {
           page: 1,
           limit: 500,
           total: (articles as any[]).length,
