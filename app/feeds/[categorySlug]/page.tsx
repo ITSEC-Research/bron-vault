@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useParams } from "next/navigation"
-import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List } from "lucide-react"
+import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,6 +22,15 @@ interface Article {
   created_at: string
   source_name: string
   category_name: string
+  source_id: number
+  source_total?: number
+}
+
+interface GroupState {
+  page: number
+  totalPages: number
+  articles: Article[]
+  loading: boolean
 }
 
 export default function NewsFeedPage() {
@@ -36,6 +45,7 @@ export default function NewsFeedPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [categoryName, setCategoryName] = useState("Loading...")
   const [viewMode, setViewMode] = useState<'timeline' | 'grouped'>('timeline')
+  const [groupState, setGroupState] = useState<Record<string, GroupState>>({})
 
   useEffect(() => {
     const saved = localStorage.getItem('bron_feed_view_mode')
@@ -53,7 +63,11 @@ export default function NewsFeedPage() {
     return () => clearInterval(interval)
   }, [categorySlug, page, viewMode])
 
-  const fetchArticles = async (overrideSearch?: string) => {
+  const fetchArticles = async (
+    overrideSearch?: string, 
+    overrideClearDate?: boolean,
+    overrideDateRange?: DateRangeType | null
+  ) => {
     const currentFetchId = ++fetchIdRef.current
     try {
       setLoading(true)
@@ -64,7 +78,10 @@ export default function NewsFeedPage() {
         url += `&view=grouped`
       }
 
-      const dateParams = dateRangeToQueryParams(dateRange)
+      const activeDateRange = overrideClearDate 
+        ? null 
+        : (overrideDateRange !== undefined ? overrideDateRange : dateRange)
+      const dateParams = dateRangeToQueryParams(activeDateRange)
       if (dateParams.startDate) url += `&startDate=${dateParams.startDate}`
       if (dateParams.endDate) url += `&endDate=${dateParams.endDate}`
 
@@ -93,25 +110,80 @@ export default function NewsFeedPage() {
     fetchArticles(search)
   }
 
+  const handleClearFilters = () => {
+    setSearch("")
+    setDateRange(null)
+    setPage(1)
+    fetchArticles("", true)
+  }
+
   const handleViewModeToggle = (mode: 'timeline' | 'grouped') => {
     setViewMode(mode)
     localStorage.setItem('bron_feed_view_mode', mode)
     setPage(1) // Reset pagination when switching views
   }
 
-  const groupedArticles = useMemo(() => {
-    if (viewMode !== 'grouped') return []
+  // Populate groupState from initial bulk load
+  useEffect(() => {
+    if (viewMode !== 'grouped' || articles.length === 0) return
     const groups: Record<string, Article[]> = {}
     articles.forEach(article => {
       const key = article.source_name
       if (!groups[key]) groups[key] = []
       groups[key].push(article)
     })
-    return Object.keys(groups).sort().map(sourceName => ({
-      sourceName,
-      articles: groups[sourceName]
-    }))
+    const newState: Record<string, GroupState> = {}
+    Object.entries(groups).forEach(([name, arts]) => {
+      const sourceTotal = arts[0]?.source_total || arts.length
+      newState[name] = {
+        page: 1,
+        totalPages: Math.ceil(sourceTotal / 7),
+        articles: arts,
+        loading: false
+      }
+    })
+    setGroupState(newState)
   }, [articles, viewMode])
+
+  const groupedArticles = useMemo(() => {
+    if (viewMode !== 'grouped') return []
+    return Object.keys(groupState).sort().map(sourceName => ({
+      sourceName,
+      ...groupState[sourceName]
+    }))
+  }, [groupState, viewMode])
+
+  const handleGroupPage = async (sourceName: string, sourceId: number, newPage: number) => {
+    setGroupState(prev => ({
+      ...prev,
+      [sourceName]: { ...prev[sourceName], loading: true }
+    }))
+    try {
+      let url = `/api/feeds/articles?view=grouped&source_id=${sourceId}&group_page=${newPage}&category_slug=${categorySlug}&q=${encodeURIComponent(search)}`
+      const dateParams = dateRangeToQueryParams(dateRange)
+      if (dateParams.startDate) url += `&startDate=${dateParams.startDate}`
+      if (dateParams.endDate) url += `&endDate=${dateParams.endDate}`
+      const res = await fetch(url)
+      if (res.ok) {
+        const data = await res.json()
+        setGroupState(prev => ({
+          ...prev,
+          [sourceName]: {
+            page: newPage,
+            totalPages: data.pagination.totalPages,
+            articles: data.articles || [],
+            loading: false
+          }
+        }))
+      }
+    } catch (err) {
+      console.error('Failed to fetch group page:', err)
+      setGroupState(prev => ({
+        ...prev,
+        [sourceName]: { ...prev[sourceName], loading: false }
+      }))
+    }
+  }
 
   // Helper to strip excessively long HTML descriptions and clean them up visually
   const renderDescription = (desc: string) => {
@@ -167,7 +239,11 @@ export default function NewsFeedPage() {
 
             <DashboardDateRange
               value={dateRange}
-              onChange={setDateRange}
+              onChange={(newDate) => {
+                setDateRange(newDate)
+                setPage(1)
+                fetchArticles(undefined, false, newDate)
+              }}
               className="w-full md:w-[260px] glass-card bg-background/50 border-white/10 shrink-0"
               align="center"
             />
@@ -184,6 +260,18 @@ export default function NewsFeedPage() {
               <Button type="submit" size="sm" className="h-9 glass-card hover:bg-primary/20 bg-primary/10 text-primary border-primary/20 w-full sm:w-auto shrink-0">
                 Filter
               </Button>
+              {(search || dateRange) && (
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleClearFilters}
+                  className="h-9 w-9 p-0 glass-card bg-background/50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive border-border/50 shrink-0"
+                  title="Clear filters"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </form>
         </div>
@@ -277,6 +365,33 @@ export default function NewsFeedPage() {
                       </li>
                     )})}
                   </ul>
+                  {group.totalPages > 1 && (
+                    <div className="border-t border-border/30 px-3 py-1.5 flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        disabled={group.page <= 1 || group.loading}
+                        onClick={() => handleGroupPage(group.sourceName, group.articles[0]?.source_id, group.page - 1)}
+                        className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                      {group.loading ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                      ) : (
+                        <span className="text-[10px] font-medium text-muted-foreground tabular-nums min-w-[32px] text-center">
+                          {group.page} / {group.totalPages}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        disabled={group.page >= group.totalPages || group.loading}
+                        onClick={() => handleGroupPage(group.sourceName, group.articles[0]?.source_id, group.page + 1)}
+                        className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
