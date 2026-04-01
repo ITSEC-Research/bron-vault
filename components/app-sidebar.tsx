@@ -274,7 +274,7 @@ export function AppSidebar({ initialUserRole }: AppSidebarProps) {
                         asChild
                         isActive={isMenuItemActive(item.url)}
                         className={`
-                          group relative w-full overflow-hidden rounded-xl px-4 py-2.5 transition-all duration-300
+                          group relative w-full overflow-hidden rounded-xl px-4 py-1.5 transition-all duration-300 h-auto min-h-8
                           ${isMenuItemActive(item.url)
                             ? "bg-primary/10 text-primary shadow-[0_0_20px_-5px_rgba(230,27,0,0.3)]"
                             : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
