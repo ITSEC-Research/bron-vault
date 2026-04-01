@@ -30,6 +30,10 @@ export function FeedConfigurationTab() {
   
   const [newSourceName, setNewSourceName] = useState("")
   const [newSourceUrl, setNewSourceUrl] = useState("")
+
+  const [editingSourceId, setEditingSourceId] = useState<number | null>(null)
+  const [editSourceName, setEditSourceName] = useState("")
+  const [editSourceUrl, setEditSourceUrl] = useState("")
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null)
 
   useEffect(() => {
@@ -196,6 +200,29 @@ export function FeedConfigurationTab() {
         setNewSourceUrl("")
         toast({ title: "Success", description: "Feed source added" })
         loadData()
+        setTimeout(() => window.location.reload(), 500)
+      } else {
+        const data = await res.json()
+        throw new Error(data.error)
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    }
+  }
+
+  const handleEditSource = async (id: number) => {
+    if (!editSourceName || !editSourceUrl) return
+    try {
+      const res = await fetch("/api/feeds/sources", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name: editSourceName, rss_url: editSourceUrl })
+      })
+      if (res.ok) {
+        setEditingSourceId(null)
+        toast({ title: "Success", description: "Source updated" })
+        loadData()
+        setTimeout(() => window.location.reload(), 500)
       } else {
         const data = await res.json()
         throw new Error(data.error)
@@ -212,6 +239,7 @@ export function FeedConfigurationTab() {
       if (res.ok) {
         toast({ title: "Success", description: "Source deleted" })
         loadData()
+        setTimeout(() => window.location.reload(), 500)
       }
     } catch (_error) {
       toast({ title: "Error", description: "Failed to delete", variant: "destructive" })
@@ -396,6 +424,27 @@ export function FeedConfigurationTab() {
                     </div>
                   ) : filteredSources.map(src => {
                     const isStale = !src.last_fetched_at 
+                    const isEditing = src.id === editingSourceId
+                    
+                    if (isEditing) {
+                      return (
+                        <div key={src.id} className="flex flex-col gap-3 p-4 rounded-xl bg-white/10 border border-primary/30 shadow-sm shadow-primary/5">
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-[10px] text-muted-foreground uppercase tracking-widest">Name</Label>
+                            <Input value={editSourceName} onChange={e => setEditSourceName(e.target.value)} className="h-8 text-sm bg-background/80 border-white/10" />
+                          </div>
+                          <div className="flex flex-col gap-1.5">
+                            <Label className="text-[10px] text-muted-foreground uppercase tracking-widest">RSS URL</Label>
+                            <Input value={editSourceUrl} onChange={e => setEditSourceUrl(e.target.value)} className="h-8 text-sm bg-background/80 border-white/10" />
+                          </div>
+                          <div className="flex gap-2 justify-end mt-1">
+                            <Button variant="ghost" size="sm" className="h-7 px-3 text-xs bg-white/5 hover:bg-white/10 border border-white/10" onClick={() => setEditingSourceId(null)}>Cancel</Button>
+                            <Button size="sm" className="h-7 px-4 text-xs shadow" onClick={() => handleEditSource(src.id)}>Save</Button>
+                          </div>
+                        </div>
+                      )
+                    }
+
                     return (
                       <div key={src.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.05] hover:border-primary/30 transition-all gap-4 group">
                         <div className="flex flex-col overflow-hidden max-w-full sm:max-w-[80%] space-y-1.5">
@@ -415,14 +464,24 @@ export function FeedConfigurationTab() {
                             </span>
                           </div>
                         </div>
-                        <Button 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => handleDeleteSource(src.id)} 
-                          className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 border-transparent bg-transparent transition-all opacity-40 group-hover:opacity-100"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => { setEditingSourceId(src.id); setEditSourceName(src.name); setEditSourceUrl(src.rss_url); }}
+                            className="shrink-0 text-muted-foreground hover:text-primary hover:bg-white/5 border-transparent bg-transparent transition-all"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            onClick={() => handleDeleteSource(src.id)} 
+                            className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 border-transparent bg-transparent transition-all"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     )
                   })}
