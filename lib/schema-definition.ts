@@ -7,7 +7,7 @@
  * Schema Version: 1.0.0
  */
 
-export const SCHEMA_VERSION = "1.3.0"
+export const SCHEMA_VERSION = "1.4.0"
 
 // Column definition type
 export interface ColumnDefinition {
@@ -691,6 +691,7 @@ export const FEED_ARTICLES_TABLE: TableDefinition = {
     { name: 'title', type: 'text', nullable: false },
     { name: 'link', type: 'text', nullable: false },
     { name: 'description', type: 'text', nullable: true },
+    { name: 'author', type: 'varchar(255)', nullable: true, comment: 'Article author or creator' },
     { name: 'pub_date', type: 'timestamp', nullable: true, comment: 'Article publication date' },
     { name: 'created_at', type: 'timestamp', nullable: true, default: 'CURRENT_TIMESTAMP' },
   ],

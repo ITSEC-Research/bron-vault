@@ -6,7 +6,7 @@ import { settingsManager, SETTING_KEYS } from "@/lib/settings"
 const parser = new Parser({
   timeout: 30000,
   customFields: {
-    item: ['content:encoded', 'description', 'pubDate', 'guid'],
+    item: ['content:encoded', 'description', 'pubDate', 'guid', 'creator', 'author', 'dc:creator'],
   }
 })
 
@@ -121,6 +121,7 @@ async function syncStaleSources(sources: any[]): Promise<SyncStats> {
         const title = item.title || "Untitled"
         const link = item.link || source.website_url || source.rss_url
         const description = cleanHtml(item.contentSnippet || item.content || item.description || "")
+        const author = item.creator || item.author || item['dc:creator'] || null
         
         // PubDate parsing
         let pubDate = null
@@ -134,8 +135,8 @@ async function syncStaleSources(sources: any[]): Promise<SyncStats> {
         // Insert using IGNORE to skip duplicates based on UNIQUE INDEX (guid, source_id)
         const insertQuery = `
           INSERT IGNORE INTO feed_articles 
-            (source_id, guid, title, link, description, pub_date) 
-          VALUES (?, ?, ?, ?, ?, ?)
+            (source_id, guid, title, link, description, author, pub_date) 
+          VALUES (?, ?, ?, ?, ?, ?, ?)
         `
         const [result] = await pool.query(insertQuery, [
           source.id, 
@@ -143,6 +144,7 @@ async function syncStaleSources(sources: any[]): Promise<SyncStats> {
           title.substring(0, 500), 
           link.substring(0, 1000), 
           description.substring(0, 2000), 
+          author ? String(author).substring(0, 255) : null,
           pubDate
         ])
 

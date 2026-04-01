@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2 } from "lucide-react"
+import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,6 +15,7 @@ interface Article {
   title: string
   link: string
   description: string
+  author: string | null
   pub_date: string
   created_at: string
   source_name: string
@@ -44,7 +45,7 @@ export default function NewsFeedPage() {
     try {
       setLoading(true)
       const searchQuery = overrideSearch !== undefined ? overrideSearch : search
-      let url = `/api/feeds/articles?category_slug=${categorySlug}&page=${page}&limit=20&q=${encodeURIComponent(searchQuery)}`
+      let url = `/api/feeds/articles?category_slug=${categorySlug}&page=${page}&limit=18&q=${encodeURIComponent(searchQuery)}`
       
       const dateParams = dateRangeToQueryParams(dateRange)
       if (dateParams.startDate) url += `&startDate=${dateParams.startDate}`
@@ -155,7 +156,7 @@ export default function NewsFeedPage() {
                     <span className="text-[10px] uppercase tracking-wider font-semibold text-primary/80 bg-primary/10 px-2 py-1 rounded-sm">
                       {article.source_name}
                     </span>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
                       <Calendar className="h-3 w-3" />
                       {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
                         month: 'short', day: 'numeric', year: 'numeric'
@@ -173,14 +174,22 @@ export default function NewsFeedPage() {
                     {renderDescription(article.description)}
                   </p>
 
-                  <div className="mt-auto border-t border-border/50 pt-4 flex items-center justify-end">
+                  <div className="mt-auto border-t border-border/50 pt-4 flex flex-wrap items-center justify-between gap-3">
+                    {article.author ? (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1 min-w-0" title={article.author}>
+                        <User className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{article.author}</span>
+                      </div>
+                    ) : (
+                      <div className="flex-1" />
+                    )}
                     <a 
                       href={article.link} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-xs font-medium text-foreground hover:text-primary flex items-center gap-2 transition-colors"
+                      className="text-xs font-medium text-foreground hover:text-primary flex items-center gap-2 transition-colors shrink-0"
                     >
-                      Read Full Report <ExternalLink className="h-3 w-3" />
+                      Read more detail <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                     </a>
                   </div>
                 </CardContent>
