@@ -477,7 +477,8 @@ export default function MonitoringPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 px-4 space-y-6 max-w-7xl">
+    <main className="flex-1 p-6 bg-background">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1096,5 +1097,6 @@ export default function MonitoringPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </main>
   )
 }

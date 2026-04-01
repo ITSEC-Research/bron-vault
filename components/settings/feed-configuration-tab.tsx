@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Save, AlertCircle, RefreshCw, Plus, Trash2, Edit2, Info, Rss, ChevronRight } from "lucide-react"
+import { Save, RefreshCw, Plus, Trash2, Rss, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -92,7 +92,7 @@ export function FeedConfigurationTab() {
       } else {
         throw new Error("Failed to save")
       }
-    } catch (error) {
+    } catch (_error) {
       toast({ title: "Error", description: "Could not update setting.", variant: "destructive" })
     } finally {
       setSavingInterval(false)
@@ -150,7 +150,7 @@ export function FeedConfigurationTab() {
         toast({ title: "Success", description: "Category deleted" })
         loadData()
       }
-    } catch (error) {
+    } catch (_error) {
       toast({ title: "Error", description: "Failed to delete", variant: "destructive" })
     }
   }
@@ -185,7 +185,7 @@ export function FeedConfigurationTab() {
         toast({ title: "Success", description: "Source deleted" })
         loadData()
       }
-    } catch (error) {
+    } catch (_error) {
       toast({ title: "Error", description: "Failed to delete", variant: "destructive" })
     }
   }

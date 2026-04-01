@@ -49,7 +49,7 @@ export function SearchInterface({
                       onDetectSearchType(e.target.value)
                     }}
                     onKeyPress={(e) => e.key === "Enter" && onSearch()}
-                    className="pl-10 h-12 text-lg glass border-border/50 text-foreground placeholder:text-muted-foreground"
+                    className="pl-10 h-12 text-lg glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
                   />
                 </div>
                 <Button

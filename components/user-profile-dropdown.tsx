@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { User, LogOut, ChevronDown, Shield, Eye, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +25,7 @@ interface UserData {
 export default function UserProfileDropdown() {
   const [user, setUser] = useState<UserData | null>(null);
   const [logoutLoading, setLogoutLoading] = useState(false);
-  const router = useRouter();
+
 
   useEffect(() => {
     fetchUserData();

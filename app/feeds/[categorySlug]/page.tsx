@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { useParams } from "next/navigation"
-import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2 } from "lucide-react"
+import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { DashboardDateRange } from "@/components/dashboard-date-range"
 import { DateRangeType, dateRangeToQueryParams } from "@/lib/date-range-utils"
 
@@ -15,6 +16,8 @@ interface Article {
   title: string
   link: string
   description: string
+  author: string | null
+  thumbnail_url: string | null
   pub_date: string
   created_at: string
   source_name: string
@@ -32,26 +35,42 @@ export default function NewsFeedPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [categoryName, setCategoryName] = useState("Loading...")
+  const [viewMode, setViewMode] = useState<'timeline' | 'grouped'>('timeline')
+
+  useEffect(() => {
+    const saved = localStorage.getItem('bron_feed_view_mode')
+    if (saved === 'grouped' || saved === 'timeline') {
+      setViewMode(saved as 'timeline' | 'grouped')
+    }
+  }, [])
+
+  const fetchIdRef = useRef(0)
 
   useEffect(() => {
     fetchArticles()
     // Trigger polling every 5 minutes while page is open (optional, keeps it fresh)
     const interval = setInterval(fetchArticles, 5 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [categorySlug, page])
+  }, [categorySlug, page, viewMode])
 
   const fetchArticles = async (overrideSearch?: string) => {
+    const currentFetchId = ++fetchIdRef.current
     try {
       setLoading(true)
       const searchQuery = overrideSearch !== undefined ? overrideSearch : search
-      let url = `/api/feeds/articles?category_slug=${categorySlug}&page=${page}&limit=20&q=${encodeURIComponent(searchQuery)}`
+      let url = `/api/feeds/articles?category_slug=${categorySlug}&page=${page}&limit=18&q=${encodeURIComponent(searchQuery)}`
       
+      if (viewMode === 'grouped') {
+        url += `&view=grouped`
+      }
+
       const dateParams = dateRangeToQueryParams(dateRange)
       if (dateParams.startDate) url += `&startDate=${dateParams.startDate}`
       if (dateParams.endDate) url += `&endDate=${dateParams.endDate}`
 
       const res = await fetch(url)
       if (res.ok) {
+        if (fetchIdRef.current !== currentFetchId) return // Ignore stale response
         const data = await res.json()
         setArticles(data.articles || [])
         setTotalPages(data.pagination.totalPages || 1)
@@ -73,6 +92,26 @@ export default function NewsFeedPage() {
     setPage(1)
     fetchArticles(search)
   }
+
+  const handleViewModeToggle = (mode: 'timeline' | 'grouped') => {
+    setViewMode(mode)
+    localStorage.setItem('bron_feed_view_mode', mode)
+    setPage(1) // Reset pagination when switching views
+  }
+
+  const groupedArticles = useMemo(() => {
+    if (viewMode !== 'grouped') return []
+    const groups: Record<string, Article[]> = {}
+    articles.forEach(article => {
+      const key = article.source_name
+      if (!groups[key]) groups[key] = []
+      groups[key].push(article)
+    })
+    return Object.keys(groups).sort().map(sourceName => ({
+      sourceName,
+      articles: groups[sourceName]
+    }))
+  }, [articles, viewMode])
 
   // Helper to strip excessively long HTML descriptions and clean them up visually
   const renderDescription = (desc: string) => {
@@ -105,6 +144,27 @@ export default function NewsFeedPage() {
           </div>
 
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0 items-start md:items-center justify-end">
+            <div className="flex bg-background/50 glass-card rounded-md p-1 items-center shrink-0 border border-border">
+              <button 
+                type="button"
+                onClick={() => handleViewModeToggle('timeline')}
+                className={`p-1.5 rounded-sm transition-all text-xs font-medium flex items-center gap-1.5 ${viewMode === 'timeline' ? 'bg-primary/20 text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
+                title="Feed View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+                <span className="hidden sm:inline px-1">Feed</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleViewModeToggle('grouped')}
+                className={`p-1.5 rounded-sm transition-all text-xs font-medium flex items-center gap-1.5 ${viewMode === 'grouped' ? 'bg-primary/20 text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-white/5'}`}
+                title="Compact View"
+              >
+                <List className="h-4 w-4" />
+                <span className="hidden sm:inline px-1">Compact</span>
+              </button>
+            </div>
+
             <DashboardDateRange
               value={dateRange}
               onChange={setDateRange}
@@ -118,7 +178,7 @@ export default function NewsFeedPage() {
                   placeholder="Search topics..." 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="pl-9 glass-card bg-background/50 border-white/10 placeholder:text-muted-foreground/50 transition-all focus:border-primary/50 h-9"
+                  className="pl-9 h-9 glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <Button type="submit" size="sm" className="h-9 glass-card hover:bg-primary/20 bg-primary/10 text-primary border-primary/20 w-full sm:w-auto shrink-0">
@@ -140,6 +200,87 @@ export default function NewsFeedPage() {
             <h3 className="text-xl font-medium text-foreground mb-2">No Articles Found</h3>
             <p className="text-muted-foreground">Try adjusting your search terms or wait for the next sync cycle.</p>
           </Card>
+        ) : viewMode === 'grouped' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+            {groupedArticles.map(group => (
+              <Card key={group.sourceName} className="glass-card overflow-hidden shadow-sm hover:shadow-[0_0_20px_-5px_var(--tw-shadow-color)] shadow-primary/10 transition-shadow flex flex-col hover:border-primary/50">
+                <div className="bg-primary/5 border-b border-primary/20 px-4 py-3 flex items-center gap-3">
+                  <div className="w-7 h-7 rounded bg-primary/20 flex flex-col items-center justify-center text-primary font-bold text-[10px] leading-none tracking-wider shrink-0 shadow-inner">
+                    <Activity className="h-3.5 w-3.5" />
+                  </div>
+                  <h3 className="font-semibold text-foreground text-sm truncate uppercase tracking-wide flex-1" title={group.sourceName}>
+                    {group.sourceName}
+                  </h3>
+                </div>
+                <CardContent className="p-0">
+                  <ul className="divide-y divide-border/30">
+                    {group.articles.map(article => {
+                      return (
+                      <li key={article.id} className="group/item relative hover:bg-primary/5 transition-colors duration-200">
+                        <HoverCard openDelay={400} closeDelay={100}>
+                          <HoverCardTrigger asChild>
+                            <a href={article.link} target="_blank" rel="noopener noreferrer" className="block py-2 focus:outline-none focus-visible:ring-2 ring-primary px-3.5">
+                              <div className="flex items-center gap-3">
+                                <h4 className="flex-1 min-w-0 text-[13px] font-medium text-foreground/90 group-hover/item:text-primary leading-none truncate transition-colors">
+                                  {article.title}
+                                </h4>
+                                <span className="text-[10px] font-medium text-muted-foreground/80 whitespace-nowrap pt-px shrink-0">
+                                  {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
+                                    month: 'short', day: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            </a>
+                          </HoverCardTrigger>
+                          <HoverCardContent side="right" align="start" sideOffset={10} className="w-[320px] p-0 overflow-hidden shadow-2xl border-primary/20 z-[100] bg-background/95 backdrop-blur-md">
+                            {article.thumbnail_url && article.thumbnail_url.startsWith('http') && (
+                              <div className="w-full h-36 bg-muted/50 relative overflow-hidden border-b border-border/50">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img 
+                                  src={`/api/feeds/image-proxy?url=${encodeURIComponent(article.thumbnail_url)}`}
+                                  alt="" 
+                                  loading="lazy"
+                                  className="w-full h-full object-cover"  
+                                  onError={(e) => {
+                                    const el = e.target as HTMLImageElement
+                                    el.style.display = 'none'
+                                    const parent = el.parentElement
+                                    if (parent) parent.style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <div className="p-4 space-y-3">
+                              <h5 className={`font-bold leading-snug text-foreground ${article.thumbnail_url && article.thumbnail_url.startsWith('http') ? 'text-sm line-clamp-3' : 'text-[15px] line-clamp-4'}`}>
+                                {article.title}
+                              </h5>
+                              <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed">
+                                {renderDescription(article.description)}
+                              </p>
+                              <div className="flex items-center gap-2 pt-3 mt-1 border-t border-border/50 text-[10px] text-primary/80 font-medium uppercase tracking-wider">
+                                {article.author && (
+                                  <>
+                                    <User className="h-3 w-3 shrink-0" />
+                                    <span className="truncate max-w-[120px]">{article.author}</span>
+                                    <span>•</span>
+                                  </>
+                                )}
+                                <span className="opacity-90">
+                                  {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
+                                    month: 'long', day: 'numeric', year: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      </li>
+                    )})}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map(article => (
@@ -155,7 +296,7 @@ export default function NewsFeedPage() {
                     <span className="text-[10px] uppercase tracking-wider font-semibold text-primary/80 bg-primary/10 px-2 py-1 rounded-sm">
                       {article.source_name}
                     </span>
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground shrink-0">
                       <Calendar className="h-3 w-3" />
                       {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
                         month: 'short', day: 'numeric', year: 'numeric'
@@ -173,14 +314,22 @@ export default function NewsFeedPage() {
                     {renderDescription(article.description)}
                   </p>
 
-                  <div className="mt-auto border-t border-border/50 pt-4 flex items-center justify-end">
+                  <div className="mt-auto border-t border-border/50 pt-4 flex flex-wrap items-center justify-between gap-3">
+                    {article.author ? (
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-1 min-w-0" title={article.author}>
+                        <User className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{article.author}</span>
+                      </div>
+                    ) : (
+                      <div className="flex-1" />
+                    )}
                     <a 
                       href={article.link} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-xs font-medium text-foreground hover:text-primary flex items-center gap-2 transition-colors"
+                      className="text-xs font-medium text-foreground hover:text-primary flex items-center gap-2 transition-colors shrink-0"
                     >
-                      Read Full Report <ExternalLink className="h-3 w-3" />
+                      Read more detail <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                     </a>
                   </div>
                 </CardContent>
@@ -190,7 +339,7 @@ export default function NewsFeedPage() {
         )}
 
         {/* Pagination Details */}
-        {!loading && totalPages > 1 && (
+        {!loading && totalPages > 1 && viewMode === 'timeline' && (
           <div className="flex items-center justify-center gap-4 pt-8">
             <Button 
               variant="outline" 
