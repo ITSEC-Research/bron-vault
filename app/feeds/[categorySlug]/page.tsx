@@ -33,6 +33,31 @@ interface GroupState {
   loading: boolean
 }
 
+const SourceIcon = ({ url, name }: { url?: string; name: string }) => {
+  const [error, setError] = useState(false)
+  let domain = ""
+  try {
+    if (url) domain = new URL(url).hostname
+  } catch (e) {}
+
+  if (!domain || error) {
+    return <Activity className="h-3.5 w-3.5 opacity-70" />
+  }
+
+  const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+  const proxyUrl = `/api/feeds/image-proxy?url=${encodeURIComponent(faviconUrl)}`
+
+  // eslint-disable-next-line @next/next/no-img-element
+  return (
+    <img
+      src={proxyUrl}
+      alt={name}
+      className="w-full h-full object-contain p-[3px] rounded"
+      onError={() => setError(true)}
+    />
+  )
+}
+
 export default function NewsFeedPage() {
   const params = useParams()
   const categorySlug = params.categorySlug as string
@@ -293,10 +318,7 @@ export default function NewsFeedPage() {
             {groupedArticles.map(group => (
               <Card key={group.sourceName} className="glass-card overflow-hidden shadow-sm hover:shadow-[0_0_20px_-5px_var(--tw-shadow-color)] shadow-primary/10 transition-shadow flex flex-col hover:border-primary/50">
                 <div className="bg-primary/5 border-b border-primary/20 px-4 py-3 flex items-center gap-3">
-                  <div className="w-7 h-7 rounded bg-primary/20 flex flex-col items-center justify-center text-primary font-bold text-[10px] leading-none tracking-wider shrink-0 shadow-inner">
-                    <Activity className="h-3.5 w-3.5" />
-                  </div>
-                  <h3 className="font-semibold text-foreground text-sm truncate uppercase tracking-wide flex-1" title={group.sourceName}>
+                  <h3 className="font-bold text-foreground text-sm truncate uppercase tracking-wide flex-1" title={group.sourceName}>
                     {group.sourceName}
                   </h3>
                 </div>
@@ -307,8 +329,11 @@ export default function NewsFeedPage() {
                       <li key={article.id} className="group/item relative hover:bg-primary/5 transition-colors duration-200">
                         <HoverCard openDelay={400} closeDelay={100}>
                           <HoverCardTrigger asChild>
-                            <a href={article.link} target="_blank" rel="noopener noreferrer" className="block py-2 focus:outline-none focus-visible:ring-2 ring-primary px-3.5">
+                            <a href={article.link} target="_blank" rel="noopener noreferrer" className="block py-2.5 focus:outline-none focus-visible:ring-2 ring-primary px-3.5">
                               <div className="flex items-center gap-3">
+                                <div className="w-5 h-5 rounded flex flex-col items-center justify-center text-primary/70 shrink-0">
+                                  <SourceIcon url={article.link} name={group.sourceName} />
+                                </div>
                                 <h4 className="flex-1 min-w-0 text-[13px] font-medium text-foreground/90 group-hover/item:text-primary leading-none truncate transition-colors">
                                   {article.title}
                                 </h4>
