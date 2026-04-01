@@ -6,7 +6,10 @@ import { settingsManager, SETTING_KEYS } from "@/lib/settings"
 const parser = new Parser({
   timeout: 30000,
   customFields: {
-    item: ['content:encoded', 'description', 'pubDate', 'guid', 'creator', 'author', 'dc:creator'],
+    item: [
+      'content:encoded', 'description', 'pubDate', 'guid', 'creator', 'author', 'dc:creator',
+      'media:thumbnail', 'media:content', 'enclosure',
+    ],
   }
 })
 
@@ -47,6 +50,41 @@ function cleanHtml(text: string | null | undefined): string {
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ") // Collapse whitespace
     .trim()
+}
+
+// Extract thumbnail image URL from RSS item content before HTML is stripped
+function extractThumbnail(item: any): string | null {
+  // 1. Check media:content (Ars Technica style: media:content.$.url with medium=image)
+  //    rss-parser nests media:thumbnail inside media:content
+  if (item['media:content']?.$?.url) {
+    const mc = item['media:content'].$
+    if (mc.medium === 'image' || /\.(jpg|jpeg|png|gif|webp)/i.test(mc.url)) {
+      return mc.url
+    }
+  }
+  
+  // 2. Check media:thumbnail at top level (some feeds put it here directly)
+  if (typeof item['media:thumbnail'] === 'string') return item['media:thumbnail']
+  if (item['media:thumbnail']?.$?.url) return item['media:thumbnail'].$.url
+  if (item['media:thumbnail']?.url) return item['media:thumbnail'].url
+  
+  // 3. Check media:thumbnail nested inside media:content (Ars Technica)
+  const nestedThumb = item['media:content']?.['media:thumbnail']
+  if (Array.isArray(nestedThumb) && nestedThumb[0]?.$?.url) {
+    return nestedThumb[0].$.url
+  }
+  
+  // 4. Check enclosure (podcast/media feeds often use this for images)
+  if (item.enclosure?.url && item.enclosure?.type?.startsWith('image/')) {
+    return item.enclosure.url
+  }
+  
+  // 5. Extract first <img> from content:encoded or content or description (raw HTML before cleaning)
+  const rawHtml = item['content:encoded'] || item.content || item.description || ''
+  const imgMatch = rawHtml.match(/<img[^>]+src=["']([^"']+)["']/i)
+  if (imgMatch && imgMatch[1]) return imgMatch[1]
+  
+  return null
 }
 
 /**
@@ -122,6 +160,7 @@ async function syncStaleSources(sources: any[]): Promise<SyncStats> {
         const link = item.link || source.website_url || source.rss_url
         const description = cleanHtml(item.contentSnippet || item.content || item.description || "")
         const author = item.creator || item.author || item['dc:creator'] || null
+        const thumbnailUrl = extractThumbnail(item)
         
         // PubDate parsing
         let pubDate = null
@@ -135,8 +174,8 @@ async function syncStaleSources(sources: any[]): Promise<SyncStats> {
         // Insert using IGNORE to skip duplicates based on UNIQUE INDEX (guid, source_id)
         const insertQuery = `
           INSERT IGNORE INTO feed_articles 
-            (source_id, guid, title, link, description, author, pub_date) 
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+            (source_id, guid, title, link, description, author, thumbnail_url, pub_date) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `
         const [result] = await pool.query(insertQuery, [
           source.id, 
@@ -145,6 +184,7 @@ async function syncStaleSources(sources: any[]): Promise<SyncStats> {
           link.substring(0, 1000), 
           description.substring(0, 2000), 
           author ? String(author).substring(0, 255) : null,
+          thumbnailUrl ? thumbnailUrl.substring(0, 2000) : null,
           pubDate
         ])
 

@@ -24,7 +24,63 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
+    const view = searchParams.get('view') // 'timeline' or 'grouped'
 
+    // Handle Grouped View
+    if (view === 'grouped') {
+      let groupedQuery = `
+        SELECT * FROM (
+          SELECT a.*, s.name as source_name, c.name as category_name,
+                 ROW_NUMBER() OVER (PARTITION BY a.source_id ORDER BY COALESCE(a.pub_date, a.created_at) DESC) as rn
+          FROM feed_articles a
+          JOIN feed_sources s ON a.source_id = s.id
+          JOIN feed_categories c ON s.category_id = c.id
+          WHERE 1=1
+      `
+      const groupedParams: any[] = []
+
+      if (category_slug && category_slug !== 'all') {
+        groupedQuery += ` AND c.slug = ?`
+        groupedParams.push(category_slug)
+      }
+      if (source_id) {
+        groupedQuery += ` AND s.id = ?`
+        groupedParams.push(source_id)
+      }
+      if (search) {
+        groupedQuery += ` AND (a.title LIKE ? OR a.description LIKE ?)`
+        groupedParams.push(`%${search}%`, `%${search}%`)
+      }
+      if (startDate) {
+        groupedQuery += ` AND DATE(COALESCE(a.pub_date, a.created_at)) >= ?`
+        groupedParams.push(startDate)
+      }
+      if (endDate) {
+        groupedQuery += ` AND DATE(COALESCE(a.pub_date, a.created_at)) <= ?`
+        groupedParams.push(endDate)
+      }
+
+      groupedQuery += `
+        ) t WHERE t.rn <= 7
+        ORDER BY t.source_name ASC, t.rn ASC
+        LIMIT 500
+      ` // Hard limit to prevent massive payload issues if there are tons of sources
+      
+      const articles = await executeQuery(groupedQuery, groupedParams)
+      
+      return NextResponse.json({ 
+        success: true, 
+        articles,
+        pagination: { // Pagination is less relevant in complete grouped view, simulate 1 page
+          page: 1,
+          limit: 500,
+          total: (articles as any[]).length,
+          totalPages: 1
+        }
+      })
+    }
+
+    // Default Timeline View
     let query = `
       SELECT a.*, s.name as source_name, c.name as category_name
       FROM feed_articles a
