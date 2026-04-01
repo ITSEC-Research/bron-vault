@@ -139,7 +139,7 @@ export default function NewsFeedPage() {
               {categoryName}
             </h1>
             <p className="text-muted-foreground mt-2 max-w-2xl">
-              Real-time updates from your preferred security and intelligence sources.
+              Real-time updates from your security and intelligence sources.
             </p>
           </div>
 
