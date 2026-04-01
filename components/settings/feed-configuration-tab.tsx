@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Save, RefreshCw, Plus, Trash2, Rss, ChevronRight } from "lucide-react"
+import { Save, RefreshCw, Plus, Trash2, Rss, ChevronRight, Pencil } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,10 @@ export function FeedConfigurationTab() {
   // Form states
   const [newCatName, setNewCatName] = useState("")
   const [newCatSlug, setNewCatSlug] = useState("")
+  
+  const [editingCatId, setEditingCatId] = useState<number | null>(null)
+  const [editCatName, setEditCatName] = useState("")
+  const [editCatSlug, setEditCatSlug] = useState("")
   
   const [newSourceName, setNewSourceName] = useState("")
   const [newSourceUrl, setNewSourceUrl] = useState("")
@@ -133,6 +137,29 @@ export function FeedConfigurationTab() {
         setNewCatSlug("")
         toast({ title: "Success", description: "Category created" })
         loadData(data.id)
+        setTimeout(() => window.location.reload(), 500)
+      } else {
+        const data = await res.json()
+        throw new Error(data.error)
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" })
+    }
+  }
+
+  const handleEditCategory = async (id: number) => {
+    if (!editCatName || !editCatSlug) return
+    try {
+      const res = await fetch("/api/feeds/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, name: editCatName, slug: editCatSlug })
+      })
+      if (res.ok) {
+        setEditingCatId(null)
+        toast({ title: "Success", description: "Category updated" })
+        loadData(id)
+        setTimeout(() => window.location.reload(), 500)
       } else {
         const data = await res.json()
         throw new Error(data.error)
@@ -149,6 +176,7 @@ export function FeedConfigurationTab() {
       if (res.ok) {
         toast({ title: "Success", description: "Category deleted" })
         loadData()
+        setTimeout(() => window.location.reload(), 500)
       }
     } catch (_error) {
       toast({ title: "Error", description: "Failed to delete", variant: "destructive" })
@@ -252,6 +280,21 @@ export function FeedConfigurationTab() {
             <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 mt-2">
               {categories.map(cat => {
                 const isActive = cat.id === selectedCatId
+                const isEditing = cat.id === editingCatId
+
+                if (isEditing) {
+                  return (
+                    <div key={cat.id} className="flex flex-col gap-2 p-3 bg-white/10 rounded-lg border border-primary/30 shadow-sm shadow-primary/5">
+                      <Input value={editCatName} onChange={e => setEditCatName(e.target.value)} className="h-8 text-sm bg-background/80 border-white/10" placeholder="Category Name" />
+                      <Input value={editCatSlug} onChange={e => setEditCatSlug(e.target.value)} className="h-8 text-sm bg-background/80 border-white/10" placeholder="Category Slug" />
+                      <div className="flex gap-2 justify-end mt-1">
+                        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs bg-white/5 hover:bg-white/10 border border-white/10" onClick={() => setEditingCatId(null)}>Cancel</Button>
+                        <Button size="sm" className="h-7 px-3 text-xs shadow" onClick={() => handleEditCategory(cat.id)}>Save</Button>
+                      </div>
+                    </div>
+                  )
+                }
+
                 return (
                   <div 
                     key={cat.id} 
@@ -263,20 +306,35 @@ export function FeedConfigurationTab() {
                     }`}
                   >
                     <div className="flex flex-col overflow-hidden pr-2">
-                      <span className={`font-semibold text-sm truncate flex items-center gap-1.5 ${isActive ? "text-primary" : "text-foreground group-hover:text-primary transition-colors"}`}>
-                        {cat.name}
-                        {isActive && <ChevronRight className="h-3 w-3 opacity-70" />}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground truncate opacity-70 font-mono">/{cat.slug}</span>
+                       <span className={`font-semibold text-sm truncate flex items-center gap-1.5 ${isActive ? "text-primary" : "text-foreground group-hover:text-primary transition-colors"}`}>
+                         {cat.name}
+                         {isActive && <ChevronRight className="h-3 w-3 opacity-70" />}
+                       </span>
+                       <span className="text-[11px] text-muted-foreground truncate opacity-70 font-mono">/{cat.slug}</span>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }} 
-                      className={`h-7 w-7 shrink-0 transition-colors ${isActive ? "hover:bg-destructive hover:text-white" : "hover:bg-destructive/20 hover:text-destructive opacity-0 group-hover:opacity-100"}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setEditingCatId(cat.id);
+                          setEditCatName(cat.name);
+                          setEditCatSlug(cat.slug);
+                        }} 
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }} 
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 )
               })}
