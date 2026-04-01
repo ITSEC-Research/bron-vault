@@ -118,7 +118,7 @@ export default function NewsFeedPage() {
                   placeholder="Search topics..." 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="pl-9 glass-card bg-background/50 border-white/10 placeholder:text-muted-foreground/50 transition-all focus:border-primary/50 h-9"
+                  className="pl-9 h-9 glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <Button type="submit" size="sm" className="h-9 glass-card hover:bg-primary/20 bg-primary/10 text-primary border-primary/20 w-full sm:w-auto shrink-0">
