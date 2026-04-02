@@ -5,13 +5,16 @@ import { executeQuery } from "@/lib/mysql"
 // Define the user preferences interface
 export interface UserPreferences {
   stream_enabled?: boolean
-  // Add more preferences here as needed
+  feed_compact_order?: Record<string, string[]> // key = categorySlug, value = ordered source names
 }
 
 // Default preferences
 const DEFAULT_PREFERENCES: UserPreferences = {
   stream_enabled: true,
 }
+
+// Fields that only admins can modify
+const ADMIN_ONLY_KEYS: (keyof UserPreferences)[] = ['stream_enabled']
 
 interface UserRow {
   preferences: string | null
@@ -28,11 +31,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
 
-  // Check admin role - preferences are admin-only
-  const roleError = requireAdminRole(user)
-  if (roleError) {
-    return roleError
-  }
+  // Preferences are available to all authenticated users
 
   try {
     const userId = user.userId
@@ -90,11 +89,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
   }
 
-  // Check admin role - preferences are admin-only
-  const roleError = requireAdminRole(user)
-  if (roleError) {
-    return roleError
-  }
+  // Preferences are available to all authenticated users
 
   try {
     const userId = user.userId
@@ -104,6 +99,18 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const newPreferences: Partial<UserPreferences> = body.preferences || body
+
+    // Block non-admin users from modifying admin-only fields
+    const attemptedAdminKeys = ADMIN_ONLY_KEYS.filter(key => key in newPreferences)
+    if (attemptedAdminKeys.length > 0) {
+      const roleError = requireAdminRole(user)
+      if (roleError) {
+        return NextResponse.json(
+          { success: false, error: `Fields [${attemptedAdminKeys.join(', ')}] require admin role` },
+          { status: 403 }
+        )
+      }
+    }
 
     // Get current preferences
     const result = await executeQuery(
