@@ -2,7 +2,9 @@
 
 import { useEffect, useState, useMemo, useRef } from "react"
 import { useParams } from "next/navigation"
-import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X, Info, SlidersHorizontal, Plus, Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -71,6 +73,29 @@ export default function NewsFeedPage() {
   const [categoryName, setCategoryName] = useState("Loading...")
   const [viewMode, setViewMode] = useState<'timeline' | 'grouped'>('timeline')
   const [groupState, setGroupState] = useState<Record<string, GroupState>>({})
+
+  // Advanced Search Builder
+  type AdvRow = { id: string, term: string, operator: 'AND' | 'OR' }
+  const [advRows, setAdvRows] = useState<AdvRow[]>([{ id: '1', term: '', operator: 'AND' }])
+  const [advModalOpen, setAdvModalOpen] = useState(false)
+
+  const handleApplyAdvancedSearch = () => {
+    let q = ""
+    advRows.forEach((row, idx) => {
+      if (!row.term.trim()) return
+      const cleanTerm = row.term.trim().replace(/"/g, '')
+      const formattedTerm = `"${cleanTerm}"`
+      if (q === "") {
+        q += formattedTerm
+      } else {
+        q += ` ${row.operator} ${formattedTerm}`
+      }
+    })
+    setSearch(q)
+    setAdvModalOpen(false)
+    setPage(1)
+    fetchArticles(q)
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('bron_feed_view_mode')
@@ -241,7 +266,7 @@ export default function NewsFeedPage() {
           </div>
 
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0 items-start md:items-center justify-end">
-            <div className="flex bg-background/50 glass-card rounded-md p-1 items-center shrink-0 border border-border">
+            <div className="flex bg-background/50 glass-card rounded-md p-1 h-9 items-center shrink-0 border border-border">
               <button 
                 type="button"
                 onClick={() => handleViewModeToggle('timeline')}
@@ -273,14 +298,87 @@ export default function NewsFeedPage() {
               align="center"
             />
             <div className="flex gap-2 w-full md:w-auto">
-              <div className="relative w-full md:w-[200px]">
+              <div className="relative w-full transition-all duration-300 md:w-[200px] focus-within:md:w-[250px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                 <Input 
                   placeholder="Search topics..." 
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-9 h-9 glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 pr-9 glass-card bg-background/50 border-white/10 w-full h-9"
                 />
+                <Dialog open={advModalOpen} onOpenChange={setAdvModalOpen}>
+                  <DialogTrigger asChild>
+                    <button className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors focus:outline-none">
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[450px]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-primary" /> Advanced Search Builder</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      {advRows.map((row, idx) => (
+                        <div key={row.id} className="flex gap-2 items-center">
+                          {idx > 0 ? (
+                            <Select 
+                               value={row.operator} 
+                               onValueChange={v => {
+                                  const n = [...advRows];
+                                  n[idx].operator = v as 'AND'|'OR';
+                                  setAdvRows(n)
+                               }}
+                            >
+                              <SelectTrigger className="w-[85px] h-9 shrink-0">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="AND">AND</SelectItem>
+                                <SelectItem value="OR">OR</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="w-[85px] text-xs font-medium text-muted-foreground uppercase text-center shrink-0">Match</div>
+                          )}
+                          <Input 
+                            placeholder={idx === 0 ? "e.g. Ransomware" : "Keyword..."} 
+                            value={row.term}
+                            onChange={e => {
+                               const n = [...advRows];
+                               n[idx].term = e.target.value;
+                               setAdvRows(n);
+                            }}
+                            className="h-9 flex-1"
+                          />
+                          {idx > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0" 
+                              onClick={() => setAdvRows(advRows.filter(r => r.id !== row.id))}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button 
+                         variant="outline" 
+                         size="sm" 
+                         className="w-full h-8 mt-2 border-dashed text-primary/80 hover:text-primary"
+                         onClick={() => setAdvRows([...advRows, { id: Math.random().toString(), term: '', operator: 'AND' }])}
+                      >
+                         <Plus className="h-4 w-4 mr-1.5" /> Add Keyword
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center opacity-80 pt-2">
+                        Your inputs will be safely quoted to prevent search logic ambiguity.
+                      </p>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setAdvRows([{ id: '1', term: '', operator: 'AND' }])} className="mr-auto text-muted-foreground">Reset</Button>
+                      <Button onClick={handleApplyAdvancedSearch}>Apply Search</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <Button type="submit" size="sm" className="h-9 glass-card hover:bg-primary/20 bg-primary/10 text-primary border-primary/20 w-full sm:w-auto shrink-0">
                 Filter
