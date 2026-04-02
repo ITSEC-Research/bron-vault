@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
-import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X, Info, SlidersHorizontal, Plus, Trash2, GripVertical } from "lucide-react"
+import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X, SlidersHorizontal, Plus, Trash2, GripVertical } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
@@ -58,7 +58,7 @@ const SourceIcon = ({ url, name }: { url?: string; name: string }) => {
   let domain = ""
   try {
     if (url) domain = new URL(url).hostname
-  } catch (e) {}
+  } catch (_e) {}
 
   if (!domain || error) {
     return <Activity className="h-3.5 w-3.5 opacity-70" />
@@ -88,12 +88,12 @@ interface CompactGroupData {
 
 const SortableCompactCard = ({ 
   group, 
-  activeId,
+  _activeId,
   renderDescription, 
   handleGroupPage 
 }: { 
   group: CompactGroupData
-  activeId: string | null
+  _activeId: string | null
   renderDescription: (desc: string) => string | null
   handleGroupPage: (sourceName: string, sourceId: number, newPage: number) => void
 }) => {
@@ -267,7 +267,7 @@ export default function NewsFeedPage() {
             setSourceOrder(saved)
           }
         }
-      } catch (e) {
+      } catch (_e) {
         // Silently fail — fallback to default order
       }
     }
@@ -317,7 +317,7 @@ export default function NewsFeedPage() {
 
   const handleApplyAdvancedSearch = () => {
     let q = ""
-    advRows.forEach((row, idx) => {
+    advRows.forEach((row, _idx) => {
       if (!row.term.trim()) return
       const cleanTerm = row.term.trim().replace(/"/g, '')
       const formattedTerm = `"${cleanTerm}"`
@@ -672,7 +672,7 @@ export default function NewsFeedPage() {
                   <SortableCompactCard
                     key={group.sourceName}
                     group={group}
-                    activeId={activeId}
+                    _activeId={activeId}
                     renderDescription={renderDescription}
                     handleGroupPage={handleGroupPage}
                   />
