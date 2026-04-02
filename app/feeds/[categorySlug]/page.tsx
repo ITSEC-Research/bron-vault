@@ -12,6 +12,13 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { DashboardDateRange } from "@/components/dashboard-date-range"
 import { DateRangeType, dateRangeToQueryParams } from "@/lib/date-range-utils"
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+} from "@/components/ui/pagination"
+import {
   DndContext,
   closestCenter,
   KeyboardSensor,
@@ -243,6 +250,7 @@ export default function NewsFeedPage() {
   const [dateRange, setDateRange] = useState<DateRangeType | null>(null)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [jumpPage, setJumpPage] = useState("")
   const [categoryName, setCategoryName] = useState("Loading...")
   const [viewMode, setViewMode] = useState<'timeline' | 'grouped'>('timeline')
   const [groupState, setGroupState] = useState<Record<string, GroupState>>({})
@@ -395,6 +403,22 @@ export default function NewsFeedPage() {
     setPage(1)
     fetchArticles(search)
   }
+
+  const handleJumpToPage = (e: React.FormEvent) => {
+    e.preventDefault()
+    const p = parseInt(jumpPage)
+    if (!isNaN(p) && p >= 1 && p <= totalPages) {
+      setPage(p)
+      setJumpPage("")
+    }
+  }
+
+  const visiblePages = useMemo(() => {
+    if (totalPages <= 7) return Array.from({length: totalPages}, (_, i) => i + 1)
+    if (page <= 3) return [1, 2, 3, 4, 'ellipsis', totalPages]
+    if (page >= totalPages - 2) return [1, 'ellipsis', totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+    return [1, 'ellipsis', page - 1, page, page + 1, 'ellipsis', totalPages]
+  }, [page, totalPages])
 
   const handleClearFilters = () => {
     setSearch("")
@@ -777,26 +801,65 @@ export default function NewsFeedPage() {
 
         {/* Pagination Details */}
         {!loading && totalPages > 1 && viewMode === 'timeline' && (
-          <div className="flex items-center justify-center gap-4 pt-8">
-            <Button 
-              variant="outline" 
-              className="glass-card hover:bg-primary/20"
-              disabled={page === 1} 
-              onClick={() => setPage(p => p - 1)}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground font-medium bg-background/50 px-4 py-2 rounded-md border border-border">
-              Page <span className="text-foreground">{page}</span> of {totalPages}
-            </span>
-            <Button 
-              variant="outline" 
-              className="glass-card hover:bg-primary/20"
-              disabled={page >= totalPages} 
-              onClick={() => setPage(p => p + 1)}
-            >
-              Next
-            </Button>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 pb-4">
+            <div className="flex-1 w-full sm:w-auto">
+              <Pagination>
+                <PaginationContent className="flex-wrap justify-center gap-1">
+                  <PaginationItem>
+                    <Button
+                      variant="ghost"
+                      size="default"
+                      className="gap-1 pl-2.5"
+                      onClick={() => setPage(page - 1)}
+                      disabled={page === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </Button>
+                  </PaginationItem>
+                  
+                  {visiblePages.map((p, idx) => (
+                    <PaginationItem key={idx}>
+                      {p === 'ellipsis' ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          isActive={page === p}
+                          onClick={() => setPage(p as number)}
+                          className="cursor-pointer"
+                        >
+                          {p}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
+                  
+                  <PaginationItem>
+                    <Button
+                      variant="ghost"
+                      size="default"
+                      className="gap-1 pr-2.5"
+                      onClick={() => setPage(page + 1)}
+                      disabled={page === totalPages}
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+            
+            <form onSubmit={handleJumpToPage} className="flex items-center gap-2 shrink-0">
+              <span className="text-sm text-muted-foreground hidden lg:inline-block">Jump to:</span>
+              <Input 
+                value={jumpPage} 
+                onChange={e => setJumpPage(e.target.value)} 
+                placeholder="Page" 
+                className="w-16 h-9 text-center bg-background/50 border-border/50" 
+              />
+              <Button type="submit" variant="secondary" size="sm" className="h-9">Go</Button>
+            </form>
           </div>
         )}
 
