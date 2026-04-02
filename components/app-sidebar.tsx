@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen, ClipboardList, FileUp, Radio, Rss } from "lucide-react"
+import { Search, Upload, BarChart3, Bug, Globe, Settings, Users, LucideIcon, Key, BookOpen, ClipboardList, FileUp, Radio, Rss, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTheme } from "next-themes"
@@ -8,6 +8,7 @@ import { Sun, Moon } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import React from "react"
 import { useAuth, isAdmin } from "@/hooks/useAuth"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 import {
   Sidebar,
@@ -18,6 +19,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarHeader,
 } from "@/components/ui/sidebar"
 
@@ -156,17 +160,8 @@ export function AppSidebar({ initialUserRole }: AppSidebarProps) {
   // Use auth API result when available, fall back to server-provided cookie hint for initial render.
   // This eliminates the 2-step menu flash: SSR HTML already contains correct menu items.
   const userIsAdmin = user ? isAdmin(user) : initialUserRole === 'admin'
-  const [dynamicFeedGroups, setDynamicFeedGroups] = React.useState<MenuGroup[]>([{
-    title: "News Feed",
-    items: [
-      {
-        title: "All Feeds",
-        description: "Global Intelligence",
-        url: "/feeds/all",
-        icon: Rss,
-      }
-    ]
-  }])
+  const [feedCategories, setFeedCategories] = React.useState<{ name: string; slug: string }[]>([])
+  const feedsOpen = pathname.startsWith('/feeds')
 
   // Helper function to check if menu item is active
   // For /domain-search, also match sub-routes like /domain-search/[domain]
@@ -194,33 +189,11 @@ export function AppSidebar({ initialUserRole }: AppSidebarProps) {
   React.useEffect(() => {
     setMounted(true);
 
-    // Fetch dynamic feed categories
     fetch("/api/feeds/categories")
       .then(res => res.json())
       .then(data => {
-        const baseItems = [
-          {
-            title: "All Feeds",
-            description: "Global Intelligence",
-            url: "/feeds/all",
-            icon: Rss,
-          }
-        ]
-        
         if (data.success && data.categories && data.categories.length > 0) {
-          const categoryItems = data.categories.map((cat: any) => ({
-            title: cat.name,
-            description: "Security Feeds",
-            url: `/feeds/${cat.slug}`,
-            icon: Rss,
-          }))
-          
-          setDynamicFeedGroups([
-            {
-              title: "News Feed",
-              items: [...baseItems, ...categoryItems]
-            }
-          ])
+          setFeedCategories(data.categories)
         }
       })
       .catch(err => console.error("Failed to load feed categories for sidebar", err))
@@ -234,8 +207,7 @@ export function AppSidebar({ initialUserRole }: AppSidebarProps) {
     }
   }, [mounted, resolvedTheme]);
 
-  // Filter menu groups and items based on user role
-  const filteredMenuGroups = [...menuGroups, ...dynamicFeedGroups]
+  const filteredMenuGroups = menuGroups
     .map(group => ({
       ...group,
       items: group.items.filter(item => !item.adminOnly || userIsAdmin)
@@ -298,6 +270,80 @@ export function AppSidebar({ initialUserRole }: AppSidebarProps) {
               </SidebarGroupContent>
             </SidebarGroup>
           ))}
+
+          {/* News Feed — Collapsible nested menu */}
+          <SidebarGroup className="bg-transparent p-0">
+            <SidebarGroupLabel className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
+              News Feed
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                <Collapsible defaultOpen={feedsOpen} className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        className={`
+                          group relative w-full overflow-hidden rounded-xl px-4 py-1.5 transition-all duration-300 h-auto min-h-8
+                          ${feedsOpen
+                            ? "bg-primary/10 text-primary shadow-[0_0_20px_-5px_rgba(230,27,0,0.3)]"
+                            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                          }
+                        `}
+                      >
+                        <Rss className={`h-5 w-5 transition-transform duration-300 ${feedsOpen ? 'scale-110' : 'group-hover:scale-110'}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className={`font-medium tracking-wide ${feedsOpen ? 'font-semibold' : ''}`}>Feeds</div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub className="mt-2">
+                        {/* All Feeds */}
+                        <SidebarMenuSubItem>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={pathname === '/feeds/all'}
+                            className={`
+                              rounded-lg px-3 py-1 transition-all duration-200
+                              ${pathname === '/feeds/all'
+                                ? 'bg-primary/10 text-primary font-semibold'
+                                : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                              }
+                            `}
+                          >
+                            <Link href="/feeds/all">
+                              <span>All Feeds</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                        {/* Dynamic categories */}
+                        {feedCategories.map(cat => (
+                          <SidebarMenuSubItem key={cat.slug}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={pathname === `/feeds/${cat.slug}`}
+                              className={`
+                                rounded-lg px-3 py-1 transition-all duration-200
+                                ${pathname === `/feeds/${cat.slug}`
+                                  ? 'bg-primary/10 text-primary font-semibold'
+                                  : 'text-muted-foreground hover:bg-white/5 hover:text-foreground'
+                                }
+                              `}
+                            >
+                              <Link href={`/feeds/${cat.slug}`}>
+                                <span>{cat.name}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         </div>
 
         <div className="mt-auto px-4 py-4 border-t-[2px] border-border">
