@@ -1,14 +1,34 @@
 "use client"
 
-import { useEffect, useState, useMemo, useRef } from "react"
+import { useEffect, useState, useMemo, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
-import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X, Info, SlidersHorizontal, Plus, Trash2, GripVertical } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { DashboardDateRange } from "@/components/dashboard-date-range"
 import { DateRangeType, dateRangeToQueryParams } from "@/lib/date-range-utils"
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 interface Article {
   id: number
@@ -58,6 +78,161 @@ const SourceIcon = ({ url, name }: { url?: string; name: string }) => {
   )
 }
 
+interface CompactGroupData {
+  sourceName: string
+  page: number
+  totalPages: number
+  articles: Article[]
+  loading: boolean
+}
+
+const SortableCompactCard = ({ 
+  group, 
+  activeId,
+  renderDescription, 
+  handleGroupPage 
+}: { 
+  group: CompactGroupData
+  activeId: string | null
+  renderDescription: (desc: string) => string | null
+  handleGroupPage: (sourceName: string, sourceId: number, newPage: number) => void
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: group.sourceName })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  }
+
+  return (
+    <Card 
+      ref={setNodeRef} 
+      style={style}
+      className={`glass-card overflow-hidden shadow-sm hover:shadow-[0_0_20px_-5px_var(--tw-shadow-color)] shadow-primary/10 transition-shadow flex flex-col hover:border-primary/50 ${isDragging ? 'ring-2 ring-primary/30' : ''}`}
+    >
+      <div className="bg-primary/5 border-b border-primary/20 px-4 py-3 flex items-center gap-2">
+        <button
+          type="button"
+          className="cursor-grab active:cursor-grabbing p-0.5 -ml-1 rounded hover:bg-primary/10 text-muted-foreground/40 hover:text-primary/70 transition-colors touch-none"
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag to reorder ${group.sourceName}`}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <h3 className="font-bold text-foreground text-sm truncate uppercase tracking-wide flex-1" title={group.sourceName}>
+          {group.sourceName}
+        </h3>
+      </div>
+      <CardContent className="p-0">
+        <ul className="divide-y divide-border/30">
+          {group.articles.map(article => {
+            return (
+            <li key={article.id} className="group/item relative hover:bg-primary/5 transition-colors duration-200">
+              <HoverCard openDelay={400} closeDelay={100}>
+                <HoverCardTrigger asChild>
+                  <a href={article.link} target="_blank" rel="noopener noreferrer" className="block py-2.5 focus:outline-none focus-visible:ring-2 ring-primary px-3.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-5 h-5 rounded flex flex-col items-center justify-center text-primary/70 shrink-0">
+                        <SourceIcon url={article.link} name={group.sourceName} />
+                      </div>
+                      <h4 className="flex-1 min-w-0 text-[13px] font-medium text-foreground/90 group-hover/item:text-primary leading-none truncate transition-colors">
+                        {article.title}
+                      </h4>
+                      <span className="text-[10px] font-medium text-muted-foreground/80 whitespace-nowrap pt-px shrink-0">
+                        {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
+                          month: 'short', day: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  </a>
+                </HoverCardTrigger>
+                <HoverCardContent side="right" align="start" sideOffset={10} className="w-[320px] p-0 overflow-hidden shadow-2xl border-primary/20 z-[100] bg-background/95 backdrop-blur-md">
+                  {article.thumbnail_url && article.thumbnail_url.startsWith('http') && (
+                    <div className="w-full h-36 bg-muted/50 relative overflow-hidden border-b border-border/50">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img 
+                        src={`/api/feeds/image-proxy?url=${encodeURIComponent(article.thumbnail_url)}`}
+                        alt="" 
+                        loading="lazy"
+                        className="w-full h-full object-cover"  
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement
+                          el.style.display = 'none'
+                          const parent = el.parentElement
+                          if (parent) parent.style.display = 'none'
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="p-4 space-y-3">
+                    <h5 className={`font-bold leading-snug text-foreground ${article.thumbnail_url && article.thumbnail_url.startsWith('http') ? 'text-sm line-clamp-3' : 'text-[15px] line-clamp-4'}`}>
+                      {article.title}
+                    </h5>
+                    <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed">
+                      {renderDescription(article.description)}
+                    </p>
+                    <div className="flex items-center gap-2 pt-3 mt-1 border-t border-border/50 text-[10px] text-primary/80 font-medium uppercase tracking-wider">
+                      {article.author && (
+                        <>
+                          <User className="h-3 w-3 shrink-0" />
+                          <span className="truncate max-w-[120px]">{article.author}</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      <span className="opacity-90">
+                        {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
+                          month: 'long', day: 'numeric', year: 'numeric'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            </li>
+          )})}
+        </ul>
+        {group.totalPages > 1 && (
+          <div className="border-t border-border/30 px-3 py-1.5 flex items-center justify-center gap-2">
+            <button
+              type="button"
+              disabled={group.page <= 1 || group.loading}
+              onClick={() => handleGroupPage(group.sourceName, group.articles[0]?.source_id, group.page - 1)}
+              className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            {group.loading ? (
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+            ) : (
+              <span className="text-[10px] font-medium text-muted-foreground tabular-nums min-w-[32px] text-center">
+                {group.page} / {group.totalPages}
+              </span>
+            )}
+            <button
+              type="button"
+              disabled={group.page >= group.totalPages || group.loading}
+              onClick={() => handleGroupPage(group.sourceName, group.articles[0]?.source_id, group.page + 1)}
+              className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function NewsFeedPage() {
   const params = useParams()
   const categorySlug = params.categorySlug as string
@@ -71,6 +246,92 @@ export default function NewsFeedPage() {
   const [categoryName, setCategoryName] = useState("Loading...")
   const [viewMode, setViewMode] = useState<'timeline' | 'grouped'>('timeline')
   const [groupState, setGroupState] = useState<Record<string, GroupState>>({})
+  const [sourceOrder, setSourceOrder] = useState<string[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  // dnd-kit sensors — distance activates only after 5px movement to allow clicks
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  )
+
+  // Load saved order from database
+  useEffect(() => {
+    const loadOrder = async () => {
+      try {
+        const res = await fetch('/api/user/preferences')
+        if (res.ok) {
+          const data = await res.json()
+          const saved = data.preferences?.feed_compact_order?.[categorySlug]
+          if (Array.isArray(saved) && saved.length > 0) {
+            setSourceOrder(saved)
+          }
+        }
+      } catch (e) {
+        // Silently fail — fallback to default order
+      }
+    }
+    loadOrder()
+  }, [categorySlug])
+
+  // Persist order to database (debounced)
+  const saveOrderToDb = useCallback(async (order: string[]) => {
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          feed_compact_order: {
+            [categorySlug]: order
+          }
+        })
+      })
+    } catch (e) {
+      console.error('Failed to save feed order:', e)
+    }
+  }, [categorySlug])
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null)
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const currentOrder = groupedArticles.map(g => g.sourceName)
+    const oldIndex = currentOrder.indexOf(active.id as string)
+    const newIndex = currentOrder.indexOf(over.id as string)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const newOrder = arrayMove(currentOrder, oldIndex, newIndex)
+    setSourceOrder(newOrder)
+    saveOrderToDb(newOrder)
+  }
+
+  // Advanced Search Builder
+  type AdvRow = { id: string, term: string, operator: 'AND' | 'OR' }
+  const [advRows, setAdvRows] = useState<AdvRow[]>([{ id: '1', term: '', operator: 'AND' }])
+  const [advModalOpen, setAdvModalOpen] = useState(false)
+
+  const handleApplyAdvancedSearch = () => {
+    let q = ""
+    advRows.forEach((row, idx) => {
+      if (!row.term.trim()) return
+      const cleanTerm = row.term.trim().replace(/"/g, '')
+      const formattedTerm = `"${cleanTerm}"`
+      if (q === "") {
+        q += formattedTerm
+      } else {
+        q += ` ${row.operator} ${formattedTerm}`
+      }
+    })
+    setSearch(q)
+    setAdvModalOpen(false)
+    setPage(1)
+    fetchArticles(q)
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('bron_feed_view_mode')
@@ -172,11 +433,23 @@ export default function NewsFeedPage() {
 
   const groupedArticles = useMemo(() => {
     if (viewMode !== 'grouped') return []
-    return Object.keys(groupState).sort().map(sourceName => ({
+    const allSources = Object.keys(groupState)
+    
+    // Apply saved order, put unknown sources at the end alphabetically
+    let ordered: string[]
+    if (sourceOrder.length > 0) {
+      const known = sourceOrder.filter(s => allSources.includes(s))
+      const unknown = allSources.filter(s => !sourceOrder.includes(s)).sort()
+      ordered = [...known, ...unknown]
+    } else {
+      ordered = allSources.sort()
+    }
+
+    return ordered.map(sourceName => ({
       sourceName,
       ...groupState[sourceName]
     }))
-  }, [groupState, viewMode])
+  }, [groupState, viewMode, sourceOrder])
 
   const handleGroupPage = async (sourceName: string, sourceId: number, newPage: number) => {
     setGroupState(prev => ({
@@ -241,7 +514,7 @@ export default function NewsFeedPage() {
           </div>
 
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3 w-full md:w-auto mt-4 md:mt-0 items-start md:items-center justify-end">
-            <div className="flex bg-background/50 glass-card rounded-md p-1 items-center shrink-0 border border-border">
+            <div className="flex bg-background/50 glass-card rounded-md p-1 h-9 items-center shrink-0 border border-border">
               <button 
                 type="button"
                 onClick={() => handleViewModeToggle('timeline')}
@@ -273,14 +546,87 @@ export default function NewsFeedPage() {
               align="center"
             />
             <div className="flex gap-2 w-full md:w-auto">
-              <div className="relative w-full md:w-[200px]">
+              <div className="relative w-full transition-all duration-300 md:w-[200px] focus-within:md:w-[250px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none" />
                 <Input 
                   placeholder="Search topics..." 
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-9 h-9 glass-card border-border/50 text-foreground placeholder:text-muted-foreground"
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 pr-9 glass-card bg-background/50 border-white/10 w-full h-9"
                 />
+                <Dialog open={advModalOpen} onOpenChange={setAdvModalOpen}>
+                  <DialogTrigger asChild>
+                    <button className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-primary/20 text-muted-foreground hover:text-primary transition-colors focus:outline-none">
+                      <SlidersHorizontal className="h-3.5 w-3.5" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[450px]">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 text-primary" /> Advanced Search Builder</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      {advRows.map((row, idx) => (
+                        <div key={row.id} className="flex gap-2 items-center">
+                          {idx > 0 ? (
+                            <Select 
+                               value={row.operator} 
+                               onValueChange={v => {
+                                  const n = [...advRows];
+                                  n[idx].operator = v as 'AND'|'OR';
+                                  setAdvRows(n)
+                               }}
+                            >
+                              <SelectTrigger className="w-[85px] h-9 shrink-0">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="AND">AND</SelectItem>
+                                <SelectItem value="OR">OR</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div className="w-[85px] text-xs font-medium text-muted-foreground uppercase text-center shrink-0">Match</div>
+                          )}
+                          <Input 
+                            placeholder={idx === 0 ? "e.g. Ransomware" : "Keyword..."} 
+                            value={row.term}
+                            onChange={e => {
+                               const n = [...advRows];
+                               n[idx].term = e.target.value;
+                               setAdvRows(n);
+                            }}
+                            className="h-9 flex-1"
+                          />
+                          {idx > 0 && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 text-muted-foreground hover:text-destructive shrink-0" 
+                              onClick={() => setAdvRows(advRows.filter(r => r.id !== row.id))}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button 
+                         variant="outline" 
+                         size="sm" 
+                         className="w-full h-8 mt-2 border-dashed text-primary/80 hover:text-primary"
+                         onClick={() => setAdvRows([...advRows, { id: Math.random().toString(), term: '', operator: 'AND' }])}
+                      >
+                         <Plus className="h-4 w-4 mr-1.5" /> Add Keyword
+                      </Button>
+                      <p className="text-xs text-muted-foreground text-center opacity-80 pt-2">
+                        Your inputs will be safely quoted to prevent search logic ambiguity.
+                      </p>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setAdvRows([{ id: '1', term: '', operator: 'AND' }])} className="mr-auto text-muted-foreground">Reset</Button>
+                      <Button onClick={handleApplyAdvancedSearch}>Apply Search</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <Button type="submit" size="sm" className="h-9 glass-card hover:bg-primary/20 bg-primary/10 text-primary border-primary/20 w-full sm:w-auto shrink-0">
                 Filter
@@ -314,113 +660,64 @@ export default function NewsFeedPage() {
             <p className="text-muted-foreground">Try adjusting your search terms or wait for the next sync cycle.</p>
           </Card>
         ) : viewMode === 'grouped' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
-            {groupedArticles.map(group => (
-              <Card key={group.sourceName} className="glass-card overflow-hidden shadow-sm hover:shadow-[0_0_20px_-5px_var(--tw-shadow-color)] shadow-primary/10 transition-shadow flex flex-col hover:border-primary/50">
-                <div className="bg-primary/5 border-b border-primary/20 px-4 py-3 flex items-center gap-3">
-                  <h3 className="font-bold text-foreground text-sm truncate uppercase tracking-wide flex-1" title={group.sourceName}>
-                    {group.sourceName}
-                  </h3>
-                </div>
-                <CardContent className="p-0">
-                  <ul className="divide-y divide-border/30">
-                    {group.articles.map(article => {
-                      return (
-                      <li key={article.id} className="group/item relative hover:bg-primary/5 transition-colors duration-200">
-                        <HoverCard openDelay={400} closeDelay={100}>
-                          <HoverCardTrigger asChild>
-                            <a href={article.link} target="_blank" rel="noopener noreferrer" className="block py-2.5 focus:outline-none focus-visible:ring-2 ring-primary px-3.5">
-                              <div className="flex items-center gap-3">
-                                <div className="w-5 h-5 rounded flex flex-col items-center justify-center text-primary/70 shrink-0">
-                                  <SourceIcon url={article.link} name={group.sourceName} />
-                                </div>
-                                <h4 className="flex-1 min-w-0 text-[13px] font-medium text-foreground/90 group-hover/item:text-primary leading-none truncate transition-colors">
-                                  {article.title}
-                                </h4>
-                                <span className="text-[10px] font-medium text-muted-foreground/80 whitespace-nowrap pt-px shrink-0">
-                                  {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
-                                    month: 'short', day: 'numeric'
-                                  })}
-                                </span>
-                              </div>
-                            </a>
-                          </HoverCardTrigger>
-                          <HoverCardContent side="right" align="start" sideOffset={10} className="w-[320px] p-0 overflow-hidden shadow-2xl border-primary/20 z-[100] bg-background/95 backdrop-blur-md">
-                            {article.thumbnail_url && article.thumbnail_url.startsWith('http') && (
-                              <div className="w-full h-36 bg-muted/50 relative overflow-hidden border-b border-border/50">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img 
-                                  src={`/api/feeds/image-proxy?url=${encodeURIComponent(article.thumbnail_url)}`}
-                                  alt="" 
-                                  loading="lazy"
-                                  className="w-full h-full object-cover"  
-                                  onError={(e) => {
-                                    const el = e.target as HTMLImageElement
-                                    el.style.display = 'none'
-                                    const parent = el.parentElement
-                                    if (parent) parent.style.display = 'none'
-                                  }}
-                                />
-                              </div>
-                            )}
-                            <div className="p-4 space-y-3">
-                              <h5 className={`font-bold leading-snug text-foreground ${article.thumbnail_url && article.thumbnail_url.startsWith('http') ? 'text-sm line-clamp-3' : 'text-[15px] line-clamp-4'}`}>
-                                {article.title}
-                              </h5>
-                              <p className="text-xs text-muted-foreground line-clamp-4 leading-relaxed">
-                                {renderDescription(article.description)}
-                              </p>
-                              <div className="flex items-center gap-2 pt-3 mt-1 border-t border-border/50 text-[10px] text-primary/80 font-medium uppercase tracking-wider">
-                                {article.author && (
-                                  <>
-                                    <User className="h-3 w-3 shrink-0" />
-                                    <span className="truncate max-w-[120px]">{article.author}</span>
-                                    <span>•</span>
-                                  </>
-                                )}
-                                <span className="opacity-90">
-                                  {new Date(article.pub_date || article.created_at).toLocaleDateString(undefined, {
-                                    month: 'long', day: 'numeric', year: 'numeric'
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </li>
-                    )})}
-                  </ul>
-                  {group.totalPages > 1 && (
-                    <div className="border-t border-border/30 px-3 py-1.5 flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        disabled={group.page <= 1 || group.loading}
-                        onClick={() => handleGroupPage(group.sourceName, group.articles[0]?.source_id, group.page - 1)}
-                        className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                      </button>
-                      {group.loading ? (
-                        <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                      ) : (
-                        <span className="text-[10px] font-medium text-muted-foreground tabular-nums min-w-[32px] text-center">
-                          {group.page} / {group.totalPages}
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        disabled={group.page >= group.totalPages || group.loading}
-                        onClick={() => handleGroupPage(group.sourceName, group.articles[0]?.source_id, group.page + 1)}
-                        className="p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </button>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={groupedArticles.map(g => g.sourceName)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                {groupedArticles.map(group => (
+                  <SortableCompactCard
+                    key={group.sourceName}
+                    group={group}
+                    activeId={activeId}
+                    renderDescription={renderDescription}
+                    handleGroupPage={handleGroupPage}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+            <DragOverlay dropAnimation={{
+              duration: 200,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}>
+              {activeId && groupState[activeId] ? (
+                <div className="rotate-[2deg] scale-[1.02]">
+                  <Card className="glass-card overflow-hidden shadow-2xl shadow-primary/30 border-primary/50 flex flex-col opacity-90">
+                    <div className="bg-primary/5 border-b border-primary/20 px-4 py-3 flex items-center gap-3">
+                      <GripVertical className="h-4 w-4 text-primary/50 shrink-0" />
+                      <h3 className="font-bold text-foreground text-sm truncate uppercase tracking-wide flex-1" title={activeId}>
+                        {activeId}
+                      </h3>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    <CardContent className="p-0">
+                      <ul className="divide-y divide-border/30">
+                        {groupState[activeId].articles.slice(0, 3).map(article => (
+                          <li key={article.id} className="py-2.5 px-3.5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-5 h-5 rounded flex flex-col items-center justify-center text-primary/70 shrink-0">
+                                <SourceIcon url={article.link} name={activeId} />
+                              </div>
+                              <h4 className="flex-1 min-w-0 text-[13px] font-medium text-foreground/90 leading-none truncate">
+                                {article.title}
+                              </h4>
+                            </div>
+                          </li>
+                        ))}
+                        {groupState[activeId].articles.length > 3 && (
+                          <li className="py-2 px-3.5 text-center text-[11px] text-muted-foreground/60">
+                            +{groupState[activeId].articles.length - 3} more...
+                          </li>
+                        )}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map(article => (

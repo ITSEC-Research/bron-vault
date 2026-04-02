@@ -4,6 +4,71 @@ import { validateRequest } from "@/lib/auth"
 import { executeQuery } from "@/lib/mysql"
 import { triggerBackgroundSyncIfNeeded } from "@/lib/feed-sync"
 
+function buildSearchCondition(searchStr: string) {
+  if (!searchStr) return { condition: null, params: [] };
+
+  const tokens: string[] = [];
+  let inQuote = false;
+  let currentToken = '';
+
+  for (let i = 0; i < searchStr.length; i++) {
+    const char = searchStr[i];
+    if (char === '"') {
+      inQuote = !inQuote;
+      currentToken += char; 
+    } else if (char === ' ' && !inQuote) {
+      if (currentToken) {
+        tokens.push(currentToken);
+        currentToken = '';
+      }
+    } else {
+      currentToken += char;
+    }
+  }
+  if (currentToken) tokens.push(currentToken);
+
+  const orGroups: string[][] = [];
+  let currentAndGroup: string[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === 'OR') {
+      if (currentAndGroup.length > 0) {
+        orGroups.push(currentAndGroup);
+        currentAndGroup = [];
+      }
+    } else if (token === 'AND') {
+      // ignore, implicit AND
+    } else {
+      let cleanTerm = token;
+      if (cleanTerm.startsWith('"') && cleanTerm.endsWith('"') && cleanTerm.length >= 2) {
+        cleanTerm = cleanTerm.substring(1, cleanTerm.length - 1);
+      }
+      if (cleanTerm) currentAndGroup.push(cleanTerm);
+    }
+  }
+  if (currentAndGroup.length > 0) {
+    orGroups.push(currentAndGroup);
+  }
+
+  const sqlChunks: string[] = [];
+  const sqlParams: any[] = [];
+
+  for (const andGroup of orGroups) {
+    if (andGroup.length === 0) continue;
+    const andChunks: string[] = [];
+    for (const term of andGroup) {
+      andChunks.push(`(a.title LIKE ? OR a.description LIKE ?)`);
+      sqlParams.push(`%${term}%`, `%${term}%`);
+    }
+    sqlChunks.push(`(${andChunks.join(' AND ')})`);
+  }
+
+  if (sqlChunks.length === 0) return { condition: null, params: [] };
+
+  return { condition: `(${sqlChunks.join(' OR ')})`, params: sqlParams };
+}
+
 export async function GET(request: NextRequest) {
   const user = await validateRequest(request)
   if (!user) {
@@ -49,8 +114,11 @@ export async function GET(request: NextRequest) {
           srcParams.push(category_slug)
         }
         if (search) {
-          srcQuery += ` AND (a.title LIKE ? OR a.description LIKE ?)`
-          srcParams.push(`%${search}%`, `%${search}%`)
+          const { condition, params: searchParamsArr } = buildSearchCondition(search);
+          if (condition) {
+            srcQuery += ` AND ${condition}`;
+            srcParams.push(...searchParamsArr);
+          }
         }
         if (startDate) {
           srcQuery += ` AND DATE(COALESCE(a.pub_date, a.created_at)) >= ?`
@@ -101,8 +169,11 @@ export async function GET(request: NextRequest) {
         groupedParams.push(category_slug)
       }
       if (search) {
-        groupedQuery += ` AND (a.title LIKE ? OR a.description LIKE ?)`
-        groupedParams.push(`%${search}%`, `%${search}%`)
+        const { condition, params: searchParamsArr } = buildSearchCondition(search);
+        if (condition) {
+          groupedQuery += ` AND ${condition}`;
+          groupedParams.push(...searchParamsArr);
+        }
       }
       if (startDate) {
         groupedQuery += ` AND DATE(COALESCE(a.pub_date, a.created_at)) >= ?`
@@ -154,8 +225,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query += ` AND (a.title LIKE ? OR a.description LIKE ?)`
-      params.push(`%${search}%`, `%${search}%`)
+      const { condition, params: searchParamsArr } = buildSearchCondition(search);
+      if (condition) {
+        query += ` AND ${condition}`;
+        params.push(...searchParamsArr);
+      }
     }
 
     if (startDate) {
