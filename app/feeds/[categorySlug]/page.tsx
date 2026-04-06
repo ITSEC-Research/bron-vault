@@ -18,6 +18,7 @@ import {
   PaginationItem,
   PaginationLink,
 } from "@/components/ui/pagination"
+import Image from "next/image"
 import {
   DndContext,
   closestCenter,
@@ -74,11 +75,12 @@ const SourceIcon = ({ url, name }: { url?: string; name: string }) => {
   const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
   const proxyUrl = `/api/feeds/image-proxy?url=${encodeURIComponent(faviconUrl)}`
 
-  // eslint-disable-next-line @next/next/no-img-element
   return (
-    <img
+    <Image
       src={proxyUrl}
       alt={name}
+      width={20}
+      height={20}
       className="w-full h-full object-contain p-[3px] rounded"
       onError={() => setError(true)}
     />
@@ -166,12 +168,11 @@ const SortableCompactCard = ({
                 <HoverCardContent side="right" align="start" sideOffset={10} className="w-[320px] p-0 overflow-hidden shadow-2xl border-primary/20 z-[100] bg-background/95 backdrop-blur-md">
                   {article.thumbnail_url && article.thumbnail_url.startsWith('http') && (
                     <div className="w-full h-36 bg-muted/50 relative overflow-hidden border-b border-border/50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img 
+                      <Image 
                         src={`/api/feeds/image-proxy?url=${encodeURIComponent(article.thumbnail_url)}`}
                         alt="" 
-                        loading="lazy"
-                        className="w-full h-full object-cover"  
+                        fill
+                        className="object-cover"  
                         onError={(e) => {
                           const el = e.target as HTMLImageElement
                           el.style.display = 'none'
