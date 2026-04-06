@@ -47,7 +47,11 @@ export function TypingEffect({
   }, [isVisible, typingIndex, sentences, typingSpeed, pauseDuration])
 
   if (!isVisible || sentences.length === 0) {
-    return null
+    return (
+      <div className="w-full flex flex-col items-center mb-4 mt-8">
+        <div className="mb-2 h-8 min-h-[2rem]"></div>
+      </div>
+    )
   }
 
   return (
