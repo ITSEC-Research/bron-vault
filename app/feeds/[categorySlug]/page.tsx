@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useRef, useCallback } from "react"
-import { useParams } from "next/navigation"
+import { useParams, notFound } from "next/navigation"
 import { ExternalLink, Calendar, Search, Newspaper, Activity, Loader2, User, LayoutGrid, List, ChevronLeft, ChevronRight, X, SlidersHorizontal, Plus, Trash2, GripVertical } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -251,6 +251,7 @@ export default function NewsFeedPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [jumpPage, setJumpPage] = useState("")
+  const [isValidCategory, setIsValidCategory] = useState<boolean | null>(null)
   const [categoryName, setCategoryName] = useState("Loading...")
   const [viewMode, setViewMode] = useState<'timeline' | 'grouped'>('timeline')
   const [groupState, setGroupState] = useState<Record<string, GroupState>>({})
@@ -262,6 +263,29 @@ export default function NewsFeedPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor)
   )
+
+  // Validate category slug
+  useEffect(() => {
+    if (categorySlug === 'all') {
+      setIsValidCategory(true)
+      return
+    }
+
+    fetch("/api/feeds/categories")
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.categories) {
+          const exists = data.categories.some((c: any) => c.slug === categorySlug)
+          setIsValidCategory(exists)
+        } else {
+          setIsValidCategory(true) // assume true if API returns unexpected format
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to validate category", err)
+        setIsValidCategory(true) // fallback
+      })
+  }, [categorySlug])
 
   // Load saved order from database
   useEffect(() => {
@@ -515,6 +539,10 @@ export default function NewsFeedPage() {
     let clean = desc.replace(/<[^>]*>?/gm, ' ').slice(0, 250)
     if (desc.length > 250) clean += "..."
     return clean
+  }
+
+  if (isValidCategory === false) {
+    notFound()
   }
 
   return (

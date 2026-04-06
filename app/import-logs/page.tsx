@@ -401,8 +401,10 @@ export default function ImportLogsPage() {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-                <FileUp className="h-8 w-8" />
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary/10">
+                  <FileUp className="h-7 w-7 text-primary" />
+                </div>
                 Import Logs
               </h1>
               <p className="text-muted-foreground mt-2">Track all data import operations via web or API</p>
