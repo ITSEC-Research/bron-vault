@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': 'inline'
       },
     })
-  } catch (err) {
+  } catch (_err) {
     return NextResponse.json({ error: "Failed to proxy image" }, { status: 502 })
   }
 }
