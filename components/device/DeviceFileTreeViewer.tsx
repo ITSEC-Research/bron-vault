@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Download, Eye, Image, Book, Package, FileText } from "lucide-react"
+import { Eye, Image, Book, Package, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -29,7 +29,6 @@ interface DeviceFileData {
 interface DeviceFileTreeViewerProps {
   deviceId: string
   onFileClick?: (deviceId: string, filePath: string, fileName: string, hasContent: boolean) => void
-  onDownloadAllData?: (deviceId: string, deviceName: string) => void
 }
 
 // ASCII Tree Node Interface - IntelX Style
@@ -47,7 +46,6 @@ interface TreeNode {
 export function DeviceFileTreeViewer({
   deviceId,
   onFileClick,
-  onDownloadAllData,
 }: DeviceFileTreeViewerProps) {
   const [deviceFileData, setDeviceFileData] = useState<DeviceFileData | null>(null)
   const [isLoadingFiles, setIsLoadingFiles] = useState(true)
@@ -250,12 +248,6 @@ export function DeviceFileTreeViewer({
         }
       }
 
-      const _handleDownloadAllData = () => {
-        if (onDownloadAllData && deviceFileData) {
-          onDownloadAllData(deviceFileData.deviceId, deviceFileData.deviceName)
-        }
-      }
-
       return (
         <div key={`${node.path}-${index}`}>
           <TooltipProvider>
@@ -356,11 +348,7 @@ export function DeviceFileTreeViewer({
     )
   }
 
-  const handleDownloadAllData = () => {
-    if (onDownloadAllData && deviceFileData) {
-      onDownloadAllData(deviceFileData.deviceId, deviceFileData.deviceName)
-    }
-  }
+
 
   return (
     <div className="glass-card p-4 rounded-lg flex flex-col" style={{ height: 'calc(100vh - 220px)' }}>
@@ -368,15 +356,6 @@ export function DeviceFileTreeViewer({
         <div className="text-sm text-muted-foreground">
           Stolen File Structure ({deviceFileData.totalFiles} files total)
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDownloadAllData}
-          className="flex items-center space-x-2 glass-card hover:border-primary/30"
-        >
-          <Download className="h-4 w-4" />
-          <span>Download All Data</span>
-        </Button>
       </div>
       <div className="glass p-3 rounded border border-white/5 overflow-auto flex-1" style={{ minHeight: 0 }}>
         <div className="min-w-max">
@@ -406,7 +385,7 @@ export function DeviceFileTreeViewer({
           </span>
         </div>
         <div className="mt-1 text-xs text-amber-500">
-          Note: Binary files are available via &quot;Download All Data&quot; button above
+          Note: Binary files are available via &quot;Download Data&quot; button at the top of the page
         </div>
       </div>
     </div>

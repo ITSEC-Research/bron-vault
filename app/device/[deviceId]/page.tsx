@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Server, User, Package, FileText, LayoutDashboard } from "lucide-react"
+import { ArrowLeft, Server, User, Package, FileText, LayoutDashboard, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DeviceCredentialsTable } from "@/components/device/DeviceCredentialsTable"
@@ -38,6 +38,9 @@ export default function DeviceDetailPage() {
   const [fileContent, setFileContent] = useState<string>("")
   const [isLoadingFile, setIsLoadingFile] = useState(false)
   const [selectedFileType, setSelectedFileType] = useState<'text' | 'image' | null>(null)
+  
+  // Report generation state
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
 
   useEffect(() => {
     const loadDeviceInfo = async () => {
@@ -141,7 +144,8 @@ export default function DeviceDetailPage() {
   }
 
   // Handle download all data
-  const handleDownloadAllData = async (deviceId: string, deviceName: string) => {
+  const handleDownloadAllData = async () => {
+    if (!deviceInfo) return;
     try {
       const response = await fetch("/api/download-device", {
         method: "POST",
@@ -156,7 +160,7 @@ export default function DeviceDetailPage() {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement("a")
         a.href = url
-        a.download = `${deviceName}_all_data.zip`
+        a.download = `${deviceInfo.deviceName || deviceId}_all_data.zip`
         document.body.appendChild(a)
         a.click()
         window.URL.revokeObjectURL(url)
@@ -168,6 +172,41 @@ export default function DeviceDetailPage() {
       console.error("Error downloading device data:", error)
     }
   }
+
+  // Handle Generate Report
+  const handleGenerateReport = async () => {
+    if (!deviceInfo) return;
+    setIsGeneratingReport(true);
+    try {
+      const response = await fetch("/api/device-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ deviceId }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Report_${deviceInfo.deviceName || deviceId}.html`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error("Failed to generate report");
+        alert("Failed to generate report.");
+      }
+    } catch (error) {
+      console.error("Error generating report:", error);
+      alert("Error generating report. Please try again.");
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   if (isLoadingDevice) {
     return (
@@ -212,6 +251,35 @@ export default function DeviceDetailPage() {
                 <h1 className="text-base font-normal text-foreground">{deviceInfo.deviceName}</h1>
                 <p className="text-xs text-muted-foreground mt-0.5">Device ID: {deviceInfo.deviceId}</p>
               </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadAllData}
+                className="bg-transparent hover:bg-white/5 border-white/10 text-foreground transition-all shadow-sm h-9"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Data
+              </Button>
+              <Button
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport}
+                className="bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground border border-primary/20 transition-all shadow-sm h-9"
+                size="sm"
+              >
+                {isGeneratingReport ? (
+                  <>
+                    <div className="h-4 w-4 mr-2 border-2 border-current border-t-transparent animate-spin rounded-full" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Generate Report
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         </div>
@@ -277,7 +345,6 @@ export default function DeviceDetailPage() {
             <DeviceFileTreeViewer
               deviceId={deviceId}
               onFileClick={handleFileClick}
-              onDownloadAllData={handleDownloadAllData}
             />
           </TabsContent>
         </Tabs>
