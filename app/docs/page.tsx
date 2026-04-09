@@ -157,7 +157,7 @@ export default function DocsPage() {
     <main className="flex-1 p-6 bg-background">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10">
@@ -178,7 +178,7 @@ export default function DocsPage() {
         </div>
 
         {/* Base Info Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <Card className="glass-card border-border/50">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">

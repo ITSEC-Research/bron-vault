@@ -34,7 +34,7 @@ export default function ClientLayoutWithSidebar({ children, initialUserRole }: C
   return (
     <>
       <AppSidebar initialUserRole={initialUserRole} />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-w-0">
         <AppHeader title={title} />
         <main className="flex-1 bg-background">{children}</main>
       </div>
