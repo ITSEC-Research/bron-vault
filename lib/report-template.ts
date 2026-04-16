@@ -71,15 +71,15 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#09090b;c
 .info-val{font-size:.82rem;color:#e4e4e7;word-break:break-all}
 
 /* Tables */
-.tbl-wrap{border:1px solid #2a2a30;border-radius:8px;overflow:hidden}
-.tbl-scroll{max-height:500px;overflow-y:auto}
+.tbl-wrap{border:1px solid #2a2a30;border-radius:8px;overflow:hidden;overflow-x:hidden}
+.tbl-scroll{max-height:460px;overflow-y:auto}
 .tbl-scroll::-webkit-scrollbar{width:5px}
 .tbl-scroll::-webkit-scrollbar-track{background:transparent}
 .tbl-scroll::-webkit-scrollbar-thumb{background:#27272a;border-radius:3px}
-table{width:100%;border-collapse:collapse;font-size:.82rem}
+table{width:100%;border-collapse:collapse;font-size:.82rem;table-layout:fixed}
 thead{position:sticky;top:0;z-index:5}
 th{background:#0c0c0e;color:#71717a;font-weight:500;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;padding:10px 14px;text-align:left;border-bottom:1px solid #303038}
-td{padding:8px 14px;border-bottom:1px solid rgba(48,48,56,.7);color:#d4d4d8}
+td{padding:8px 14px;border-bottom:1px solid rgba(48,48,56,.7);color:#d4d4d8;overflow:hidden;text-overflow:ellipsis;word-break:break-all}
 tr:nth-child(even){background:rgba(255,255,255,.015)}
 tr:hover{background:rgba(239,68,68,.03)}
 td.num{color:#71717a;font-size:.75rem;width:40px;text-align:center}
@@ -218,11 +218,20 @@ function renderCollapsibleTable(
     return `<td${cls ? ` class="${cls}"` : ''}>${c}</td>`
   }).join('')}</tr>`
 
+  // Build colgroup for proper column sizing with table-layout:fixed
+  const colgroup = headers.map(h => {
+    const lower = h.toLowerCase()
+    if (lower === '#') return '<col style="width:50px">'
+    if (lower === 'count') return '<col style="width:70px">'
+    return '<col>'
+  }).join('')
+
   return `<div class="section">
     <div class="section-title">${title}</div>
     ${desc ? `<div class="section-desc">${desc}</div>` : ''}
     <div class="tbl-wrap"><div class="tbl-scroll">
       <table>
+        <colgroup>${colgroup}</colgroup>
         <thead>${headerRow}</thead>
         <tbody>
           ${visible.map(mapRow).join('')}
@@ -231,6 +240,7 @@ function renderCollapsibleTable(
       ${hidden.length > 0 ? `<details>
         <summary>Show ${hidden.length.toLocaleString()} more items…</summary>
         <table>
+          <colgroup>${colgroup}</colgroup>
           <tbody>${hidden.map(r => mapRow(r)).join('')}</tbody>
         </table>
       </details>` : ''}
@@ -298,23 +308,28 @@ function renderPasswordAnalytics(passwords: { password: string; count: number }[
   const subtitleY = 238
   const subtitle = `<text x="${cx}" y="${subtitleY}" text-anchor="middle" fill="#52525b" font-size="9" letter-spacing=".04em" font-family="'Inter',sans-serif">Top ${top.length} reused passwords</text>`
 
-  // Legend on the right side
+  // Legend on the right side — truncate long passwords to prevent overlap
   const legendX = 242
+  const countX = 440
+  const maxPwLen = 22
   const labels = top.map((p, i) => {
     const y = 26 + i * 28
+    const displayPw = p.password.length > maxPwLen ? p.password.slice(0, maxPwLen) + '…' : p.password
     return [
       `<rect x="${legendX}" y="${y - 6}" width="8" height="8" rx="2" fill="${colors[i]}"/>`,
-      `<text x="${legendX + 14}" y="${y + 2}" fill="#a1a1aa" font-size="10" font-family="'Inter',sans-serif">${esc(p.password)}</text>`,
-      `<text x="382" y="${y + 2}" fill="#fafafa" font-size="10" font-weight="600" font-family="'Inter',sans-serif" text-anchor="end" font-variant-numeric="tabular-nums">${p.count}\u00d7</text>`
+      `<text x="${legendX + 14}" y="${y + 2}" fill="#a1a1aa" font-size="10" font-family="'Inter',sans-serif" clip-path="url(#pw-clip)" style="cursor:default"><title>${esc(p.password)}</title>${esc(displayPw)}</text>`,
+      `<text x="${countX}" y="${y + 2}" fill="#fafafa" font-size="10" font-weight="600" font-family="'Inter',sans-serif" text-anchor="end" font-variant-numeric="tabular-nums">${p.count}\u00d7</text>`
     ].join('')
   })
 
   const svgH = Math.max(subtitleY + 10, 26 + top.length * 28 + 5)
+  const svgW = countX + 8
 
   return `<div class="section">
     <div class="section-title">Password Analytics</div>
     <div class="radial-wrap">
-      <svg viewBox="0 0 390 ${svgH}" width="100%" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="0 0 ${svgW} ${svgH}" width="100%" preserveAspectRatio="xMidYMid meet">
+        <defs><clipPath id="pw-clip"><rect x="${legendX + 14}" y="0" width="${countX - legendX - 14 - 40}" height="${svgH}"/></clipPath></defs>
         ${rings.join('')}
         ${subtitle}
         ${labels.join('')}
