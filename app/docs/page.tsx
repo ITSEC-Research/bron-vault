@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Copy, BookOpen, Key, Search, Upload, Database, Shield, Clock, Zap, CheckCircle2, AlertCircle, ArrowRight, BarChart3, Monitor, ChevronLeft, ChevronRight } from "lucide-react"
+import { Copy, BookOpen, Key, Search, Upload, Database, Shield, Clock, Zap, CheckCircle2, AlertCircle, ArrowRight, BarChart3, Monitor, ChevronLeft, ChevronRight, Activity } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 
@@ -120,6 +120,7 @@ export default function DocsPage() {
     { id: "summary", label: "Summary", icon: BarChart3, method: "GET" },
     { id: "device", label: "Device", icon: Monitor, method: "GET" },
     { id: "upload", label: "Upload", icon: Upload, method: "POST" },
+    { id: "monitoring", label: "Monitoring", icon: Activity, method: "CRUD" },
     { id: "api-keys", label: "API Keys", icon: Key, method: "CRUD" },
   ]
 
@@ -1007,6 +1008,448 @@ export default function DocsPage() {
                   <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
                   <CodeBlock code={`curl "${baseUrl}/api/v1/upload/status/job_abc123" \\
   -H "X-API-Key: bv_admin_api_key"`} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Monitoring Section */}
+        {activeSection === "monitoring" && (
+          <div className="space-y-6">
+            {/* Admin Warning */}
+            <Card className="glass-card border-amber-500/20">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-amber-500/10">
+                    <Shield className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <p className="text-sm text-amber-500">
+                    <strong>Admin Role Required:</strong> Create, update, and delete operations require an admin API key. Read operations are available to all roles.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- Stats --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/stats</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Get monitoring dashboard statistics including monitor/webhook counts and alert summary.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/monitoring/stats" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">200 OK</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "data": {
+    "monitors": { "total": 5, "active": 3 },
+    "webhooks": { "total": 4, "active": 4 },
+    "alerts": { "total": 120, "today": 8, "success": 110, "failed": 10 }
+  },
+  "meta": { "checkedAt": "2026-05-22T10:00:00Z" }
+}`}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- List Monitors --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/monitors</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  List all domain monitors with pagination.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Query Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "active_only", type: "string", required: false, description: "Set to 'true' to return only active monitors", default: "false" },
+                    { name: "limit", type: "number", required: false, description: "Number of results per page (max 100)", default: "50" },
+                    { name: "offset", type: "number", required: false, description: "Pagination offset", default: "0" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/monitoring/monitors?active_only=true&limit=10" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">200 OK</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Banking Domains",
+      "domains": ["bank.co.id", "bca.co.id"],
+      "match_mode": "both",
+      "is_active": true,
+      "webhook_count": 2,
+      "total_alerts": 15,
+      "last_triggered_at": "2026-05-20T14:30:00Z",
+      "created_at": "2026-05-01T10:00:00Z"
+    }
+  ],
+  "total": 5,
+  "meta": { "checkedAt": "2026-05-22T10:00:00Z" }
+}`}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- Create Monitor --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 font-mono">POST</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/monitors</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Create a new domain monitor. Requires admin API key.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Request Body Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "name", type: "string", required: true, description: "Monitor display name" },
+                    { name: "domains", type: "string[]", required: true, description: "Array of domains to monitor (min 1). Subdomains are matched automatically." },
+                    { name: "match_mode", type: "string", required: true, description: "Match mode: 'credential' (email only), 'url' (URL only), or 'both'" },
+                    { name: "webhook_ids", type: "number[]", required: false, description: "Array of webhook IDs to link to this monitor" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl -X POST "${baseUrl}/api/v1/monitoring/monitors" \\
+  -H "X-API-Key: bv_admin_api_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "Banking Domains", "domains": ["bank.co.id", "bca.co.id"], "match_mode": "both", "webhook_ids": [1, 2]}'`} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">201 Created</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "data": { "id": 6 },
+  "message": "Monitor created successfully",
+  "meta": { "createdAt": "2026-05-22T10:00:00Z" }
+}`}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- Get / Update / Delete Monitor --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/30 font-mono">PUT</Badge>
+                  <Badge className="bg-red-500/10 text-red-400 border-red-500/30 font-mono">DELETE</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/monitors/:id</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Get, update, or delete a specific monitor by ID. PUT and DELETE require admin API key.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Path Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "id", type: "number", required: true, description: "The monitor ID" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">PUT Request Body Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "name", type: "string", required: false, description: "Monitor display name" },
+                    { name: "domains", type: "string[]", required: false, description: "Array of domains (min 1 if provided)" },
+                    { name: "match_mode", type: "string", required: false, description: "'credential', 'url', or 'both'" },
+                    { name: "is_active", type: "boolean", required: false, description: "Enable or disable the monitor" },
+                    { name: "webhook_ids", type: "number[]", required: false, description: "Replace all linked webhooks" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Requests</h4>
+                  <CodeBlock code={`# Get monitor
+curl "${baseUrl}/api/v1/monitoring/monitors/1" \\
+  -H "X-API-Key: bv_your_api_key"
+
+# Update monitor
+curl -X PUT "${baseUrl}/api/v1/monitoring/monitors/1" \\
+  -H "X-API-Key: bv_admin_api_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"is_active": false}'
+
+# Delete monitor
+curl -X DELETE "${baseUrl}/api/v1/monitoring/monitors/1" \\
+  -H "X-API-Key: bv_admin_api_key"`} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- List Webhooks --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/webhooks</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  List all webhook endpoints. Secrets are masked in responses.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Query Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "active_only", type: "string", required: false, description: "Set to 'true' to return only active webhooks", default: "false" },
+                    { name: "limit", type: "number", required: false, description: "Number of results per page (max 100)", default: "50" },
+                    { name: "offset", type: "number", required: false, description: "Pagination offset", default: "0" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/monitoring/webhooks" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- Create Webhook --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 font-mono">POST</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/webhooks</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Create a new webhook endpoint. Requires admin API key.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Request Body Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "name", type: "string", required: true, description: "Webhook display name" },
+                    { name: "url", type: "string", required: true, description: "Webhook URL (must start with http/https)" },
+                    { name: "secret", type: "string", required: false, description: "HMAC-SHA256 secret for payload signing" },
+                    { name: "headers", type: "object", required: false, description: "Custom headers as JSON object, e.g. {\"Authorization\": \"Bearer token\"}" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl -X POST "${baseUrl}/api/v1/monitoring/webhooks" \\
+  -H "X-API-Key: bv_admin_api_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "Security Team Slack", "url": "https://hooks.slack.com/services/xxx", "secret": "my-secret-key"}'`} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">201 Created</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "data": { "id": 3 },
+  "message": "Webhook created successfully",
+  "meta": { "createdAt": "2026-05-22T10:00:00Z" }
+}`}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- Get / Update / Delete Webhook --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <Badge className="bg-orange-500/10 text-orange-400 border-orange-500/30 font-mono">PUT</Badge>
+                  <Badge className="bg-red-500/10 text-red-400 border-red-500/30 font-mono">DELETE</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/webhooks/:id</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Get, update, or delete a specific webhook by ID. PUT and DELETE require admin API key.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Path Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "id", type: "number", required: true, description: "The webhook ID" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">PUT Request Body Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "name", type: "string", required: false, description: "Webhook display name" },
+                    { name: "url", type: "string", required: false, description: "Webhook URL (must start with http/https)" },
+                    { name: "secret", type: "string|null", required: false, description: "HMAC secret (null to remove)" },
+                    { name: "headers", type: "object|null", required: false, description: "Custom headers (null to remove)" },
+                    { name: "is_active", type: "boolean", required: false, description: "Enable or disable the webhook" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Requests</h4>
+                  <CodeBlock code={`# Get webhook
+curl "${baseUrl}/api/v1/monitoring/webhooks/1" \\
+  -H "X-API-Key: bv_your_api_key"
+
+# Update webhook
+curl -X PUT "${baseUrl}/api/v1/monitoring/webhooks/1" \\
+  -H "X-API-Key: bv_admin_api_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"is_active": false}'
+
+# Delete webhook
+curl -X DELETE "${baseUrl}/api/v1/monitoring/webhooks/1" \\
+  -H "X-API-Key: bv_admin_api_key"`} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- Test Webhook --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/30 font-mono">POST</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/webhooks/:id/test</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  Send a sample test payload to a webhook to verify connectivity. Requires admin API key.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Path Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "id", type: "number", required: true, description: "The webhook ID to test" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl -X POST "${baseUrl}/api/v1/monitoring/webhooks/1/test" \\
+  -H "X-API-Key: bv_admin_api_key"`} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">200 OK</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "data": { "statusCode": 200, "error": null },
+  "message": "Webhook test successful (HTTP 200)",
+  "meta": { "testedAt": "2026-05-22T10:00:00Z" }
+}`}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* --- List Alerts --- */}
+            <Card className="glass-card border-border/50">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/30 font-mono">GET</Badge>
+                  <code className="text-lg font-mono text-foreground">/api/v1/monitoring/alerts</code>
+                </div>
+                <CardDescription className="text-muted-foreground mt-2">
+                  List webhook alert history with filtering and pagination.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Query Parameters</h4>
+                  <ParameterTable params={[
+                    { name: "monitor_id", type: "number", required: false, description: "Filter alerts by monitor ID" },
+                    { name: "webhook_id", type: "number", required: false, description: "Filter alerts by webhook ID" },
+                    { name: "status", type: "string", required: false, description: "Filter by status: 'success', 'failed', or 'retrying'" },
+                    { name: "limit", type: "number", required: false, description: "Number of results per page (max 100)", default: "50" },
+                    { name: "offset", type: "number", required: false, description: "Pagination offset", default: "0" },
+                  ]} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
+                  <CodeBlock code={`curl "${baseUrl}/api/v1/monitoring/alerts?status=failed&limit=10" \\
+  -H "X-API-Key: bv_your_api_key"`} />
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    Success Response
+                    <Badge variant="outline" className="text-xs">200 OK</Badge>
+                  </h4>
+                  <CodeBlock
+                    language="json"
+                    code={`{
+  "success": true,
+  "data": [
+    {
+      "id": 42,
+      "monitor_id": 1,
+      "webhook_id": 2,
+      "device_id": "device_abc123",
+      "upload_batch": "batch_2026_05",
+      "matched_domain": "bank.co.id",
+      "match_type": "credential_email",
+      "credential_match_count": 5,
+      "url_match_count": 0,
+      "status": "success",
+      "http_status": 200,
+      "error_message": null,
+      "retry_count": 0,
+      "created_at": "2026-05-20T14:30:00Z",
+      "monitor_name": "Banking Domains",
+      "webhook_name": "Security Team Slack",
+      "webhook_url": "https://hooks.slack.com/services/xxx"
+    }
+  ],
+  "total": 120,
+  "meta": { "checkedAt": "2026-05-22T10:00:00Z" }
+}`}
+                  />
                 </div>
               </CardContent>
             </Card>
