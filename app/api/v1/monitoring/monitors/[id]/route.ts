@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { withApiKeyAuth, addRateLimitHeaders, logApiRequest } from "@/lib/api-key-auth"
-import { getMonitor, updateMonitor, deleteMonitor } from "@/lib/domain-monitor"
+import { getMonitor, updateMonitor, deleteMonitor, validateMonitorEntries } from "@/lib/domain-monitor"
 
 export const dynamic = 'force-dynamic'
 
@@ -107,16 +107,40 @@ export async function PUT(
     const updates: any = {}
 
     if (body.name !== undefined) updates.name = body.name.trim()
-    if (body.domains !== undefined) {
-      if (!Array.isArray(body.domains) || body.domains.length === 0) {
+
+    // Effective target type: the new one if provided, otherwise the existing one
+    let targetType: 'domain' | 'email' = existing.target_type
+    if (body.target_type !== undefined) {
+      if (!["domain", "email"].includes(body.target_type)) {
         return NextResponse.json(
-          { success: false, error: "At least one domain is required", code: "VALIDATION_ERROR" },
+          { success: false, error: "target_type must be 'domain' or 'email'", code: "VALIDATION_ERROR" },
           { status: 400 }
         )
       }
-      updates.domains = body.domains.map((d: string) => d.trim().toLowerCase())
+      targetType = body.target_type
+      updates.target_type = body.target_type
     }
-    if (body.match_mode !== undefined) {
+
+    if (body.domains !== undefined) {
+      if (!Array.isArray(body.domains) || body.domains.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "At least one domain or email is required", code: "VALIDATION_ERROR" },
+          { status: 400 }
+        )
+      }
+      const normalizedEntries = body.domains.map((d: string) => d.trim().toLowerCase())
+      const entryError = validateMonitorEntries(targetType, normalizedEntries, false)
+      if (entryError) {
+        return NextResponse.json(
+          { success: false, error: entryError, code: "VALIDATION_ERROR" },
+          { status: 400 }
+        )
+      }
+      updates.domains = normalizedEntries
+    }
+
+    // match_mode only applies to domain monitors; for email monitors it is forced to 'credential'
+    if (body.match_mode !== undefined && targetType === "domain") {
       if (!["credential", "url", "both"].includes(body.match_mode)) {
         return NextResponse.json(
           { success: false, error: "match_mode must be 'credential', 'url', or 'both'", code: "VALIDATION_ERROR" },

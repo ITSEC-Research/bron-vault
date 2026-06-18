@@ -380,8 +380,9 @@ CREATE TABLE IF NOT EXISTS import_logs (
 CREATE TABLE IF NOT EXISTS domain_monitors (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL COMMENT 'Monitor display name',
-    domains TEXT NOT NULL COMMENT 'JSON array of domains to monitor',
-    match_mode ENUM('credential', 'url', 'both') NOT NULL DEFAULT 'both' COMMENT 'What to match',
+    domains TEXT NOT NULL COMMENT 'JSON array of domains (target_type=domain) or exact emails (target_type=email) to monitor',
+    target_type ENUM('domain', 'email') NOT NULL DEFAULT 'domain' COMMENT 'domain = match by domain/subdomain, email = exact email match',
+    match_mode ENUM('credential', 'url', 'both') NOT NULL DEFAULT 'both' COMMENT 'What to match (ignored when target_type=email)',
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_by INT NULL COMMENT 'User who created this monitor',
     last_triggered_at TIMESTAMP NULL COMMENT 'Last time this monitor was triggered',

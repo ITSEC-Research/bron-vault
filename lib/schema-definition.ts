@@ -7,7 +7,7 @@
  * Schema Version: 1.0.0
  */
 
-export const SCHEMA_VERSION = "1.5.0"
+export const SCHEMA_VERSION = "1.6.0"
 
 // Column definition type
 export interface ColumnDefinition {
@@ -521,8 +521,9 @@ export const DOMAIN_MONITORS_TABLE: TableDefinition = {
   columns: [
     { name: 'id', type: 'int', nullable: false, extra: 'auto_increment', key: 'PRI' },
     { name: 'name', type: 'varchar(255)', nullable: false, comment: 'Monitor display name' },
-    { name: 'domains', type: 'text', nullable: false, comment: 'JSON array of domains to monitor' },
-    { name: 'match_mode', type: "enum('credential','url','both')", nullable: false, default: "'both'", comment: 'What to match: email domain, URL domain, or both' },
+    { name: 'domains', type: 'text', nullable: false, comment: 'JSON array of domains or exact emails to monitor' },
+    { name: 'target_type', type: "enum('domain','email')", nullable: false, default: "'domain'", comment: 'domain = match by domain/subdomain, email = exact email match' },
+    { name: 'match_mode', type: "enum('credential','url','both')", nullable: false, default: "'both'", comment: 'What to match: email domain, URL domain, or both (ignored when target_type=email)' },
     { name: 'is_active', type: 'tinyint(1)', nullable: false, default: '1' },
     { name: 'created_by', type: 'int', nullable: true, comment: 'User who created this monitor' },
     { name: 'last_triggered_at', type: 'timestamp', nullable: true, comment: 'Last time this monitor was triggered' },
