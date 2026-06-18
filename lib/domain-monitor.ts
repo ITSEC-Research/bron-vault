@@ -33,8 +33,9 @@ async function mutate(sql: string, params: any[] = []): Promise<any> {
 export interface DomainMonitor {
   id: number
   name: string
-  domains: string[]     // Parsed from JSON
-  match_mode: 'credential' | 'url' | 'both'
+  domains: string[]     // Parsed from JSON. For target_type 'email' these are full email addresses.
+  target_type: 'domain' | 'email'  // 'domain' = match by domain/subdomain, 'email' = exact email match
+  match_mode: 'credential' | 'url' | 'both'  // Ignored when target_type is 'email' (always credential)
   is_active: boolean
   created_by: number | null
   last_triggered_at: string | null
@@ -113,20 +114,57 @@ export interface WebhookPayload {
 }
 
 // ===========================================
+// VALIDATION
+// ===========================================
+
+/**
+ * Validate monitor entries against the target type.
+ * - email: every entry must be a full email address (contain a non-edge '@').
+ * - domain: on create, reject entries containing '@' (a likely mis-entered email).
+ *   On update the domain '@' check is skipped to stay backward compatible with
+ *   any legacy rows that may already contain '@'.
+ * `entries` should already be trimmed/lowercased. Returns an error message, or null if valid.
+ */
+export function validateMonitorEntries(
+  targetType: 'domain' | 'email',
+  entries: string[],
+  isCreate: boolean
+): string | null {
+  if (targetType === 'email') {
+    const bad = entries.find(e => {
+      const at = e.indexOf('@')
+      return at <= 0 || at === e.length - 1 || at !== e.lastIndexOf('@')
+    })
+    if (bad) return `Invalid email address "${bad}". Email monitors require full addresses like "user@example.com".`
+    return null
+  }
+  if (isCreate) {
+    const bad = entries.find(e => e.includes('@'))
+    if (bad) return `"${bad}" looks like an email address. Set target_type to "email" to monitor a specific address, or enter a bare domain.`
+  }
+  return null
+}
+
+// ===========================================
 // MONITOR CRUD
 // ===========================================
 
 export async function createMonitor(data: {
   name: string
   domains: string[]
+  target_type?: 'domain' | 'email'
   match_mode: 'credential' | 'url' | 'both'
   webhook_ids: number[]
   created_by?: number
 }): Promise<number> {
+  const targetType = data.target_type === 'email' ? 'email' : 'domain'
+  // Email monitors always match on credential email; match_mode is irrelevant.
+  const matchMode = targetType === 'email' ? 'credential' : data.match_mode
+
   const result = await mutate(
-    `INSERT INTO domain_monitors (name, domains, match_mode, created_by)
-     VALUES (?, ?, ?, ?)`,
-    [data.name, JSON.stringify(data.domains), data.match_mode, data.created_by || null]
+    `INSERT INTO domain_monitors (name, domains, target_type, match_mode, created_by)
+     VALUES (?, ?, ?, ?, ?)`,
+    [data.name, JSON.stringify(data.domains), targetType, matchMode, data.created_by || null]
   ) as any
 
   const monitorId = result.insertId
@@ -150,6 +188,7 @@ export async function createMonitor(data: {
 export async function updateMonitor(id: number, data: {
   name?: string
   domains?: string[]
+  target_type?: 'domain' | 'email'
   match_mode?: 'credential' | 'url' | 'both'
   is_active?: boolean
   webhook_ids?: number[]
@@ -164,6 +203,15 @@ export async function updateMonitor(id: number, data: {
   if (data.domains !== undefined) {
     updates.push('domains = ?')
     params.push(JSON.stringify(data.domains))
+  }
+  if (data.target_type !== undefined) {
+    const targetType = data.target_type === 'email' ? 'email' : 'domain'
+    updates.push('target_type = ?')
+    params.push(targetType)
+    // Switching to email forces credential matching, regardless of any match_mode sent.
+    if (targetType === 'email') {
+      data = { ...data, match_mode: 'credential' }
+    }
   }
   if (data.match_mode !== undefined) {
     updates.push('match_mode = ?')
@@ -505,13 +553,19 @@ export async function checkMonitorsForDevice(
 
     // Collect all unique domains across all monitors
     const allDomains = new Set<string>()
-    const needsCredentialMatch = new Set<string>()
-    const needsUrlMatch = new Set<string>()
-    
+    const needsCredentialMatch = new Set<string>()  // domain-type: match by email domain/subdomain
+    const needsUrlMatch = new Set<string>()          // domain-type: match by URL domain/subdomain
+    const needsEmailMatch = new Set<string>()        // email-type: exact full-email match
+
     for (const monitor of monitors) {
+      const isEmail = monitor.target_type === 'email'
       for (const domain of monitor.domains) {
         const d = domain.toLowerCase()
         allDomains.add(d)
+        if (isEmail) {
+          needsEmailMatch.add(d)
+          continue
+        }
         if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
           needsCredentialMatch.add(d)
         }
@@ -533,8 +587,9 @@ export async function checkMonitorsForDevice(
     const deviceInfo = (sysInfoRows as any[]).length > 0 ? (sysInfoRows as any[])[0] : {}
     const deviceName = (deviceRows as any[]).length > 0 ? (deviceRows as any[])[0].device_name : deviceId
 
-    // 1) Credential match: single query fetching all credentials with email-like usernames
-    if (needsCredentialMatch.size > 0) {
+    // 1) Credential match: single query fetching all credentials with email-like usernames.
+    //    Covers both domain-type (email domain match) and email-type (exact email match) monitors.
+    if (needsCredentialMatch.size > 0 || needsEmailMatch.size > 0) {
       const credRows = await query(
         `SELECT url, username, password, browser, created_at FROM credentials WHERE device_id = ? AND username IS NOT NULL AND username != ''`,
         [deviceId]
@@ -545,21 +600,33 @@ export async function checkMonitorsForDevice(
         const username = (row.username || '').toLowerCase()
         const atIdx = username.lastIndexOf('@')
         if (atIdx === -1) continue
-        
+
         const emailDomain = username.substring(atIdx + 1)
-        
+        const buildMatch = () => ({
+          found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+          url: row.url || '',
+          login: row.username || '',
+          password: row.password || '',
+          browser: row.browser || '',
+        })
+
+        // Domain-type: match by email domain or subdomain
         for (const domain of needsCredentialMatch) {
           if (emailDomain === domain || emailDomain.endsWith('.' + domain)) {
             if (!credentialMatchesByDomain.has(domain)) {
               credentialMatchesByDomain.set(domain, [])
             }
-            credentialMatchesByDomain.get(domain)!.push({
-              found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-              url: row.url || '',
-              login: row.username || '',
-              password: row.password || '',
-              browser: row.browser || '',
-            })
+            credentialMatchesByDomain.get(domain)!.push(buildMatch())
+          }
+        }
+
+        // Email-type: exact full-email match (keyed by the email string)
+        for (const email of needsEmailMatch) {
+          if (username === email) {
+            if (!credentialMatchesByDomain.has(email)) {
+              credentialMatchesByDomain.set(email, [])
+            }
+            credentialMatchesByDomain.get(email)!.push(buildMatch())
           }
         }
       }
@@ -602,6 +669,7 @@ export async function checkMonitorsForDevice(
     // 3) Process each monitor using in-memory results
     for (const monitor of monitors) {
       try {
+        const isEmail = monitor.target_type === 'email'
         const monitorCredentials: CredentialMatch[] = []
         const monitorUrls: CredentialMatch[] = []
         const matchedDomains: string[] = []
@@ -609,10 +677,15 @@ export async function checkMonitorsForDevice(
         for (const domain of monitor.domains) {
           const d = domain.toLowerCase()
           const creds = credentialMatchesByDomain.get(d) || []
-          const urls = urlMatchesByDomain.get(d) || []
-          
+          const urls = isEmail ? [] : (urlMatchesByDomain.get(d) || [])
+
           if (creds.length > 0 || urls.length > 0) {
             matchedDomains.push(d)
+          }
+          if (isEmail) {
+            // Email monitors only ever produce credential matches
+            monitorCredentials.push(...creds)
+            continue
           }
           if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
             monitorCredentials.push(...creds)
@@ -753,12 +826,18 @@ export async function checkMonitorsForBatch(
     log(`[MONITOR_PROGRESS] 1/5 Collected ${allMonitoredDomains.size} domains from ${monitors.length} monitors`, 'info')
 
     // Step 3: Collect all unique monitored domains
-    const needsCredentialMatch = new Set<string>()
-    const needsUrlMatch = new Set<string>()
+    const needsCredentialMatch = new Set<string>()  // domain-type: match by email domain/subdomain
+    const needsUrlMatch = new Set<string>()          // domain-type: match by URL domain/subdomain
+    const needsEmailMatch = new Set<string>()        // email-type: exact full-email match
 
     for (const monitor of monitors) {
+      const isEmail = monitor.target_type === 'email'
       for (const domain of monitor.domains) {
         const d = domain.toLowerCase()
+        if (isEmail) {
+          needsEmailMatch.add(d)
+          continue
+        }
         if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
           needsCredentialMatch.add(d)
         }
@@ -779,9 +858,10 @@ export async function checkMonitorsForBatch(
     // Credential match: find credentials where email domain matches monitored domains
     const credentialMatchesByDeviceAndDomain = new Map<string, Map<string, CredentialMatch[]>>()
 
-    if (needsCredentialMatch.size > 0) {
+    if (needsCredentialMatch.size > 0 || needsEmailMatch.size > 0) {
       // Build LIKE conditions for email domain matching
       // username LIKE '%@domain.com' OR username LIKE '%@%.domain.com'
+      // Plus exact equality for email-type monitors: username = 'ceo@bank.co.id'
       const likeClauses: string[] = []
       const likeParams: any[] = []
       for (const domain of needsCredentialMatch) {
@@ -789,6 +869,10 @@ export async function checkMonitorsForBatch(
         likeParams.push(`%@${domain}`)
         likeClauses.push('LOWER(c.username) LIKE ?')
         likeParams.push(`%@%.${domain}`)
+      }
+      for (const email of needsEmailMatch) {
+        likeClauses.push('LOWER(c.username) = ?')
+        likeParams.push(email)
       }
 
       const credRows = await query(
@@ -803,29 +887,40 @@ export async function checkMonitorsForBatch(
       log(`🔔 Step 2/3: Credential match query returned ${credRows.length} potential matches`, 'info')
       log(`[MONITOR_PROGRESS] 2/5 Credential match: ${credRows.length} results`, 'info')
 
-      // Group by device_id and match to specific domains in-memory
+      // Group by device_id and match to specific domains/emails in-memory
       for (const row of credRows) {
         const username = (row.username || '').toLowerCase()
         const atIdx = username.lastIndexOf('@')
         if (atIdx === -1) continue
         const emailDomain = username.substring(atIdx + 1)
 
+        const pushMatch = (key: string) => {
+          if (!credentialMatchesByDeviceAndDomain.has(row.device_id)) {
+            credentialMatchesByDeviceAndDomain.set(row.device_id, new Map())
+          }
+          const deviceMap = credentialMatchesByDeviceAndDomain.get(row.device_id)!
+          if (!deviceMap.has(key)) {
+            deviceMap.set(key, [])
+          }
+          deviceMap.get(key)!.push({
+            found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+            url: row.url || '',
+            login: row.username || '',
+            password: row.password || '',
+            browser: row.browser || '',
+          })
+        }
+
+        // Domain-type: match by email domain or subdomain
         for (const domain of needsCredentialMatch) {
           if (emailDomain === domain || emailDomain.endsWith('.' + domain)) {
-            if (!credentialMatchesByDeviceAndDomain.has(row.device_id)) {
-              credentialMatchesByDeviceAndDomain.set(row.device_id, new Map())
-            }
-            const deviceMap = credentialMatchesByDeviceAndDomain.get(row.device_id)!
-            if (!deviceMap.has(domain)) {
-              deviceMap.set(domain, [])
-            }
-            deviceMap.get(domain)!.push({
-              found_at: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-              url: row.url || '',
-              login: row.username || '',
-              password: row.password || '',
-              browser: row.browser || '',
-            })
+            pushMatch(domain)
+          }
+        }
+        // Email-type: exact full-email match (keyed by the email string)
+        for (const email of needsEmailMatch) {
+          if (username === email) {
+            pushMatch(email)
           }
         }
       }
@@ -949,6 +1044,8 @@ export async function checkMonitorsForBatch(
           continue
         }
 
+        const isEmail = monitor.target_type === 'email'
+
         for (const deviceId of matchedDeviceIds) {
           const credMap = credentialMatchesByDeviceAndDomain.get(deviceId) || new Map()
           const urlMap = urlMatchesByDeviceAndDomain.get(deviceId) || new Map()
@@ -960,10 +1057,15 @@ export async function checkMonitorsForBatch(
           for (const domain of monitor.domains) {
             const d = domain.toLowerCase()
             const creds = credMap.get(d) || []
-            const urls = urlMap.get(d) || []
+            const urls = isEmail ? [] : (urlMap.get(d) || [])
 
             if (creds.length > 0 || urls.length > 0) {
               matchedDomains.push(d)
+            }
+            if (isEmail) {
+              // Email monitors only ever produce credential matches
+              monitorCredentials.push(...creds)
+              continue
             }
             if (monitor.match_mode === 'credential' || monitor.match_mode === 'both') {
               monitorCredentials.push(...creds)
@@ -1276,6 +1378,7 @@ function parseMonitorRow(row: any): DomainMonitor {
     id: row.id,
     name: row.name,
     domains,
+    target_type: row.target_type === 'email' ? 'email' : 'domain',
     match_mode: row.match_mode,
     is_active: Boolean(row.is_active),
     created_by: row.created_by,

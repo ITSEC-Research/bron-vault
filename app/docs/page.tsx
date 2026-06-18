@@ -1110,6 +1110,7 @@ export default function DocsPage() {
       "id": 1,
       "name": "Banking Domains",
       "domains": ["bank.co.id", "bca.co.id"],
+      "target_type": "domain",
       "match_mode": "both",
       "is_active": true,
       "webhook_count": 2,
@@ -1142,17 +1143,25 @@ export default function DocsPage() {
                   <h4 className="font-semibold mb-3 text-foreground">Request Body Parameters</h4>
                   <ParameterTable params={[
                     { name: "name", type: "string", required: true, description: "Monitor display name" },
-                    { name: "domains", type: "string[]", required: true, description: "Array of domains to monitor (min 1). Subdomains are matched automatically." },
-                    { name: "match_mode", type: "string", required: true, description: "Match mode: 'credential' (email only), 'url' (URL only), or 'both'" },
+                    { name: "target_type", type: "string", required: false, description: "'domain' (default) matches by domain/subdomain; 'email' matches exact email addresses" },
+                    { name: "domains", type: "string[]", required: true, description: "Array of entries (min 1). For target_type 'domain': bare domains (subdomains matched automatically). For 'email': full email addresses." },
+                    { name: "match_mode", type: "string", required: true, description: "Required for target_type 'domain': 'credential' (email only), 'url' (URL only), or 'both'. Ignored for 'email' (always credential)." },
                     { name: "webhook_ids", type: "number[]", required: false, description: "Array of webhook IDs to link to this monitor" },
                   ]} />
                 </div>
                 <div>
                   <h4 className="font-semibold mb-3 text-foreground">Example Request</h4>
-                  <CodeBlock code={`curl -X POST "${baseUrl}/api/v1/monitoring/monitors" \\
+                  <CodeBlock code={`# Domain monitor
+curl -X POST "${baseUrl}/api/v1/monitoring/monitors" \\
   -H "X-API-Key: bv_admin_api_key" \\
   -H "Content-Type: application/json" \\
-  -d '{"name": "Banking Domains", "domains": ["bank.co.id", "bca.co.id"], "match_mode": "both", "webhook_ids": [1, 2]}'`} />
+  -d '{"name": "Banking Domains", "domains": ["bank.co.id", "bca.co.id"], "match_mode": "both", "webhook_ids": [1, 2]}'
+
+# Email monitor (exact address match)
+curl -X POST "${baseUrl}/api/v1/monitoring/monitors" \\
+  -H "X-API-Key: bv_admin_api_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{"name": "Execs", "target_type": "email", "domains": ["ceo@bank.co.id"], "webhook_ids": [1]}'`} />
                 </div>
                 <div>
                   <h4 className="font-semibold mb-3 text-foreground flex items-center gap-2">
@@ -1197,8 +1206,9 @@ export default function DocsPage() {
                   <h4 className="font-semibold mb-3 text-foreground">PUT Request Body Parameters</h4>
                   <ParameterTable params={[
                     { name: "name", type: "string", required: false, description: "Monitor display name" },
-                    { name: "domains", type: "string[]", required: false, description: "Array of domains (min 1 if provided)" },
-                    { name: "match_mode", type: "string", required: false, description: "'credential', 'url', or 'both'" },
+                    { name: "target_type", type: "string", required: false, description: "'domain' or 'email'. Switching to 'email' forces match_mode to 'credential'." },
+                    { name: "domains", type: "string[]", required: false, description: "Array of domains or emails (min 1 if provided), validated against the effective target_type" },
+                    { name: "match_mode", type: "string", required: false, description: "'credential', 'url', or 'both' (applies to domain monitors only)" },
                     { name: "is_active", type: "boolean", required: false, description: "Enable or disable the monitor" },
                     { name: "webhook_ids", type: "number[]", required: false, description: "Replace all linked webhooks" },
                   ]} />

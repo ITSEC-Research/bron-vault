@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   Radio, Webhook, Bell, Plus, Trash2, RefreshCw, Eye,
   CheckCircle2, XCircle, AlertCircle, Globe, Send, Pencil,
-  Activity, Shield
+  Activity, Shield, Mail
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -27,6 +27,7 @@ interface DomainMonitor {
   id: number
   name: string
   domains: string[]
+  target_type: "domain" | "email"
   match_mode: "credential" | "url" | "both"
   is_active: boolean
   webhook_count?: number
@@ -93,6 +94,7 @@ export default function MonitoringPage() {
   const [monitorForm, setMonitorForm] = useState({
     name: "",
     domains: "",
+    target_type: "domain" as "domain" | "email",
     match_mode: "both" as "credential" | "url" | "both",
     webhook_ids: [] as number[],
   })
@@ -205,7 +207,7 @@ export default function MonitoringPage() {
 
   const openCreateMonitorDialog = () => {
     setEditingMonitor(null)
-    setMonitorForm({ name: "", domains: "", match_mode: "both", webhook_ids: [] })
+    setMonitorForm({ name: "", domains: "", target_type: "domain", match_mode: "both", webhook_ids: [] })
     setShowMonitorDialog(true)
   }
 
@@ -220,6 +222,7 @@ export default function MonitoringPage() {
         setMonitorForm({
           name: m.name,
           domains: m.domains.join("\n"),
+          target_type: m.target_type === "email" ? "email" : "domain",
           match_mode: m.match_mode,
           webhook_ids: m.webhooks?.map((w: MonitorWebhookItem) => w.id) || [],
         })
@@ -231,6 +234,7 @@ export default function MonitoringPage() {
   }
 
   const handleSaveMonitor = async () => {
+    const isEmail = monitorForm.target_type === "email"
     const domains = monitorForm.domains
       .split(/[\n,]/)
       .map(d => d.trim())
@@ -241,15 +245,25 @@ export default function MonitoringPage() {
       return
     }
     if (domains.length === 0) {
-      toast({ variant: "destructive", title: "Error", description: "At least one domain is required" })
+      toast({ variant: "destructive", title: "Error", description: isEmail ? "At least one email address is required" : "At least one domain is required" })
       return
+    }
+    // Client-side guard mirroring the API: email monitors need full addresses
+    if (isEmail) {
+      const bad = domains.find(d => !d.includes("@") || d.startsWith("@") || d.endsWith("@"))
+      if (bad) {
+        toast({ variant: "destructive", title: "Error", description: `"${bad}" is not a valid email address` })
+        return
+      }
     }
 
     try {
       const body = {
         name: monitorForm.name.trim(),
         domains,
-        match_mode: monitorForm.match_mode,
+        target_type: monitorForm.target_type,
+        // match_mode is ignored server-side for email monitors
+        match_mode: isEmail ? "credential" : monitorForm.match_mode,
         webhook_ids: monitorForm.webhook_ids,
       }
 
@@ -621,9 +635,17 @@ export default function MonitoringPage() {
                         <Badge variant={monitor.is_active ? "default" : "secondary"}>
                           {monitor.is_active ? "Active" : "Inactive"}
                         </Badge>
-                        <Badge variant="outline">
-                          {monitor.match_mode === "both" ? "Email + URL" : monitor.match_mode === "credential" ? "Email Only" : "URL Only"}
-                        </Badge>
+                        {monitor.target_type === "email" ? (
+                          <Badge variant="outline" className="gap-1">
+                            <Mail className="h-3 w-3" />
+                            Email
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1">
+                            <Globe className="h-3 w-3" />
+                            {monitor.match_mode === "both" ? "Domain · Email + URL" : monitor.match_mode === "credential" ? "Domain · Email" : "Domain · URL"}
+                          </Badge>
+                        )}
                       </div>
                       {userIsAdmin && (
                         <div className="flex items-center gap-2">
@@ -645,7 +667,7 @@ export default function MonitoringPage() {
                     <div className="flex flex-wrap gap-2 mb-3">
                       {monitor.domains.map((domain, i) => (
                         <Badge key={i} variant="outline" className="gap-1">
-                          <Globe className="h-3 w-3" />
+                          {monitor.target_type === "email" ? <Mail className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
                           {domain}
                         </Badge>
                       ))}
@@ -939,38 +961,69 @@ export default function MonitoringPage() {
             </div>
 
             <div>
-              <Label htmlFor="monitor-domains">Domains (one per line or comma-separated)</Label>
-              <Textarea
-                id="monitor-domains"
-                value={monitorForm.domains}
-                onChange={e => setMonitorForm(f => ({ ...f, domains: e.target.value }))}
-                placeholder={"example.com\nbank.co.id\nmail.example.org"}
-                rows={4}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Subdomains are matched automatically (e.g. &quot;example.com&quot; also matches &quot;sub.example.com&quot;)
-              </p>
-            </div>
-
-            <div>
-              <Label>Match Mode</Label>
+              <Label>Monitor Type</Label>
               <Select
-                value={monitorForm.match_mode}
-                onValueChange={v => setMonitorForm(f => ({ ...f, match_mode: v as "credential" | "url" | "both" }))}
+                value={monitorForm.target_type}
+                onValueChange={v => setMonitorForm(f => ({ ...f, target_type: v as "domain" | "email" }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="both">Both (Email + URL)</SelectItem>
-                  <SelectItem value="credential">Email/Credential Only</SelectItem>
-                  <SelectItem value="url">URL Only</SelectItem>
+                  <SelectItem value="domain">Domain</SelectItem>
+                  <SelectItem value="email">Email Address</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                &quot;Email&quot; matches credentials where login email uses the domain. &quot;URL&quot; matches credentials where the URL targets the domain.
+                {monitorForm.target_type === "email"
+                  ? "Matches credentials whose login is exactly one of the addresses below."
+                  : "Matches credentials by domain (subdomains included)."}
               </p>
             </div>
+
+            <div>
+              <Label htmlFor="monitor-domains">
+                {monitorForm.target_type === "email"
+                  ? "Email Addresses (one per line or comma-separated)"
+                  : "Domains (one per line or comma-separated)"}
+              </Label>
+              <Textarea
+                id="monitor-domains"
+                value={monitorForm.domains}
+                onChange={e => setMonitorForm(f => ({ ...f, domains: e.target.value }))}
+                placeholder={monitorForm.target_type === "email"
+                  ? "ceo@bank.co.id\nadmin@example.com"
+                  : "example.com\nbank.co.id\nmail.example.org"}
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                {monitorForm.target_type === "email"
+                  ? "Exact match only — alerts fire when a leaked credential's login is exactly this address."
+                  : "Subdomains are matched automatically (e.g. \"example.com\" also matches \"sub.example.com\")"}
+              </p>
+            </div>
+
+            {monitorForm.target_type === "domain" && (
+              <div>
+                <Label>Match Mode</Label>
+                <Select
+                  value={monitorForm.match_mode}
+                  onValueChange={v => setMonitorForm(f => ({ ...f, match_mode: v as "credential" | "url" | "both" }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="both">Both (Email + URL)</SelectItem>
+                    <SelectItem value="credential">Email/Credential Only</SelectItem>
+                    <SelectItem value="url">URL Only</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  &quot;Email&quot; matches credentials where login email uses the domain. &quot;URL&quot; matches credentials where the URL targets the domain.
+                </p>
+              </div>
+            )}
 
             <div>
               <Label>Linked Webhooks</Label>

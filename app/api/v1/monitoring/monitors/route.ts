@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { withApiKeyAuth, addRateLimitHeaders, logApiRequest } from "@/lib/api-key-auth"
-import { listMonitors, createMonitor } from "@/lib/domain-monitor"
+import { listMonitors, createMonitor, validateMonitorEntries } from "@/lib/domain-monitor"
 
 export const dynamic = 'force-dynamic'
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { name, domains, match_mode, webhook_ids } = body
+    const { name, domains, target_type, match_mode, webhook_ids } = body
 
     // Validation
     if (!name || typeof name !== "string" || name.trim().length === 0) {
@@ -83,22 +83,41 @@ export async function POST(request: NextRequest) {
 
     if (!domains || !Array.isArray(domains) || domains.length === 0) {
       return NextResponse.json(
-        { success: false, error: "At least one domain is required", code: "VALIDATION_ERROR" },
+        { success: false, error: "At least one domain or email is required", code: "VALIDATION_ERROR" },
         { status: 400 }
       )
     }
 
-    if (!["credential", "url", "both"].includes(match_mode)) {
+    if (target_type !== undefined && !["domain", "email"].includes(target_type)) {
+      return NextResponse.json(
+        { success: false, error: "target_type must be 'domain' or 'email'", code: "VALIDATION_ERROR" },
+        { status: 400 }
+      )
+    }
+    const targetType: 'domain' | 'email' = target_type === "email" ? "email" : "domain"
+
+    // match_mode only applies to domain monitors; email monitors always match on credential email
+    if (targetType === "domain" && !["credential", "url", "both"].includes(match_mode)) {
       return NextResponse.json(
         { success: false, error: "match_mode must be 'credential', 'url', or 'both'", code: "VALIDATION_ERROR" },
         { status: 400 }
       )
     }
 
+    const normalizedEntries = domains.map((d: string) => d.trim().toLowerCase())
+    const entryError = validateMonitorEntries(targetType, normalizedEntries, true)
+    if (entryError) {
+      return NextResponse.json(
+        { success: false, error: entryError, code: "VALIDATION_ERROR" },
+        { status: 400 }
+      )
+    }
+
     const monitorId = await createMonitor({
       name: name.trim(),
-      domains: domains.map((d: string) => d.trim().toLowerCase()),
-      match_mode,
+      domains: normalizedEntries,
+      target_type: targetType,
+      match_mode: targetType === "email" ? "credential" : match_mode,
       webhook_ids: webhook_ids || [],
       created_by: parseInt(payload.userId),
     })
